@@ -1,0 +1,10 @@
+{
+  "venues": [
+    { "id": 0, "name_ar": "عربية فيفي", "vehicle_id": "fifi", "price_multiplier": 0.6, "seating": false },
+    { "id": 1, "name_ar": "جيب الوحش", "vehicle_id": "wahsh", "price_multiplier": 0.8, "seating": false },
+    { "id": 2, "name_ar": "قهوة بلدي", "price_multiplier": 1.0, "seating": true },
+    { "id": 3, "name_ar": "قهوة بلدي مزدحمة", "price_multiplier": 1.6, "seating": true },
+    { "id": 4, "name_ar": "قهوة تراثية", "price_multiplier": 2.6, "seating": true },
+    { "id": 5, "name_ar": "كافيه حديث", "price_multiplier": 6.0, "seating": true }
+  ]
+}

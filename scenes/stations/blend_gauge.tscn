@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/blend_gauge.gd" id="1_blend"]
+
+[node name="BlendGauge" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+script = ExtResource("1_blend")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 24
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="BarRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 60
+alignment = 1
+
+[node name="BlendBar" type="ProgressBar" parent="VBox/BarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 600)
+layout_mode = 2
+mouse_filter = 2
+fill_mode = 3
+show_percentage = false
+
+[node name="MotorBar" type="ProgressBar" parent="VBox/BarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 600)
+layout_mode = 2
+mouse_filter = 2
+fill_mode = 3
+show_percentage = false

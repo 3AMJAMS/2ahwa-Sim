@@ -1,0 +1,52 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="2ahwa Sim"
+config/description="قهوجي — Egyptian ahwa bartending sim"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "Mobile")
+
+[autoload]
+
+GameData="*res://scripts/autoload/game_data.gd"
+SaveSystem="*res://scripts/autoload/save_system.gd"
+Economy="*res://scripts/autoload/economy.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[gui]
+
+theme/custom="res://assets/ui/main_theme.tres"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://localization/ar_EG.ar_EG.translation")
+locale/fallback="ar_EG"
+locale/test="ar_EG"
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.055, 0.063, 0.157, 1)
