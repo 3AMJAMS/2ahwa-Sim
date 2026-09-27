@@ -1,0 +1,15 @@
+{
+  "menu_items": [
+    {
+      "id": "tea_koshari",
+      "name_key": "PREP_TEA_KOSHARI",
+      "name_ar": "شاي كشري",
+      "station": "heat",
+      "unlock_tier": 0,
+      "base_price_egp": 8,
+      "prep_time_sec": 12,
+      "difficulty": 1,
+      "sugar_grade": null
+    }
+  ]
+}

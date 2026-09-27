@@ -1,0 +1,39 @@
+{
+  "equipment": [
+    {
+      "id": "heat_basic",
+      "slot": "heat",
+      "tier": 0,
+      "name_ar": "موقد بسيط",
+      "cost_egp": 0,
+      "unlocked": true
+    },
+    {
+      "id": "blend_basic",
+      "slot": "blend",
+      "tier": 0,
+      "name_ar": "خلاط بسيط",
+      "cost_egp": 0,
+      "unlocked": false,
+      "hint_ar": "يفتح في المرحلة الجاية"
+    },
+    {
+      "id": "espresso_none",
+      "slot": "espresso",
+      "tier": 0,
+      "name_ar": "مقفول",
+      "cost_egp": 0,
+      "unlocked": false,
+      "hint_ar": "شراء آلة إسبريسو"
+    },
+    {
+      "id": "espresso_basic",
+      "slot": "espresso",
+      "tier": 1,
+      "name_ar": "آلة إسبريسو",
+      "cost_egp": 3000,
+      "unlocked": false,
+      "requires": "espresso_none"
+    }
+  ]
+}

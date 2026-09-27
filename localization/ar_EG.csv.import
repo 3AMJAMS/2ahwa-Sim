@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c7p5sish7um86"
+
+[deps]
+
+files=["res://localization/ar_EG.ar_EG.translation"]
+
+source_file="res://localization/ar_EG.csv"
+dest_files=["res://localization/ar_EG.ar_EG.translation"]
+
+[params]
+
+compress=true
+delimiter=0

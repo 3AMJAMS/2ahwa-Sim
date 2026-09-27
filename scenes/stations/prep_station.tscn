@@ -1,0 +1,85 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/stations/prep_station.gd" id="1_prep"]
+[ext_resource type="PackedScene" path="res://scenes/stations/heat_gauge.tscn" id="2_heat"]
+[ext_resource type="PackedScene" path="res://scenes/stations/blend_gauge.tscn" id="3_blend"]
+
+[node name="PrepStation" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_prep")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.106, 0.086, 0.2, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 120
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 100
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 30
+
+[node name="OrderTitle" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.784, 0.38, 0.7)
+text = "PREP_ORDER_TITLE"
+horizontal_alignment = 1
+
+[node name="OrderDisplay" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.784, 0.38, 1)
+theme_override_font_sizes/font_size = 84
+horizontal_alignment = 1
+
+[node name="HeatGauge" parent="Margin/VBox" instance=ExtResource("2_heat")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BlendGauge" parent="Margin/VBox" instance=ExtResource("3_blend")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="EspressoSlot" type="PanelContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+
+[node name="EspressoLabel" type="Label" parent="Margin/VBox/EspressoSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+horizontal_alignment = 1
+
+[node name="ResultLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
