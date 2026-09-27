@@ -1,7 +1,9 @@
 class_name HeatGauge
 extends Control
-## Sand-bath / stove heat gauge: heat climbs 0 → 100 over prep_time_sec.
-## Tap to stop inside the green zone for a perfect brew; reaching 100 boils over.
+## Stove heat mechanic: heat climbs 0 → 100 over prep_time_sec while the
+## كنكة boils on the ring (KanakaStove draws it; the slim bar is the readout).
+## Tap to take it off the fire inside the green zone for a perfect brew — it
+## pours into the glass before the result is reported. Reaching 100 boils over.
 
 signal gauge_completed(accuracy: float)
 signal gauge_failed()
@@ -25,18 +27,21 @@ var state := State.IDLE
 var heat := 0.0
 
 var _fill := StyleBoxFlat.new()
+## Bumped on every start/reset so a pour that outlives its order is ignored.
+var _run_id := 0
 
 @onready var status_label: Label = %StatusLabel
 @onready var bar: ProgressBar = %ProgressBar
 @onready var green_zone: ColorRect = %GreenZone
 @onready var tap_label: Label = %TapToStopLabel
+@onready var stove: KanakaStove = %StoveView
 
 
 func _ready() -> void:
 	var track := StyleBoxFlat.new()
 	track.bg_color = COLOR_TRACK
-	track.set_corner_radius_all(24)
-	_fill.set_corner_radius_all(24)
+	track.set_corner_radius_all(22)
+	_fill.set_corner_radius_all(22)
 	bar.add_theme_stylebox_override("background", track)
 	bar.add_theme_stylebox_override("fill", _fill)
 	# Bar fills bottom-to-top, so zone anchors are measured from the bottom.
@@ -49,26 +54,26 @@ func start(time_sec: float = prep_time_sec) -> void:
 	prep_time_sec = maxf(time_sec, 0.1)
 	heat = 0.0
 	state = State.HEATING
+	_run_id += 1
 	set_process(true)
+	stove.reset()
+	stove.ignite()
 	_refresh()
 
 
 func reset() -> void:
 	state = State.IDLE
 	heat = 0.0
+	_run_id += 1
 	set_process(false)
+	stove.reset()
 	_refresh()
 
 
 func _process(delta: float) -> void:
 	heat += delta / prep_time_sec * 100.0
 	if heat >= 100.0:
-		heat = 100.0
-		state = State.DONE
-		set_process(false)
-		_refresh()
-		status_label.text = tr("PREP_BURNT")
-		gauge_failed.emit()
+		_boil_over()
 		return
 	_refresh()
 
@@ -93,13 +98,31 @@ func stop() -> void:
 	set_process(false)
 	var accuracy := score(heat)
 	_refresh()
+	var pour := KanakaStove.Pour.PERFECT
 	if is_in_green(heat):
 		status_label.text = tr("PREP_PERFECT")
 	elif heat < green_min:
 		status_label.text = tr("PREP_LUKEWARM")
+		pour = KanakaStove.Pour.LUKEWARM
 	else:
 		status_label.text = tr("PREP_TOO_HOT")
-	gauge_completed.emit(accuracy)
+		pour = KanakaStove.Pour.TOO_HOT
+	var run := _run_id
+	await stove.pour(pour)
+	if run == _run_id:
+		gauge_completed.emit(accuracy)
+
+
+func _boil_over() -> void:
+	heat = 100.0
+	state = State.DONE
+	set_process(false)
+	_refresh()
+	status_label.text = tr("PREP_BURNT")
+	var run := _run_id
+	await stove.boil_over()
+	if run == _run_id:
+		gauge_failed.emit()
 
 
 func score(value: float) -> float:
@@ -112,6 +135,7 @@ func is_in_green(value: float) -> bool:
 
 func _refresh() -> void:
 	bar.value = heat
+	stove.heat = heat
 	if heat < green_min:
 		_fill.bg_color = COLOR_WARM
 	elif heat <= green_max:
