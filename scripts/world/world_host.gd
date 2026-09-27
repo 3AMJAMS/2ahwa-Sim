@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_t += delta
-	fifi.trunk_glow = (sin(_pulse_t * 3.0) * 0.5 + 0.5) if interactive else 0.0
+	fifi.trunk_glow = (0.3 + 0.7 * (sin(_pulse_t * 3.0) * 0.5 + 0.5)) if interactive else 0.0
 
 
 func set_interactive(value: bool) -> void:
