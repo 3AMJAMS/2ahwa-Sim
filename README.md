@@ -25,7 +25,8 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
 - **Cold orders — the blender runs by itself.** Press and hold (or hold Space) for turbo: it finishes faster
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
-  too long and the motor burns out, the lid pops off and the juice goes everywhere.
+  too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
+  and tips drop.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
 
 ### Project layout
@@ -35,10 +36,11 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 | `scripts/stations/heat_gauge.gd` | Hot brew timing + scoring (tap in the green zone) |
 | `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
-| `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, burn-out mess |
+| `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
+| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
-| `scripts/world/` | Isometric street + placeholder FIFI (procedural Fiat 127-style hatchback, swap for art later) |
+| `scripts/world/` | Isometric street (asphalt, kerb, pavement) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
 | `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy` |
 | `data/*.json` | Menu (incl. each drink's colours under `look`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |

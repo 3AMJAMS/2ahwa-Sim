@@ -2,13 +2,13 @@ class_name BlendGauge
 extends Control
 ## Cold blender mechanic. Blend progress fills on its own; holding runs the
 ## motor on turbo to finish faster but heats it. Staying in the motor's red
-## zone longer than overheat_grace_sec burns it out. BlenderView draws it;
-## the two slim bars are the readout (blend on the right, motor beside it).
+## zone longer than overheat_grace_sec trips its thermal cut-out: the motor
+## stops until it cools to motor_resume_max, costing time (and tips) but never
+## the drink. BlenderView draws it; the two slim bars are the readout.
 
 signal gauge_completed(accuracy: float)
-signal gauge_failed()
 
-enum State { IDLE, BLENDING, DONE }
+enum State { IDLE, BLENDING, TRIPPED, DONE }
 
 const COLOR_MOTOR_OK := Color("4caf50")
 const COLOR_MOTOR_WARM := Color("e6c33a")
@@ -21,8 +21,10 @@ const COLOR_TRACK := Color("1b1e3a")
 @export var motor_cool_rate := 30.0   # per second while released
 @export_range(0.0, 100.0) var motor_warn_min := 55.0
 @export_range(0.0, 100.0) var motor_red_min := 80.0
-## Grace period in the red before failing, so a brief overshoot is forgiven.
+## Grace period in the red before the cut-out trips, so a brief overshoot is forgiven.
 @export var overheat_grace_sec := 0.6
+## A tripped motor restarts once it has cooled to this.
+@export_range(0.0, 100.0) var motor_resume_max := 30.0
 ## Finishing at or under this fraction of prep_time_sec scores 1.0;
 ## accuracy falls to 0.5 at the full unboosted time.
 @export_range(0.1, 1.0) var par_fraction := 0.6
@@ -91,6 +93,13 @@ func reset() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	if state == State.TRIPPED:
+		motor_heat = maxf(motor_heat - motor_cool_rate * delta, 0.0)
+		if motor_heat <= motor_resume_max:
+			state = State.BLENDING
+			blender.running = true
+		_refresh()
+		return
 	var rate := 100.0 / prep_time_sec * (boost_multiplier if holding else 1.0)
 	progress = minf(progress + rate * delta, 100.0)
 	if holding:
@@ -100,7 +109,7 @@ func _process(delta: float) -> void:
 	_red_time = _red_time + delta if motor_heat >= motor_red_min else 0.0
 	_refresh()
 	if _red_time > overheat_grace_sec:
-		_burn_out()
+		_trip()
 	elif progress >= 100.0:
 		_serve()
 
@@ -139,13 +148,13 @@ func _serve() -> void:
 		gauge_completed.emit(accuracy)
 
 
-func _burn_out() -> void:
-	_finish()
-	status_label.text = tr("PREP_BLEND_OVERHEAT")
-	var run := _run_id
-	await blender.burn_out()
-	if run == _run_id:
-		gauge_failed.emit()
+func _trip() -> void:
+	state = State.TRIPPED
+	holding = false
+	_red_time = 0.0
+	blender.running = false
+	blender.trip()
+	_refresh()
 
 
 func _finish() -> void:
@@ -167,9 +176,12 @@ func _refresh() -> void:
 	blender.progress = progress
 	blender.motor_heat = motor_heat
 	blender.holding = holding
+	blender.tripped = state == State.TRIPPED
 	var blending := state == State.BLENDING
 	hold_label.modulate.a = 1.0 if blending and not holding and motor_heat < motor_warn_min else 0.0
-	if blending:
+	if state == State.TRIPPED:
+		status_label.text = tr("PREP_BLEND_OVERHEAT")
+	elif blending:
 		if motor_heat >= motor_red_min:
 			status_label.text = tr("PREP_BLEND_TOO_HOT")
 		elif motor_heat >= motor_warn_min:

@@ -2,14 +2,16 @@ class_name StationArt
 extends Control
 ## Shared drawing kit for the flat prep-station art (stove, blender). Each
 ## scene is authored in a 960×740 box, scaled to fit and pinned to the bottom,
-## standing on the same wooden counter. Purely visual: the gauges drive it.
+## standing on the front edge of FIFI's trunk floor (TrunkBackdrop draws the
+## rest of the car around it). Purely visual: the gauges drive it.
 
 signal sequence_finished
 
 const SCENE_SIZE := Vector2(960, 740)
 const COUNTER_Y := 606.0
-const COLOR_COUNTER_TOP := Color("8b5a35")
-const COLOR_COUNTER_FRONT := Color("5c381f")
+## The carpet band runs from COUNTER_Y - 8 down to the sill.
+const SILL_Y := COUNTER_Y + 18.0
+const COLOR_CARPET := Color("463e46")
 const COLOR_SAUCER := Color("ebe6dc")
 
 var _t := 0.0
@@ -51,6 +53,11 @@ func _scene_span() -> Vector2:
 	return Vector2(-xf.origin.x / s, (size.x - xf.origin.x) / s)
 
 
+## Screen position of a point in scene space, for lining up the backdrop.
+func scene_to_global(p: Vector2) -> Vector2:
+	return get_global_transform() * (_scene_xf() * p)
+
+
 func _kill_tween() -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
@@ -73,18 +80,15 @@ func _particle(pos: Vector2, vel: Vector2, life: float, size_px: float, color: C
 	return p
 
 
+## Front edge of the trunk floor: a band of carpet the kit stands on.
 func _draw_counter(left: float, right: float) -> void:
 	var top := COUNTER_Y - 8.0
-	draw_rect(Rect2(left, top, right - left, 26), COLOR_COUNTER_TOP)
-	draw_rect(Rect2(left, top + 26, right - left, SCENE_SIZE.y - top - 26), COLOR_COUNTER_FRONT)
-	draw_line(Vector2(left, top), Vector2(right, top), COLOR_COUNTER_TOP.lightened(0.25), 3.0)
-	draw_line(Vector2(left, top + 26), Vector2(right, top + 26), Color(0, 0, 0, 0.3), 2.0)
-	for i in 7:
-		var y := top + 40.0 + i * 14.0 + (i % 3) * 3.0
-		var grain := PackedVector2Array()
-		for k in 13:
-			grain.append(Vector2(lerpf(left, right, k / 12.0), y + sin(k * 1.3 + i) * 2.0))
-		draw_polyline(grain, Color(0, 0, 0, 0.12), 1.5)
+	draw_rect(Rect2(left, top, right - left, SILL_Y - top), COLOR_CARPET)
+	draw_line(Vector2(left, top), Vector2(right, top), COLOR_CARPET.lightened(0.12), 2.0)
+	for i in 40:
+		var x := lerpf(left, right, float((i * 37) % 97) / 97.0)
+		var y := top + 3.0 + float((i * 13) % 20)
+		draw_circle(Vector2(x, y), 1.4, Color(1, 1, 1, 0.06))
 
 
 func _draw_saucer(c: Vector2) -> void:

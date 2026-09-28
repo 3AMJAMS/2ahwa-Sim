@@ -2,7 +2,7 @@ class_name BlenderView
 extends StationArt
 ## Cold-station art: a cheap plastic blender on the counter and a tall glass
 ## beside it. Purely visual — BlendGauge feeds it progress/motor_heat/running/
-## holding and calls pour()/burn_out(); scoring never reads it.
+## holding/tripped and calls pour()/trip(); scoring never reads it.
 ## set_look() recolours it per drink from the menu item's "look" block.
 
 const BASE_X := 610.0
@@ -14,7 +14,6 @@ const JAR_FLOOR := -16.0
 ## Half-widths at the bottom and top: inside, and the outer glass.
 const JAR_IN := Vector2(60, 92)
 const JAR_OUT := Vector2(66, 98)
-const LID_C := Vector2(0, -277)
 ## Pour lip; the pour pivots around it so the stream stays put.
 const SPOUT := Vector2(-106, -262)
 const REST_PIVOT := JAR_REST + SPOUT
@@ -62,10 +61,8 @@ var stream := 0.0
 var glass_fill := 0.0
 var ice_in := 0.0
 var straw := 0.0
-## Burnt-out motor, 0..1.
-var dead := 0.0
-## 0 on the jar, 1 flown off.
-var lid_off := 0.0
+## Thermal cut-out has tripped: the motor is off until it cools.
+var tripped := false
 
 var _liquid := Color("a3183a")
 var _bits := Color("5c0d22")
@@ -77,10 +74,7 @@ var _chunks: Array[Vector4] = []
 var _chunk_ice: Array[bool] = []
 var _puffs := []
 var _drops := []
-var _splash := []
 var _sparks := []
-## Juice stuck to the wall/counter after a burn-out: (x, y, radius).
-var _splats: Array[Vector3] = []
 var _smoke_acc := 0.0
 var _drop_acc := 0.0
 var _spark_acc := 0.0
@@ -114,14 +108,11 @@ func reset() -> void:
 	glass_fill = 0.0
 	ice_in = 0.0
 	straw = 0.0
-	dead = 0.0
-	lid_off = 0.0
+	tripped = false
 	_speed = 0.0
 	_puffs.clear()
 	_drops.clear()
-	_splash.clear()
 	_sparks.clear()
-	_splats.clear()
 	_make_chunks()
 	queue_redraw()
 
@@ -153,26 +144,14 @@ func pour() -> void:
 	await sequence_finished
 
 
-## The motor gives out: sparks, smoke, and the lid pops off in a spray of juice.
-func burn_out() -> void:
-	_kill_tween()
-	running = false
-	_busy = true
-	var mouth := _jar_xf() * Vector2(0, -JAR_H)
-	for i in 28:
-		_splash.append(_particle(mouth + Vector2(_rng.randf_range(-70, 70), 0),
-			Vector2(_rng.randf_range(-320, 320), _rng.randf_range(-860, -460)),
-			_rng.randf_range(0.5, 0.95), _rng.randf_range(5, 11), _liquid))
-	for i in 18:
+## The thermal cut-out trips: a crack of sparks and a puff of smoke.
+func trip() -> void:
+	for i in 14:
 		_spawn_spark()
-	var t := create_tween()
-	_tween = t
-	t.tween_property(self, "dead", 1.0, 0.4)
-	t.parallel().tween_property(self, "lid_off", 1.0, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.parallel().tween_property(self, "jar_level", START_LEVEL - 0.22, 0.3)
-	t.tween_interval(0.35)
-	t.tween_callback(_finish_sequence)
-	await sequence_finished
+	for i in 10:
+		_puffs.append(_particle(_vents() + Vector2(_rng.randf_range(-10, 10), _rng.randf_range(-30, 30)),
+			Vector2(_rng.randf_range(-70, -20), _rng.randf_range(-110, -60)),
+			_rng.randf_range(1.2, 2.0), _rng.randf_range(12, 20), COLOR_SMOKE))
 
 
 func _process(delta: float) -> void:
@@ -222,7 +201,7 @@ func _spawn_spark() -> void:
 
 func _emit_particles(delta: float) -> void:
 	var hot := clampf((motor_heat - 65.0) / 35.0, 0.0, 1.0)
-	var smoke := maxf(hot if running else hot * 0.4, dead * (1.0 if _busy else 0.35))
+	var smoke := hot if running or tripped else hot * 0.4
 	if smoke > 0.0 and _puffs.size() < 120:
 		_smoke_acc += delta * 14.0 * smoke
 		while _smoke_acc >= 1.0:
@@ -253,18 +232,9 @@ func _step_particles(delta: float) -> void:
 		p.age += delta
 		p.vel.y += 900.0 * delta
 		p.pos += p.vel * delta
-	for p in _splash:
-		p.age += delta
-		p.vel.y += 1500.0 * delta
-		p.pos += p.vel * delta
-		if p.age >= p.life or p.pos.y >= COUNTER_Y:
-			p.age = p.life
-			if _splats.size() < 60:
-				_splats.append(Vector3(p.pos.x, minf(p.pos.y, COUNTER_Y + 10.0), p.size * 1.5))
 	_puffs = _puffs.filter(func(p): return p.age < p.life)
 	_drops = _drops.filter(func(p): return p.age < p.life)
 	_sparks = _sparks.filter(func(p): return p.age < p.life)
-	_splash = _splash.filter(func(p): return p.age < p.life)
 
 #endregion
 
@@ -278,7 +248,6 @@ func _draw() -> void:
 	var span := _scene_span()
 	draw_set_transform_matrix(scene_xf)
 	_soft_blob(Vector2(BASE_X - 60, 360), Vector2(520, 380), Color(0.5, 0.8, 1.0, 0.07))
-	_draw_splats()
 	_draw_counter(span.x, span.y)
 	_fill_ellipse(Vector2(BASE_X, COUNTER_Y + 2), Vector2(128, 10), Color(0, 0, 0, 0.3))
 	_draw_base()
@@ -288,7 +257,7 @@ func _draw() -> void:
 	if stream > 0.01:
 		_draw_stream(jar_pivot + Vector2(-2, 3), _stream_end(), stream, _liquid, 7.0)
 	_draw_glass_front()
-	for p in _drops + _splash:
+	for p in _drops:
 		draw_circle(p.pos, p.size * (1.0 - 0.4 * p.age / p.life), p.color)
 	for p in _sparks:
 		var k: float = 1.0 - p.age / p.life
@@ -300,19 +269,10 @@ func _draw() -> void:
 
 
 func _shake() -> Vector2:
-	var amp := 0.9 * _speed * (1.0 - dead)
+	var amp := 0.9 * _speed
 	if running and motor_heat >= RED_ZONE:
 		amp += 1.6
 	return Vector2(sin(_t * 57.0), sin(_t * 43.0 + 1.1)) * amp
-
-
-func _draw_splats() -> void:
-	for s in _splats:
-		var c := Vector2(s.x, s.y)
-		draw_circle(c, s.z, Color(_liquid, 0.85))
-		for k in 3:
-			var a := s.x * 0.37 + k * 2.1
-			draw_circle(c + Vector2(cos(a), sin(a)) * s.z * 1.5, s.z * 0.3, Color(_liquid, 0.8))
 
 
 func _draw_base() -> void:
@@ -336,12 +296,12 @@ func _draw_base() -> void:
 	# Front panel: heat lights over three buttons (off, on, turbo).
 	draw_rect(Rect2(cx - 72, 498, 144, 70), COLOR_PANEL)
 	var lit := motor_heat / 100.0 * LED_COLORS.size()
-	var blink := 0.5 + 0.5 * signf(sin(_t * 18.0)) if motor_heat >= RED_ZONE else 1.0
+	var blink := 0.5 + 0.5 * signf(sin(_t * 18.0)) if motor_heat >= RED_ZONE or tripped else 1.0
 	for i in LED_COLORS.size():
 		var r := Rect2(cx - 62 + i * 21, 508, 16, 9)
-		if dead < 0.5 and lit > i:
+		if lit > i:
 			var c: Color = LED_COLORS[i]
-			draw_rect(r, Color(c, blink if i >= 4 else 1.0))
+			draw_rect(r, Color(c, blink if i >= 4 or tripped else 1.0))
 			_soft_blob(r.get_center(), Vector2(16, 12), Color(c, 0.35 * blink))
 		else:
 			draw_rect(r, Color(1, 1, 1, 0.08))
@@ -351,9 +311,9 @@ func _draw_base() -> void:
 		var at := Vector2(cx - 40 + i * 40, 546)
 		draw_circle(at, 12, buttons[i])
 		draw_circle(at + Vector2(-3, -3), 4, Color(1, 1, 1, 0.25))
-	# Vents glow as the motor heats, and stay scorched once it's burnt out.
-	var glow := smoothstep(50.0, 100.0, motor_heat) * (1.0 - dead)
-	var vent := COLOR_VENT.lerp(COLOR_VENT_HOT, glow).lerp(Color("15110e"), dead)
+	# Vents glow as the motor heats.
+	var glow := smoothstep(50.0, 100.0, motor_heat)
+	var vent := COLOR_VENT.lerp(COLOR_VENT_HOT, glow)
 	for i in 5:
 		var y := top + 34.0 + i * 12.0
 		draw_line(Vector2(cx - 104 + i * 1.5, y), Vector2(cx - 84 + i * 1.5, y), vent, 4.0)
@@ -400,7 +360,7 @@ func _draw_jar(scene_xf: Transform2D) -> void:
 		var x := _jar_hw(y, JAR_OUT) - 4.0
 		draw_line(Vector2(x, y), Vector2(x - 16, y), Color(1, 1, 1, 0.4), 2.0)
 	_arc(Vector2(0, -JAR_H), Vector2(JAR_OUT.y, 12), 0.0, PI, Color(1, 1, 1, 0.6), 2.5)
-	_draw_lid(scene_xf * xf)
+	_draw_lid()
 
 
 func _draw_blades() -> void:
@@ -419,7 +379,7 @@ func _draw_liquid(xf: Transform2D, upright: bool) -> float:
 	var interior := xf * PackedVector2Array([Vector2(-JAR_IN.x, JAR_FLOOR), Vector2(JAR_IN.x, JAR_FLOOR),
 		Vector2(JAR_IN.y, -JAR_H + 4.0), Vector2(-JAR_IN.y, -JAR_H + 4.0)])
 	var cx := (xf * Vector2(0, -JAR_H * 0.5)).x
-	var dip := 30.0 * clampf(_speed / 2.5, 0.0, 1.0) * (1.0 - dead) if upright else 0.0
+	var dip := 30.0 * clampf(_speed / 2.5, 0.0, 1.0) if upright else 0.0
 	var target := jar_level * _area(interior)
 	var lo := INF
 	var hi := -INF
@@ -484,7 +444,7 @@ func _jar_hw(y: float, hw: Vector2) -> float:
 
 ## Curved streaks circling the vortex while it spins.
 func _draw_swirls(level: float) -> void:
-	var a := clampf(_speed, 0.0, 1.0) * 0.3 * (1.0 - dead)
+	var a := clampf(_speed, 0.0, 1.0) * 0.3
 	if a <= 0.01:
 		return
 	for i in 5:
@@ -524,19 +484,12 @@ func _draw_chunks(level: float) -> void:
 			draw_circle(Vector2(x, y) + Vector2(-half, -half) * 0.35, half * 0.3, Color(1, 1, 1, 0.25 * front))
 
 
-func _draw_lid(jar_xf: Transform2D) -> void:
-	var u := lid_off
-	var alpha := 1.0 - smoothstep(0.7, 1.0, u)
-	if alpha <= 0.0:
-		return
-	var offset := Vector2(210.0 * u, -520.0 * u + 380.0 * u * u)
-	draw_set_transform_matrix(jar_xf * Transform2D(4.0 * u, LID_C + offset) * Transform2D(0.0, -LID_C))
-	var c := Color(COLOR_LID, alpha)
+func _draw_lid() -> void:
 	draw_colored_polygon(PackedVector2Array([Vector2(-102, -JAR_H + 2), Vector2(102, -JAR_H + 2),
-		Vector2(100, -276), Vector2(-100, -276)]), c)
+		Vector2(100, -276), Vector2(-100, -276)]), COLOR_LID)
 	draw_colored_polygon(PackedVector2Array([Vector2(-28, -276), Vector2(28, -276),
-		Vector2(24, -292), Vector2(-24, -292)]), c)
-	draw_line(Vector2(-98, -274), Vector2(98, -274), Color(1, 1, 1, 0.12 * alpha), 2.0)
+		Vector2(24, -292), Vector2(-24, -292)]), COLOR_LID)
+	draw_line(Vector2(-98, -274), Vector2(98, -274), Color(1, 1, 1, 0.12), 2.0)
 
 
 func _draw_glass_back() -> void:
