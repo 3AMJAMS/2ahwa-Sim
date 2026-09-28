@@ -116,7 +116,7 @@ func _length() -> float:
 		Kind.PICKUP:
 			return 4.9
 		Kind.TUKTUK:
-			return 2.7
+			return 2.72
 		Kind.SCOOTER:
 			return 1.8
 	return 4.4
@@ -125,7 +125,7 @@ func _length() -> float:
 func _half_width() -> float:
 	match kind:
 		Kind.TUKTUK:
-			return 0.58
+			return 0.66
 		Kind.SCOOTER:
 			return 0.3
 	return 0.85
@@ -343,68 +343,168 @@ func _draw_cargo(back: float, front: float) -> void:
 				_m.circle(at + Vector2(-hw * 0.08, -hw * 0.1), hw * 0.1, Color(1, 1, 1, 0.25))
 
 
+## A Bajaj RE-style tuk-tuk (2.7 m long, 1.35 m wide, 1.8 m tall): a narrow
+## nose over the single front wheel widening back to the passenger tub, a tall
+## near-upright windscreen, open sides, a wide vinyl roof that wraps down the
+## back over a small window, and Egyptian dressing: fringe, stripes, chrome.
 func _draw_tuktuk() -> void:
-	var canopy := _paint.darkened(0.45)
-	_wheel(-0.8, -0.5, 0.22)
-	# Low body tub first: its floor is under everything inside.
-	_prism([Vector2(-1.15, 0.28), Vector2(0.8, 0.28), Vector2(1.3, 0.45), Vector2(1.35, 0.72), Vector2(1.0, 0.76),
-		Vector2(-1.15, 0.7)], -0.56, 0.56, _paint, 0.12)
-	_prism([Vector2(0.98, 0.14), Vector2(1.3, 0.14), Vector2(1.38, 0.42), Vector2(0.98, 0.42)], -0.1, 0.1,
-		_paint.darkened(0.25), 0.06)
-	# Through the open side: the far canvas wall, the rear bench, the driver.
-	_side_poly([Vector2(-1.05, 0.72), Vector2(0.95, 0.74), Vector2(1.0, 1.5), Vector2(-0.95, 1.62)], -0.5, Color("2a2830"))
-	_prism([Vector2(-1.0, 0.7), Vector2(-0.45, 0.7), Vector2(-0.45, 0.95), Vector2(-1.0, 0.95)], -0.48, 0.48,
-		Color("7a2e22"), 0.04)
-	_prism([Vector2(-1.08, 0.95), Vector2(-0.96, 0.95), Vector2(-0.98, 1.36), Vector2(-1.1, 1.36)], -0.48, 0.48,
-		Color("7a2e22"), 0.03)
-	var hip := _q(0.4, 0.0, 0.95)
-	var neck := _q(0.46, 0.0, 1.34)
-	_m.line(hip, _q(0.75, 0.1, 0.78), Color("2b3350"), 8.0)
-	_m.line(hip, neck, Color("e9e6df"), 14.0)
-	_m.line(neck, _q(0.84, 0.2, 1.12), Color("e9e6df"), 6.0)
-	_m.circle(_q(0.47, 0.0, 1.45), 0.1 * M_PX, Color("b97a52"))
-	_m.circle(_q(0.46, 0.0, 1.5), 0.075 * M_PX, Color("1d1612"))
-	_m.line(_q(0.86, -0.28, 1.12), _q(0.86, 0.28, 1.12), PLASTIC, 3.0)
-	# Dashboard nose up to the windscreen.
-	_prism([Vector2(0.92, 0.72), Vector2(1.34, 0.72), Vector2(1.3, 1.05), Vector2(1.04, 1.22), Vector2(0.92, 1.22)],
-		-0.54, 0.54, _paint.lightened(0.05), 0.06)
-	# Rounded rear: a low back panel, then the canopy curving down over it.
-	_prism([Vector2(-1.22, 0.7), Vector2(-1.1, 0.7), Vector2(-1.1, 1.2), Vector2(-1.22, 1.2)], -0.56, 0.56,
-		_paint.lightened(0.08))
-	# Windscreen and the front canopy posts.
-	_m.colored_polygon(PackedVector2Array([_q(1.04, 0.48, 1.22), _q(1.04, -0.48, 1.22), _q(1.14, -0.48, 1.5),
-		_q(1.14, 0.48, 1.5)]), Color(GLASS.lerp(GLASS_SKY, 0.45), 0.85))
-	_m.line(_q(1.07, 0.18, 1.27), _q(1.12, -0.1, 1.46), Color(1, 1, 1, 0.2), 2.0)
-	for b in [-0.52, 0.52]:
-		_m.line(_q(1.0, b, 0.76), _q(1.13, b, 1.52), Color("1c1c20"), 3.0)
-	# Canopy: slopes down to the windscreen, rounds off over the back, where
-	# it carries a small rear window.
-	_prism([Vector2(-1.24, 1.12), Vector2(-1.1, 1.12), Vector2(-1.1, 1.5), Vector2(1.14, 1.48), Vector2(1.2, 1.54),
-		Vector2(0.95, 1.66), Vector2(-0.8, 1.74), Vector2(-1.24, 1.5)], -0.6, 0.6, canopy, 0.28)
-	if dir < 0:
-		var fr := -1.25
-		_m.colored_polygon(PackedVector2Array([_q(fr, -0.32, 1.22), _q(fr, 0.32, 1.22), _q(fr, 0.28, 1.46),
-			_q(fr, -0.28, 1.46)]), _shade(GLASS.lerp(GLASS_SKY, 0.4), Vector3(1, 0, 0)))
-		_m.colored_polygon(PackedVector2Array([_q(-1.17, -0.18, 0.4), _q(-1.17, 0.18, 0.4), _q(-1.17, 0.18, 0.52),
-			_q(-1.17, -0.18, 0.52)]), PLATE)
-		for side in [-0.44, 0.44]:
-			_m.circle(_q(-1.17, side, 0.56), 0.045 * M_PX, Color("c3372c"))
-	_side_poly([Vector2(-1.1, 1.5), Vector2(1.14, 1.48), Vector2(1.14, 1.53), Vector2(-1.1, 1.56)], 0.61, _accent)
-	for k in 14:
-		var f := lerpf(-1.05, 1.08, k / 13.0)
-		var top := _q(f, 0.61, lerpf(1.5, 1.48, k / 13.0))
-		_m.colored_polygon(PackedVector2Array([top + Vector2(-4, 0), top + Vector2(4, 0), top + Vector2(0, 9)]),
+	var roof := Color("1f1f24")
+	var trim := _paint.lightened(0.12)
+	# Plan-view widths (half-widths in metres) along the body.
+	var body_w := func(f: float) -> float: return 0.64 if f < -0.1 else lerpf(0.64, 0.22, clampf((f + 0.1) / 1.45, 0.0, 1.0))
+	var roof_w := func(f: float) -> float: return lerpf(0.66, 0.52, clampf((f + 1.3) / 2.55, 0.0, 1.0))
+	var rear_first := dir > 0
+	# Far rear wheel, then the front wheel under the nose.
+	_wheel(-0.78, -0.6, 0.2)
+	_wheel(1.12, 0.07, 0.2)
+	# Floor pan / lower body, tapering to the nose.
+	_loft([Vector2(-1.32, 0.28), Vector2(0.95, 0.28), Vector2(1.2, 0.42), Vector2(1.18, 0.56), Vector2(-1.32, 0.56)],
+		body_w, _paint, 0.1)
+	if rear_first:
+		_tuk_rear(roof, trim)
+	# Inside, seen through the open side: bench, backrest, driver at the tiller.
+	_prism([Vector2(-1.05, 0.56), Vector2(-0.4, 0.56), Vector2(-0.4, 0.86), Vector2(-1.05, 0.86)], -0.56, 0.56,
+		Color("6e2a22"), 0.05)
+	_prism([Vector2(-1.14, 0.86), Vector2(-1.02, 0.86), Vector2(-1.05, 1.3), Vector2(-1.17, 1.3)], -0.56, 0.56,
+		Color("6e2a22"), 0.04)
+	_prism([Vector2(0.2, 0.56), Vector2(0.55, 0.56), Vector2(0.55, 0.82), Vector2(0.2, 0.82)], -0.18, 0.18, PLASTIC, 0.04)
+	var hip := _q(0.4, 0.0, 0.88)
+	var neck := _q(0.46, 0.0, 1.3)
+	_m.line(hip, _q(0.72, 0.1, 0.72), Color("2b3350"), 8.0)
+	_m.line(_q(0.72, 0.1, 0.72), _q(0.78, 0.12, 0.4), Color("2b3350"), 6.0)
+	_m.line(hip, neck, Color("e9e6df"), 15.0)
+	_m.line(neck, _q(0.86, 0.22, 1.02), Color("e9e6df"), 6.0)
+	_m.circle(_q(0.47, 0.0, 1.41), 0.1 * M_PX, Color("b97a52"))
+	_m.circle(_q(0.45, 0.0, 1.47), 0.078 * M_PX, Color("1d1612"))
+	_m.line(_q(0.9, -0.3, 1.02), _q(0.9, 0.3, 1.02), PLASTIC, 3.0)
+	# The nose: the cowl rising from the front mudguard to the windscreen, with
+	# the round headlamp and indicators on its face.
+	_loft([Vector2(0.9, 0.5), Vector2(1.22, 0.42), Vector2(1.34, 0.62), Vector2(1.3, 0.95), Vector2(1.12, 1.04),
+		Vector2(0.9, 1.04)], body_w, _paint, 0.08)
+	var nose_w: float = body_w.call(1.3)
+	if dir > 0:
+		_m.circle(_q(1.335, 0.0, 0.8), 0.075 * M_PX, CHROME)
+		_m.circle(_q(1.345, 0.0, 0.8), 0.055 * M_PX, Color("f5f0dc"))
+		for side in [-1.0, 1.0]:
+			_m.circle(_q(1.31, side * nose_w * 0.8, 0.94), 0.03 * M_PX, Color("e8962e"))
+		_m.line(_q(1.3, -nose_w * 0.9, 0.62), _q(1.3, nose_w * 0.9, 0.62), CHROME, 2.0)
+	# Front mudguard over the wheel.
+	var guard := PackedVector2Array()
+	for i in 9:
+		var a := PI * i / 8.0
+		guard.append(_q(1.12 + cos(a) * 0.24, 0.16, 0.2 + sin(a) * 0.24))
+	_m.polyline(guard, _paint.darkened(0.25), 5.0)
+	# Tall windscreen in a black frame, with its wiper.
+	var ws := [_q(1.12, 0.47, 1.04), _q(1.12, -0.47, 1.04), _q(1.2, -0.5, 1.55), _q(1.2, 0.5, 1.55)]
+	_m.colored_polygon(PackedVector2Array(ws), PLASTIC)
+	var glass := PackedVector2Array([_q(1.125, 0.43, 1.08), _q(1.125, -0.43, 1.08), _q(1.2, -0.46, 1.51),
+		_q(1.2, 0.46, 1.51)])
+	var dark := _shade(GLASS, Vector3(dir, 0, 0.2))
+	var light := _shade(GLASS.lerp(GLASS_SKY, 0.55), Vector3(dir, 0, 0.2))
+	_m.polygon(glass, PackedColorArray([dark, dark, light, light]))
+	_m.line(_q(1.2, -0.42, 1.48), _q(1.2, 0.42, 1.48), Color(1, 1, 1, 0.2), 1.5)
+	_m.line(_q(1.2, 0.0, 1.52), _q(1.16, -0.3, 1.2), PLASTIC, 2.0)
+	# Roof posts at the windscreen, and grab rail at the passenger doorway.
+	for side in [-1.0, 1.0]:
+		_m.line(_q(1.12, side * 0.5, 1.04), _q(1.2, side * 0.52, 1.56), PLASTIC, 3.0)
+	if not rear_first:
+		_tuk_rear(roof, trim)
+	# Wide vinyl roof, with a coloured band along its edge and the fringe.
+	_loft([Vector2(-1.34, 1.52), Vector2(1.22, 1.54), Vector2(1.28, 1.6), Vector2(1.08, 1.7), Vector2(-1.0, 1.78),
+		Vector2(-1.34, 1.66)], roof_w, roof, 0.12)
+	_loft_side([Vector2(-1.3, 1.54), Vector2(1.22, 1.56), Vector2(1.22, 1.6), Vector2(-1.3, 1.59)], roof_w, 0.012, _accent)
+	for k in 15:
+		var f := lerpf(-1.25, 1.12, k / 14.0)
+		var top := _q(f, roof_w.call(f) + 0.01, 1.53)
+		_m.colored_polygon(PackedVector2Array([top + Vector2(-3.5, 0), top + Vector2(3.5, 0), top + Vector2(0, 9)]),
 			FRINGE[k % FRINGE.size()])
-		_m.circle(top + Vector2(0, 10), 1.8, FRINGE[(k + 1) % FRINGE.size()])
-	# Stripe and chrome trim on the tub, mirror, headlamp, wheels.
-	_side_poly([Vector2(-1.05, 0.48), Vector2(0.85, 0.48), Vector2(0.95, 0.56), Vector2(-1.05, 0.56)], 0.57, _accent)
-	_side_poly([Vector2(-1.05, 0.62), Vector2(0.95, 0.62), Vector2(0.98, 0.65), Vector2(-1.05, 0.65)], 0.57, CHROME)
-	_mirror(1.06, 0.5, 1.26)
-	_m.circle(_q(1.35, 0.0, 0.95), 0.06 * M_PX, CHROME)
-	_m.circle(_q(1.36, 0.0, 0.95), 0.04 * M_PX, Color("f5f0dc"))
-	_wheel(1.12, 0.0, 0.2)
-	_arches([-0.8], 0.57, 0.26)
-	_wheel(-0.8, 0.57, 0.22)
+		_m.circle(top + Vector2(0, 10), 1.8, FRINGE[(k + 2) % FRINGE.size()])
+	# Near-side dressing: grab rail, painted stripes, chrome strip, stickers.
+	_m.line(_q(-0.35, body_w.call(-0.35) + 0.02, 0.62), _q(-0.3, roof_w.call(-0.3) - 0.04, 1.5), CHROME, 2.0)
+	_loft_side([Vector2(-1.28, 0.36), Vector2(0.95, 0.36), Vector2(1.15, 0.45), Vector2(-1.28, 0.45)], body_w, 0.01, _accent)
+	_loft_side([Vector2(-1.28, 0.5), Vector2(1.1, 0.5), Vector2(1.14, 0.53), Vector2(-1.28, 0.53)], body_w, 0.012, CHROME)
+	_loft_side([Vector2(0.95, 0.72), Vector2(1.2, 0.68), Vector2(1.2, 0.8), Vector2(0.95, 0.84)], body_w, 0.012, trim)
+	_mirror(1.18, 0.5, 1.12)
+	_arches([-0.78], body_w.call(-0.78) + 0.01, 0.24)
+	_wheel(-0.78, 0.66, 0.2)
+	# Rubber mud flap behind the near rear wheel.
+	_side_poly([Vector2(-1.08, 0.08), Vector2(-1.0, 0.08), Vector2(-1.0, 0.36), Vector2(-1.08, 0.36)], 0.67, RUBBER)
+
+
+## The tuk-tuk's back: body-colour lower panel with tail lamps, plate and a
+## chrome bumper; the roof's vinyl wraps down over it with a small window.
+func _tuk_rear(roof: Color, trim: Color) -> void:
+	_prism([Vector2(-1.34, 0.56), Vector2(-1.16, 0.56), Vector2(-1.16, 1.0), Vector2(-1.34, 1.0)], -0.64, 0.64, trim, 0.05)
+	_prism([Vector2(-1.36, 1.0), Vector2(-1.18, 1.0), Vector2(-1.18, 1.56), Vector2(-1.36, 1.56)], -0.64, 0.64, roof, 0.06)
+	if dir < 0:
+		var f := -1.365
+		_m.colored_polygon(PackedVector2Array([_q(f, -0.3, 1.18), _q(f, 0.3, 1.18), _q(f, 0.26, 1.42), _q(f, -0.26, 1.42)]),
+			_shade(GLASS.lerp(GLASS_SKY, 0.4), Vector3(1, 0, 0)))
+		_m.line(_q(f, -0.28, 1.4), _q(f, 0.28, 1.4), Color(1, 1, 1, 0.2), 1.5)
+		var r := -1.345
+		for side in [-1.0, 1.0]:
+			_m.colored_polygon(PackedVector2Array([_q(r, side * 0.42, 0.7), _q(r, side * 0.56, 0.7), _q(r, side * 0.56, 0.84),
+				_q(r, side * 0.42, 0.84)]), Color("a3261f"))
+			_m.circle(_q(r, side * 0.49, 0.77), 0.028 * M_PX, Color("e8962e"))
+		_m.colored_polygon(PackedVector2Array([_q(r, -0.2, 0.62), _q(r, 0.2, 0.62), _q(r, 0.2, 0.74), _q(r, -0.2, 0.74)]),
+			PLATE)
+		_m.colored_polygon(PackedVector2Array([_q(r, -0.2, 0.715), _q(r, 0.2, 0.715), _q(r, 0.2, 0.74), _q(r, -0.2, 0.74)]),
+			Color("4b87c6"))
+		# A sticker across the back, as every Cairo tuk-tuk has.
+		_m.colored_polygon(PackedVector2Array([_q(r, -0.3, 0.88), _q(r, 0.3, 0.88), _q(r, 0.3, 0.96), _q(r, -0.3, 0.96)]),
+			_accent.lightened(0.2))
+		_m.line(_q(-1.37, -0.62, 0.52), _q(-1.37, 0.62, 0.52), CHROME, 3.0)
+
+
+## Like _prism, but the width across the vehicle varies along it (`w_at(f)`
+## gives the half-width), for bodies that taper in plan view.
+func _loft(profile: Array, w_at: Callable, color: Color, radius := 0.0) -> void:
+	var pts: Array = _round(profile, radius)[0] if radius > 0.0 else profile
+	var n := pts.size()
+	var centre := Vector3.ZERO
+	for p in pts:
+		centre += Vector3(p.x * dir, 0.0, p.y)
+	centre /= n
+	for i in n:
+		var p: Vector2 = pts[i]
+		var q: Vector2 = pts[(i + 1) % n]
+		if p.distance_squared_to(q) < 0.00001:
+			continue
+		var wp: float = w_at.call(p.x)
+		var wq: float = w_at.call(q.x)
+		var quad := [Vector3(p.x * dir, -wp, p.y), Vector3(q.x * dir, -wq, q.y), Vector3(q.x * dir, wq, q.y),
+			Vector3(p.x * dir, wp, p.y)]
+		var nrm := _newell(quad)
+		var mid: Vector3 = (quad[0] + quad[2]) * 0.5
+		if nrm.dot(mid - centre) < 0.0:
+			nrm = -nrm
+		if nrm.normalized().dot(Vector3(1, 1, 1).normalized()) <= 0.02:
+			continue
+		_m.colored_polygon(PackedVector2Array([_q(p.x, -wp, p.y), _q(q.x, -wq, q.y), _q(q.x, wq, q.y), _q(p.x, wp, p.y)]),
+			_shade(color, nrm))
+	var side := PackedVector2Array()
+	for p in pts:
+		side.append(_q(p.x, w_at.call(p.x), p.y))
+	_m.colored_polygon(side, _shade(color, Vector3(0, 1, 0)))
+
+
+## A polygon (f, h) laid on the near side of a lofted body.
+func _loft_side(pts: Array, w_at: Callable, out: float, color: Color) -> void:
+	var poly := PackedVector2Array()
+	for p in pts:
+		poly.append(_q(p.x, w_at.call(p.x) + out, p.y))
+	_m.colored_polygon(poly, _shade(color, Vector3(0, 1, 0)))
+
+
+static func _newell(points: Array) -> Vector3:
+	var nrm := Vector3.ZERO
+	for i in points.size():
+		var a: Vector3 = points[i]
+		var b: Vector3 = points[(i + 1) % points.size()]
+		nrm.x += (a.y - b.y) * (a.z + b.z)
+		nrm.y += (a.z - b.z) * (a.x + b.x)
+		nrm.z += (a.x - b.x) * (a.y + b.y)
+	return nrm
 
 
 func _draw_scooter() -> void:
@@ -486,21 +586,21 @@ func _prism(profile: Array, b0: float, b1: float, color: Color, radius := 0.0, g
 	_m.polyline(side, Color(0, 0, 0, 0.12), 1.0, true)
 
 
-## Framed glass across a windscreen-type face, with a light streak.
+## Framed glass across a windscreen-type face: sky reflected toward its top,
+## and a thin highlight along the top edge.
 func _pane(p: Vector2, q: Vector2, b0: float, b1: float, world: Vector3) -> void:
 	var p0 := p.lerp(q, 0.07)
 	var p1 := p.lerp(q, 0.93)
 	var lo := b0 + 0.07
 	var hi := b1 - 0.07
 	var dark := _shade(GLASS, world)
-	var light := _shade(GLASS.lerp(GLASS_SKY, 0.6), world)
+	var light := _shade(GLASS.lerp(GLASS_SKY, 0.55), world)
 	var top_first := p1.y > p0.y
 	_m.polygon(PackedVector2Array([_q(p0.x, lo, p0.y), _q(p1.x, lo, p1.y), _q(p1.x, hi, p1.y), _q(p0.x, hi, p0.y)]),
 		PackedColorArray([dark, light, light, dark] if top_first else [light, dark, dark, light]))
-	var s0 := lerpf(lo, hi, 0.3)
-	var s1 := lerpf(lo, hi, 0.42)
-	_m.colored_polygon(PackedVector2Array([_q(p0.x, s0, p0.y), _q(p1.x, s0 + 0.1, p1.y), _q(p1.x, s1 + 0.1, p1.y),
-		_q(p0.x, s1, p0.y)]), Color(1, 1, 1, 0.1))
+	var top := p1 if top_first else p0
+	var edge := top.lerp(p0 if top_first else p1, 0.06)
+	_m.line(_q(edge.x, lo + 0.04, edge.y), _q(edge.x, hi - 0.04, edge.y), Color(1, 1, 1, 0.22), 1.5)
 
 
 ## Rounds a convex profile's corners. Returns [points, tags]: tags[k] is the
@@ -524,7 +624,7 @@ static func _round(profile: Array, r: float, steps := 3) -> Array:
 
 
 ## A window on the near side: black rubber surround, glass shading from sky
-## at the top to dark, and a light streak.
+## at the top to dark, a soft sheen and a highlight under the top edge.
 func _window(pts: Array, b: float) -> void:
 	var c := Vector2.ZERO
 	for p in pts:
@@ -546,11 +646,18 @@ func _window(pts: Array, b: float) -> void:
 		cols.append(_shade(GLASS.lerp(GLASS_SKY, 0.15 + 0.45 * t), Vector3(0, 1, 0)))
 	_m.colored_polygon(frame, RUBBER)
 	_m.polygon(glass, cols)
-	var f0 := lerpf(pts[0].x, pts[1].x, 0.3)
-	var streak := PackedVector2Array([_q(f0, b + 0.012, hmin), _q(f0 + 0.12, b + 0.012, hmin),
-		_q(f0 + 0.3, b + 0.012, hmax), _q(f0 + 0.18, b + 0.012, hmax)])
-	for piece in Geometry2D.intersect_polygons(glass, streak):
-		_m.colored_polygon(piece, Color(1, 1, 1, 0.12))
+	# Soft sheen across the upper part, and a thin highlight under the top edge.
+	var sheen := PackedVector2Array()
+	for p in pts:
+		sheen.append(_q(p.x, b + 0.012, maxf(p.y, lerpf(hmin, hmax, 0.62))))
+	for piece in Geometry2D.intersect_polygons(glass, sheen):
+		_m.colored_polygon(piece, Color(1, 1, 1, 0.06))
+	var top_pts := PackedVector2Array()
+	for p in pts:
+		if p.y >= hmax - 0.02:
+			top_pts.append(_q(p.x, b + 0.013, hmax - 0.03))
+	if top_pts.size() == 2:
+		_m.line(top_pts[0], top_pts[1], Color(1, 1, 1, 0.2), 1.5)
 
 
 ## Polygon given in (f, h) on the side plane at b.
@@ -707,10 +814,10 @@ func _draw_lamps() -> void:
 		return
 	if kind == Kind.TUKTUK:
 		if dir > 0:
-			_lamp_glow(_q(1.36, 0.0, 0.98), 0.9)
+			_lamp_glow(_q(1.36, 0.0, 0.8), 0.9)
 		else:
-			for side in [-0.44, 0.44]:
-				_lamp_glow(_q(-1.18, side, 0.56), 0.7)
+			for side in [-0.49, 0.49]:
+				_lamp_glow(_q(-1.36, side, 0.77), 0.6)
 	else:
 		var w := _half_width()
 		var lamp_h := 0.62
