@@ -50,6 +50,8 @@ const TAP_PADDING := 14.0
 const COLOR_PAINT := Color("e9b42c")
 const COLOR_GLASS := Color("1c2346")
 const COLOR_GLINT := Color(1.0, 0.86, 0.6, 0.16)
+## What the rear windscreen reflects when seen from below: the sky.
+const COLOR_SKY_GLASS := Color("7f9cc4")
 const COLOR_CHROME := Color("d4d9e1")
 const COLOR_RUBBER := Color("1b1b21")
 const COLOR_TIRE := Color("16161b")
@@ -90,7 +92,53 @@ const FILL_DIR := Vector3(0.35, 1.0, 0.45)
 var trunk_glow := 0.0:
 	set(value):
 		trunk_glow = value
+		if _lights:
+			_lights.queue_redraw()
+## Time-of-day tint for everything lit by the sun/streetlights (DayClock).
+var ambient := Color.WHITE:
+	set(value):
+		ambient = value
 		queue_redraw()
+## 0 by day, 1 at night: how strongly the LED strips glow.
+var darkness := 1.0:
+	set(value):
+		darkness = value
+		if _led_light:
+			_led_light.energy = 0.9 * value
+
+## LEDs and the tap glow animate every frame, so they live on their own
+## layer and the car body only redraws when the light changes.
+var _lights: Node2D
+## The LED strips' coloured spill onto the road and pavement round the trunk.
+var _led_light: PointLight2D
+
+
+func _ready() -> void:
+	_lights = Node2D.new()
+	add_child(_lights)
+	_lights.draw.connect(_draw_lights)
+	_led_light = PointLight2D.new()
+	_led_light.texture = _spill_texture()
+	_led_light.texture_scale = 1.4
+	_led_light.scale = Vector2(1.0, 0.5)
+	_led_light.position = iso(HX + 24, 0, 0)
+	_led_light.color = Color(1.0, 0.55, 0.85)
+	_led_light.energy = 0.9 * darkness
+	add_child(_led_light)
+
+
+static func _spill_texture() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1, 1, 1, 0.8))
+	gradient.set_color(1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 128
+	tex.height = 128
+	return tex
 
 
 ## World to screen: 2:1 dimetric, matching the 128×64 tile grid.
@@ -130,9 +178,12 @@ func _draw() -> void:
 	_draw_trunk_interior()
 	_draw_open_hatch()
 	_draw_mirror()
+	_draw_ice_box()
+
+
+func _draw_lights() -> void:
 	_draw_trunk_glow()
 	_draw_leds()
-	_draw_ice_box()
 
 
 func _draw_ground_shadow() -> void:
@@ -288,9 +339,9 @@ func _draw_trunk_glow() -> void:
 	if trunk_glow <= 0.0:
 		return
 	var outline := _hull(_project(OPENING))
-	draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
+	_lights.draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
 	outline.append(outline[0])
-	draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
+	_lights.draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
 		2.0 + trunk_glow * 3.0, true)
 
 
@@ -298,7 +349,7 @@ func _draw_trunk_glow() -> void:
 ## floor, then the stand's kit. Everything is clipped to the opening.
 func _draw_trunk_interior() -> void:
 	var clip := _hull(_project(OPENING))
-	draw_colored_polygon(clip, COLOR_CABIN)
+	draw_colored_polygon(clip, COLOR_CABIN * ambient)
 	_clipped(clip, _project([Vector3(60, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
 		Vector3(150, -48, 131), Vector3(60, -48, 131)]), _shade(COLOR_TRIM, N_SIDE))
 	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(72, 48, Z_FLOOR),
@@ -365,11 +416,27 @@ func _draw_open_hatch() -> void:
 		hinge_n.lerp(glass_n, 0.9).lerp(hinge_f.lerp(glass_f, 0.9), 0.06),
 		hinge_n.lerp(glass_n, 0.12).lerp(hinge_f.lerp(glass_f, 0.12), 0.06)]
 	var pane_2d := _project(pane)
-	draw_colored_polygon(pane_2d, _shade(COLOR_GLASS, n))
-	var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], 0.25), pane_2d[0].lerp(pane_2d[3], 0.4),
-		pane_2d[1].lerp(pane_2d[2], 0.55), pane_2d[1].lerp(pane_2d[2], 0.4)])
-	for piece in Geometry2D.intersect_polygons(pane_2d, glint):
-		draw_colored_polygon(piece, COLOR_GLINT)
+	# Rear windscreen: sky reflected toward its raised top edge, darker by the
+	# hinge, with the heater element lines, the wiper and two light streaks.
+	var low := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.25), n)
+	var high := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.7), n)
+	draw_polygon(pane_2d, PackedColorArray([low, high, high, low]))
+	var heater := PackedVector2Array()
+	for k in range(1, 7):
+		var t := k / 7.0
+		heater.append(pane_2d[0].lerp(pane_2d[1], t).lerp(pane_2d[3].lerp(pane_2d[2], t), 0.04))
+		heater.append(pane_2d[3].lerp(pane_2d[2], t).lerp(pane_2d[0].lerp(pane_2d[1], t), 0.04))
+	draw_multiline(heater, Color(0.55, 0.3, 0.2, 0.45), 1.0)
+	for band in [[0.2, 0.3], [0.42, 0.47]]:
+		var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], band[0]), pane_2d[0].lerp(pane_2d[3], band[1]),
+			pane_2d[1].lerp(pane_2d[2], band[1] + 0.15), pane_2d[1].lerp(pane_2d[2], band[0] + 0.15)])
+		for piece in Geometry2D.intersect_polygons(pane_2d, glint):
+			draw_colored_polygon(piece, COLOR_GLINT)
+	var pivot := pane_2d[0].lerp(pane_2d[3], 0.5).lerp(pane_2d[1].lerp(pane_2d[2], 0.5), 0.08)
+	draw_line(pivot, pivot.lerp(pane_2d[1].lerp(pane_2d[2], 0.2), 0.8), COLOR_RUBBER, 2.0, true)
+	var seal := pane_2d.duplicate()
+	seal.append(pane_2d[0])
+	draw_polyline(seal, COLOR_RUBBER, 2.0, true)
 	# Lock on the tailgate's lip.
 	var lock := tail_f.lerp(tail_n, 0.5).lerp(glass_f.lerp(glass_n, 0.5), 0.2)
 	draw_line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)
@@ -400,8 +467,8 @@ func _led_run(path: Array, start: int, chase: int) -> int:
 		for j in n:
 			var p := iso3(a.lerp(b, j / float(n)))
 			var c: Color = LED_COLORS[posmod(int(floor((k - chase) / 5.0)), LED_COLORS.size())]
-			draw_circle(p, 6.0, Color(c, 0.25))
-			draw_circle(p, 2.3, c.lerp(Color.WHITE, 0.5))
+			_lights.draw_circle(p, 6.0, Color(c, lerpf(0.12, 0.28, darkness)))
+			_lights.draw_circle(p, 2.3, StationArt.hdr(c.lerp(Color.WHITE, 0.5), lerpf(1.0, 2.6, darkness)))
 			k += 1
 	return k
 
@@ -419,7 +486,7 @@ func _draw_ice_box() -> void:
 	for f in [[Vector3(156, HY + 68, hi.z + 3), 4.2, Color("f2a324")], [Vector3(163, HY + 74, hi.z + 3), 4.0, Color("e8c33a")],
 			[Vector3(168, HY + 67, hi.z + 2.5), 3.0, Color("f4e04d")]]:
 		var at := iso3(f[0])
-		draw_circle(at, f[1] * SCALE, f[2])
+		draw_circle(at, f[1] * SCALE, f[2] * ambient)
 		draw_circle(at + Vector2(-1.2, -1.2) * SCALE, f[1] * 0.35 * SCALE, Color(1, 1, 1, 0.35))
 
 
@@ -584,12 +651,12 @@ static func _newell(points: Array) -> Vector3:
 	return n
 
 
-static func _shade(base: Color, normal: Vector3) -> Color:
+func _shade(base: Color, normal: Vector3) -> Color:
 	var n := normal.normalized()
 	var key := maxf(n.dot(KEY_DIR.normalized()), 0.0)
 	var fill := maxf(n.dot(FILL_DIR.normalized()), 0.0)
 	return Color(
-		base.r * (0.46 + 0.55 * key + 0.36 * fill),
-		base.g * (0.46 + 0.50 * key + 0.38 * fill),
-		base.b * (0.50 + 0.38 * key + 0.50 * fill),
+		base.r * (0.46 + 0.55 * key + 0.36 * fill) * ambient.r,
+		base.g * (0.46 + 0.50 * key + 0.38 * fill) * ambient.g,
+		base.b * (0.50 + 0.38 * key + 0.50 * fill) * ambient.b,
 		base.a)

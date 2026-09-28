@@ -21,7 +21,9 @@ func _ready() -> void:
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.gauge_completed.connect(_on_gauge_completed)
 	heat_gauge.gauge_failed.connect(_on_gauge_failed)
+	DayClock.minute_changed.connect(_relight)
 	_refresh_espresso()
+	_relight()
 
 
 ## Shows the order and resets gauges without starting the clock
@@ -60,6 +62,11 @@ func _process(_delta: float) -> void:
 		(inv * art.scene_to_global(Vector2(0, StationArt.SILL_Y))).y,
 		Vector2((inv * rect.position).x, (inv * rect.end).x),
 		art.get_global_transform().get_scale().x * art._scene_scale())
+
+
+## The car's paintwork follows the time of day; its LEDs and the kit don't.
+func _relight() -> void:
+	backdrop.self_modulate = Color.WHITE.lerp(DayClock.ambient(), 0.5)
 
 
 func _gauge_for(station: String) -> Control:

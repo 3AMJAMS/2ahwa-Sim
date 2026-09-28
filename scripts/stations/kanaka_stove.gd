@@ -91,8 +91,18 @@ var _drop_acc := 0.0
 var _glass_steam_acc := 0.0
 
 
+## Heat shimmer over the ring: a screen-reading shader on a rect that follows
+## the flame, stronger as the heat builds.
+var _haze := ColorRect.new()
+
+
 func _ready() -> void:
 	super()
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://shaders/heat_haze.gdshader")
+	_haze.material = mat
+	_haze.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(_haze)
 	reset()
 
 
@@ -178,6 +188,11 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_t += delta
+	var xf := _scene_xf()
+	var s := _scene_scale()
+	_haze.position = xf * (BURNER_TOP + Vector2(-130, -110))
+	_haze.size = Vector2(260, 170) * s
+	(_haze.material as ShaderMaterial).set_shader_parameter("strength", flame * (0.35 + 0.65 * clampf(heat / 100.0, 0.0, 1.0)))
 	_emit_particles(delta)
 	_step_particles(delta)
 	queue_redraw()
@@ -341,10 +356,10 @@ func _draw_flame() -> void:
 		var base := Vector2(BURNER_TOP.x + u * 48.0, RING_Y)
 		var h := (30.0 + 12.0 * absf(u)) * f * (0.85 + 0.15 * sin(_t * 19.0 + i * 2.3) + 0.08 * sin(_t * 31.0 + i))
 		var lean := u * 24.0 + sin(_t * 7.0 + i) * 2.0
-		_tongue(base, 13.0, h, lean, COLOR_FLAME)
-		_tongue(base, 6.0, h * 0.5, lean * 0.5, COLOR_FLAME_CORE)
+		_tongue(base, 13.0, h, lean, hdr(COLOR_FLAME, 1.7))
+		_tongue(base, 6.0, h * 0.5, lean * 0.5, hdr(COLOR_FLAME_CORE, 2.4))
 		if h > 4.0:
-			draw_circle(base + Vector2(lean, -h + 4.0), 3.5 * f, COLOR_FLAME_TIP)
+			draw_circle(base + Vector2(lean, -h + 4.0), 3.5 * f, hdr(COLOR_FLAME_TIP, 2.0))
 	_draw_front_prong()
 
 

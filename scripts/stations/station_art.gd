@@ -58,6 +58,11 @@ func scene_to_global(p: Vector2) -> Vector2:
 	return get_global_transform() * (_scene_xf() * p)
 
 
+## An emissive colour: brighter than white, so the HDR glow blooms off it.
+static func hdr(c: Color, k: float) -> Color:
+	return Color(c.r * k, c.g * k, c.b * k, c.a)
+
+
 func _kill_tween() -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()

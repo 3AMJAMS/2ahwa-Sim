@@ -27,7 +27,16 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
   too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
   and tips drop.
+- **The day doesn't end by itself.** The clock starts at 4 pm and runs 1 game minute per real second, through
+  sunset and night (the sodium streetlights and LED strips come on) and round again. Tap **🏠 روّح** to go home:
+  you see the day's takings, the day number goes up and the next day starts at 4 pm.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
+
+### Visual effects
+The project uses Godot's built-in effects, so run it with the **Mobile** (or Forward+) renderer to see them:
+HDR 2D + glow (`rendering/viewport/hdr_2d`, `WorldEnvironment` in `scenes/main.tscn`), `PointLight2D` streetlights,
+`CPUParticles2D` moths/dust, and shaders in `shaders/` (heat haze over the stove, screen vignette).
+Anything that should glow is drawn with a colour brighter than white (`StationArt.hdr()`).
 
 ### Project layout
 | Path | What |
@@ -38,10 +47,11 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
 | `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
+| `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
-| `scripts/world/` | Isometric street (asphalt, kerb, pavement) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
-| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy` |
+| `scripts/world/` | Isometric street (four-lane road, painted kerbs, pavements, Cairo streetlights) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
+| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy`, `DayClock` (time of day, sky and lighting) |
 | `data/*.json` | Menu (incl. each drink's colours under `look`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |
 | `assets/fonts/` | Cairo (OFL) — Arabic + Latin subsets |

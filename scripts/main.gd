@@ -1,8 +1,13 @@
 extends Node
 ## Entry point. Owns the WORLD ↔ PREP state machine and the fade between them:
 ## trunk_tapped → fade out → prep station → prep_complete → fade out → street.
+## The day never ends on its own: "go home" fades out on the day's takings,
+## advances the day, and starts the clock again in the afternoon.
 
-enum State { WORLD, TO_PREP, PREP, TO_WORLD }
+enum State { WORLD, TO_PREP, PREP, TO_WORLD, GOING_HOME }
+
+## How long the end-of-day summary stays up.
+@export var day_summary_sec := 2.2
 
 ## The first order of a session is always شاي كشري; after that orders are
 ## picked at random from what's unlocked. Phase 2 replaces this with the ticket rail.
@@ -11,6 +16,7 @@ enum State { WORLD, TO_PREP, PREP, TO_WORLD }
 var state := State.WORLD
 var _last_order := ""
 var _rng := RandomNumberGenerator.new()
+var _day_start_money := 0
 
 @onready var world_host: Node2D = $WorldHost
 @onready var prep_layer: Control = $PrepLayer
@@ -18,11 +24,16 @@ var _rng := RandomNumberGenerator.new()
 @onready var fade_rect: ColorRect = $FadeLayer/FadeRect
 @onready var fade_label: Label = $FadeLayer/FadeRect/FadeLabel
 @onready var anim: AnimationPlayer = $AnimationPlayer
+@onready var go_home_button: Button = $Hud/GoHomeButton
+@onready var vignette: ColorRect = $VignetteLayer/Vignette
 
 
 func _ready() -> void:
 	world_host.trunk_tapped.connect(transition_to_prep)
 	prep_station.prep_complete.connect(_on_prep_complete)
+	go_home_button.pressed.connect(go_home)
+	DayClock.minute_changed.connect(_relight)
+	_day_start_money = Economy.currency_egp
 	prep_layer.visible = false
 	fade_rect.modulate.a = 0.0
 	fade_label.visible = false
@@ -40,6 +51,7 @@ func transition_to_prep() -> void:
 		return
 	state = State.TO_PREP
 	world_host.set_interactive(false)
+	go_home_button.visible = false
 	await _fade("fade_out")
 	world_host.visible = false
 	prep_layer.visible = true
@@ -54,6 +66,7 @@ func transition_to_world() -> void:
 	if state != State.PREP:
 		return
 	state = State.TO_WORLD
+	fade_label.text = tr("UI_RETURNING")
 	fade_label.visible = true
 	await _fade("fade_out")
 	prep_layer.visible = false
@@ -61,7 +74,35 @@ func transition_to_world() -> void:
 	await _fade("fade_in")
 	fade_label.visible = false
 	world_host.set_interactive(true)
+	go_home_button.visible = true
 	state = State.WORLD
+
+
+func go_home() -> void:
+	if state != State.WORLD:
+		return
+	state = State.GOING_HOME
+	world_host.set_interactive(false)
+	go_home_button.visible = false
+	fade_label.text = tr("UI_DAY_OVER").format({
+		"day": GameData.ar_digits(Economy.day_number),
+		"amount": GameData.ar_digits(Economy.currency_egp - _day_start_money)})
+	fade_label.visible = true
+	await _fade("fade_out")
+	await get_tree().create_timer(day_summary_sec).timeout
+	Economy.end_day()
+	DayClock.start_day()
+	_day_start_money = Economy.currency_egp
+	fade_label.visible = false
+	await _fade("fade_in")
+	world_host.set_interactive(true)
+	go_home_button.visible = true
+	state = State.WORLD
+
+
+## The vignette closes in after dusk.
+func _relight() -> void:
+	(vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.22 + 0.28 * DayClock.darkness())
 
 
 func _on_prep_complete(_result: Dictionary) -> void:
