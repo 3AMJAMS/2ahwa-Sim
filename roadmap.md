@@ -30,7 +30,7 @@ Design bible, FIFI+WAHSH locked, Egyptian Ammiya UI (translation-key architectur
 ---
 
 ## Vehicle Naming (Resolved)
-**FIFI** — 127-styled silhouette, original name/logo. **WAHSH (الوحش)** — SUV tier, boxy-90s silhouette, no Jeep grille/Cherokee echo.
+**FIFI** — 127-styled silhouette, yellow, original name/logo. **WAHSH (الوحش)** — SUV tier, boxy-90s silhouette, no Jeep grille/Cherokee echo.
 
 ---
 
@@ -58,8 +58,10 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 - Placeholder FIFI redrawn as a Fiat 127-style hatchback; trunk tap area covers the whole rear
 - Isometric street placeholder (pulled forward from Phase 2 to host the trunk tap)
 - Translation keys (`ar_EG.csv`), Cairo font, portrait `canvas_items` + `expand` stretch, local save, locked espresso slot with price
-- Blend gauge on screen: blender art with fruit/ice chunks blending down, vortex, motor heat lights + smoke, pour into a tall glass with ice and straw; overheat = burn-out, lid pops, juice splattered everywhere
-- Five orders rotating at random (no repeats back to back): شاي كشري, قهوة تركي (in a فنجان), كركديه سخن, كركديه ساقع, عصير مانجا
+- Blend gauge on screen: blender art with ice/hibiscus chunks blending down, vortex, motor heat lights + smoke, pour into a tall glass with ice and straw. Overheating trips the motor's thermal cut-out: it stops until it cools, costing time and tips but never the drink
+- Four orders rotating at random (no repeats back to back): شاي كشري, قهوة تركي (in a فنجان), كركديه سخن, كركديه ساقع
+- FIFI repainted yellow and parked with the hatch up, showing the Day-1 kit in the trunk (gas ring + كنكة, blender, jars of tea/sugar/hibiscus/coffee)
+- Prep station drawn as the back of FIFI: raised hatch, pillars, trunk interior, and the rear panel with lamps, plate and bumper below the sill
 
 **Remaining:**
 - Tutorial Stages 1–2 (`tutorials_seen` already in save data)
@@ -107,7 +109,7 @@ Project: **2ahwa Sim**. Effectively solo (you + AI assistance); friends' input i
 ---
 
 ## Feature Ideas Backlog
-Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambient events, seasonal weather, khamaseen wind) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special) · Sharing (photo-mode/receipt screen)
+Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambient events, seasonal weather, khamaseen wind) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special, equipment wear: a blender pushed too hard can break and needs a paid repair — Phase 1 only has the free thermal cut-out) · Sharing (photo-mode/receipt screen)
 
 ---
 
@@ -145,7 +147,7 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 
 ## Hot & Cold Menu
 **Hot:** شاي (full ladder) · قهوة تركي (سادة→سرياقوسي) · سحلب · كركديه/ينسون (dual) · حلبة · قرفة · زنجبيل · كاكاو · الحلبسة
-**Cold:** كركديه بارد/ينسون بارد (dual) · مانجو · تمر هندي · سوبيا (seasonal) · عرقسوس · قصب · خروب · قمر الدين (seasonal) · ليمون بالنعناع · بطيخ بالنعناع · جوافة/موز بلبن · آيس لاتيه/موكا/كولد برو (Modern unlock)
+**Cold:** كركديه بارد/ينسون بارد (dual) · مانجو (fixed venues only: needs a kitchen + fruit storage, doesn't fit FIFI/WAHSH) · تمر هندي · سوبيا (seasonal) · عرقسوس · قصب · خروب · قمر الدين (seasonal) · ليمون بالنعناع · بطيخ بالنعناع · جوافة/موز بلبن · آيس لاتيه/موكا/كولد برو (Modern unlock)
 
 ---
 
@@ -157,7 +159,7 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 |---|---|---|---|
 | Equipment | Basic burner+blender | Dual burner, upgraded blender | Bigger رملة, espresso machine |
 | Snacks | Small chip rack | Chip+noodle rack | Full snack cooler |
-| Décor | Fairy lights | Neon+LED, stools | Marble tables, mashrabiya |
+| Décor | Fairy lights | Neon + LED strips lining the trunk (red, purple, yellow), stools | Marble tables, mashrabiya |
 | Shisha | None | Mini corner, unflavored | Full corner+staff, flavored T3+ |
 | Staff | Sayed only | Sayed only | نصبجي T3, تومباكشي T4, waiters T5 |
 

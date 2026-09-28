@@ -10,7 +10,12 @@
       "prep_time_sec": 12,
       "difficulty": 1,
       "sugar_grade": null,
-      "look": { "liquid": "#9c3d16", "foam": "#dcb88a", "vessel": "glass", "leaves": "#2e1b0e" }
+      "look": {
+        "liquid": "#9c3d16",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "leaves": "#2e1b0e"
+      }
     },
     {
       "id": "coffee_turkish",
@@ -22,7 +27,11 @@
       "prep_time_sec": 10,
       "difficulty": 2,
       "sugar_grade": null,
-      "look": { "liquid": "#3a2014", "foam": "#a0724a", "vessel": "cup" }
+      "look": {
+        "liquid": "#3a2014",
+        "foam": "#a0724a",
+        "vessel": "cup"
+      }
     },
     {
       "id": "karkade_hot",
@@ -34,7 +43,11 @@
       "prep_time_sec": 11,
       "difficulty": 1,
       "sugar_grade": null,
-      "look": { "liquid": "#8e1330", "foam": "#c9566e", "vessel": "glass" }
+      "look": {
+        "liquid": "#8e1330",
+        "foam": "#c9566e",
+        "vessel": "glass"
+      }
     },
     {
       "id": "karkade_cold",
@@ -46,19 +59,11 @@
       "prep_time_sec": 9,
       "difficulty": 1,
       "sugar_grade": null,
-      "look": { "liquid": "#a3183a", "bits": "#5c0d22", "ice": true }
-    },
-    {
-      "id": "mango_juice",
-      "name_key": "PREP_MANGO",
-      "name_ar": "عصير مانجا",
-      "station": "blend",
-      "unlock_tier": 0,
-      "base_price_egp": 15,
-      "prep_time_sec": 11,
-      "difficulty": 2,
-      "sugar_grade": null,
-      "look": { "liquid": "#f2a324", "bits": "#f7c64f", "ice": false }
+      "look": {
+        "liquid": "#a3183a",
+        "bits": "#5c0d22",
+        "ice": true
+      }
     }
   ]
 }

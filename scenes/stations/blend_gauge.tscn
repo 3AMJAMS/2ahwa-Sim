@@ -32,6 +32,13 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 
+[node name="HoldLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.702, 0.278, 1)
+text = "UI_HOLD_TO_BLEND"
+horizontal_alignment = 1
+
 [node name="Stage" type="Control" parent="VBox"]
 layout_direction = 2
 layout_mode = 2
@@ -78,10 +85,3 @@ grow_horizontal = 0
 mouse_filter = 2
 fill_mode = 3
 show_percentage = false
-
-[node name="HoldLabel" type="Label" parent="VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.702, 0.278, 1)
-text = "UI_HOLD_TO_BLEND"
-horizontal_alignment = 1

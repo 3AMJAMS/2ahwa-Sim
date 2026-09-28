@@ -14,12 +14,13 @@ var _item: Dictionary = {}
 @onready var espresso_slot: Control = %EspressoSlot
 @onready var espresso_label: Label = %EspressoLabel
 @onready var result_label: Label = %ResultLabel
+@onready var backdrop: TrunkBackdrop = %Backdrop
 
 
 func _ready() -> void:
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.gauge_completed.connect(_on_gauge_completed)
-		gauge.gauge_failed.connect(_on_gauge_failed)
+	heat_gauge.gauge_failed.connect(_on_gauge_failed)
 	_refresh_espresso()
 
 
@@ -48,6 +49,19 @@ func start_order() -> void:
 		gauge.start(float(_item.get("prep_time_sec", 10)))
 
 
+## Keeps the car drawn round the station art: carpet, sill and trunk sides
+## follow wherever the active gauge's art sits on screen.
+func _process(_delta: float) -> void:
+	var art: StationArt = blend_gauge.blender if blend_gauge.visible else heat_gauge.stove
+	var inv := backdrop.get_global_transform().affine_inverse()
+	var rect := art.get_global_rect()
+	backdrop.set_frame(
+		(inv * art.scene_to_global(Vector2(0, StationArt.COUNTER_Y - 8.0))).y,
+		(inv * art.scene_to_global(Vector2(0, StationArt.SILL_Y))).y,
+		Vector2((inv * rect.position).x, (inv * rect.end).x),
+		art.get_global_transform().get_scale().x * art._scene_scale())
+
+
 func _gauge_for(station: String) -> Control:
 	match station:
 		"heat":
@@ -68,7 +82,7 @@ func _on_gauge_completed(accuracy: float) -> void:
 
 
 func _on_gauge_failed() -> void:
-	result_label.text = tr("RESULT_FAIL_BLEND" if _item.get("station", "") == "blend" else "RESULT_FAIL")
+	result_label.text = tr("RESULT_FAIL")
 	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "tips": 0})
 
 
@@ -82,4 +96,4 @@ func _refresh_espresso() -> void:
 	espresso_slot.modulate.a = 1.0 if unlocked else 0.55
 	if not unlocked:
 		var cost := int(GameData.get_equipment("espresso_basic").get("cost_egp", 0))
-		espresso_label.text = "🔒 %s\n%s %s" % [tr("PREP_ESPRESSO_LOCKED"), GameData.ar_digits(cost), tr("UI_CURRENCY")]
+		espresso_label.text = "🔒 %s · %s %s" % [tr("PREP_ESPRESSO_LOCKED"), GameData.ar_digits(cost), tr("UI_CURRENCY")]

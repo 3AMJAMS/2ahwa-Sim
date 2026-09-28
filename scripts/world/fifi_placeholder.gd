@@ -1,7 +1,8 @@
 @tool
 extends Node2D
 ## Placeholder isometric FIFI: a Fiat 127-styled three-door hatchback built
-## from primitives (2:1 dimetric, seen from the rear-left three-quarter).
+## from primitives (2:1 dimetric, seen from the rear-left three-quarter),
+## parked with its hatch up so Sayed's Day-1 kit shows in the trunk.
 ## Swap for a Sprite2D once the real art lands; keep get_trunk_polygon() so
 ## the tap area still lines up.
 
@@ -32,11 +33,20 @@ const GH_REAR := Vector2(144, 106)
 
 ## Everything behind this x counts as the trunk for taps.
 const TRUNK_X := 100.0
+## The hatch hinges at the back of the roof, in (x, z), and stands open by this much.
+const HINGE := Vector2(106, 132)
+const HATCH_OPEN := 2.18
+## Trunk opening, sill to roof, as seen once the hatch is up.
+const OPENING := [
+	Vector3(148.5, -40, 46), Vector3(148.5, 40, 46), Vector3(147.5, 40, 66), Vector3(145, 48, 80),
+	Vector3(107, 50, 131), Vector3(107, -50, 131), Vector3(145, -48, 80), Vector3(147.5, -40, 66),
+]
+const Z_FLOOR := 34.0
 ## Uniform size-up of the whole car (and its tap area) for phone screens.
 const SCALE := 1.3
 const TAP_PADDING := 14.0
 
-const COLOR_PAINT := Color("3f9aa0")
+const COLOR_PAINT := Color("e9b42c")
 const COLOR_GLASS := Color("1c2346")
 const COLOR_GLINT := Color(1.0, 0.86, 0.6, 0.16)
 const COLOR_CHROME := Color("d4d9e1")
@@ -50,18 +60,24 @@ const COLOR_PLATE := Color("ece8dc")
 const COLOR_PLATE_BAND := Color("4b87c6")
 const COLOR_SEAM := Color(0, 0, 0, 0.35)
 const COLOR_TRUNK_GLOW := Color("ffc861")
+const COLOR_CABIN := Color("1d181d")
+const COLOR_TRIM := Color("4a434d")
+const COLOR_CARPET := Color("463e46")
+const COLOR_SEAT := Color("6b4a3c")
+const COLOR_CYLINDER := Color("b8452f")
+const COLOR_STEEL := Color("b3b9c2")
+const COLOR_BLENDER := Color("e8e0cc")
+## Day-1 jars at the back of the trunk: tea, sugar, dried hibiscus, coffee.
+const JAR_COLORS := [Color("3b2412"), Color("f1ede4"), Color("7a1428"), Color("4a2b1b")]
 
 const N_SIDE := Vector3(0, 1, 0)
 const N_REAR := Vector3(1, 0, 0)
 const N_TOP := Vector3(0, 0, 1)
 const N_GLASS_SIDE := Vector3(0, 1, 0.19)
-const N_HATCH := Vector3(1, 0, 0.8)
 const VIEW_DIR := Vector3(1, 1, 1)
 ## Warm key from the string-light canopy above, cool night fill from the viewer's side.
 const KEY_DIR := Vector3(-0.3, -0.25, 1.0)
 const FILL_DIR := Vector3(0.35, 1.0, 0.45)
-
-const THEME := preload("res://assets/ui/main_theme.tres")
 
 ## 0..1, pulsed by WorldHost to invite a tap on the trunk.
 var trunk_glow := 0.0:
@@ -87,9 +103,8 @@ func get_trunk_polygon() -> PackedVector2Array:
 		for y in [-HY - 4.0, HY + 4.0]:
 			pts.append(iso(x, y, 0.0))
 			pts.append(iso(x, y, Z_BELT))
-	for x in [TRUNK_X, GH_REAR.y]:
-		for y in [-GH_ROOF_Y, GH_ROOF_Y]:
-			pts.append(iso(x, y, Z_ROOF))
+	for p in _hatch_outline():
+		pts.append(iso3(p))
 	var hull := _hull(pts)
 	var padded := Geometry2D.offset_polygon(hull, TAP_PADDING, Geometry2D.JOIN_ROUND)
 	return padded[0] if not padded.is_empty() else hull
@@ -105,6 +120,8 @@ func _draw() -> void:
 	_draw_rear_details()
 	_draw_bumpers()
 	_draw_glasshouse()
+	_draw_trunk_interior()
+	_draw_open_hatch()
 	_draw_mirror()
 	_draw_trunk_glow()
 
@@ -183,11 +200,6 @@ func _draw_wheel(xw: float) -> void:
 
 
 func _draw_rear_details() -> void:
-	# Tailgate shut line between the lamps, lock, plate.
-	_line_on(_on_rear, Vector2(-40, 46), Vector2(40, 46), COLOR_SEAM, 1.5)
-	for y in [-40.0, 40.0]:
-		_line_on(_on_rear, Vector2(y, 46), Vector2(y, 70), COLOR_SEAM, 1.5)
-	_poly_on(_on_rear, [Vector2(-6, 49), Vector2(6, 49), Vector2(6, 52), Vector2(-6, 52)], COLOR_CHROME, N_REAR)
 	# Egyptian plate: white with the pale-blue private-car band on top.
 	_poly_on(_on_rear, [Vector2(-21, 33), Vector2(21, 33), Vector2(21, 45), Vector2(-21, 45)], COLOR_PLATE, N_REAR)
 	_poly_on(_on_rear, [Vector2(-21, 41.5), Vector2(21, 41.5), Vector2(21, 45), Vector2(-21, 45)], COLOR_PLATE_BAND, N_REAR)
@@ -199,12 +211,6 @@ func _draw_rear_details() -> void:
 		_poly_on(_on_rear, _rect_yz(s * 42.0, s * 69.0, 44.0, 63.0), COLOR_CHROME, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 44.0, s * 59.0, 46.0, 61.0), COLOR_TAIL_RED, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 60.0, s * 67.0, 46.0, 61.0), COLOR_TAIL_AMBER, N_REAR)
-	# Badge on the tailgate, skewed onto the rear face.
-	var origin := iso3(_on_rear(Vector2(0, 55)))
-	draw_set_transform_matrix(Transform2D(Vector2(1, -0.5) * SCALE, Vector2(0, 1) * SCALE, origin))
-	draw_string(THEME.default_font, Vector2(-40, 0), "فيفي", HORIZONTAL_ALIGNMENT_CENTER, 80, 16,
-		_shade(COLOR_CHROME, N_REAR))
-	draw_set_transform_matrix(Transform2D.IDENTITY)
 	# Exhaust tip under the bumper.
 	var tip := PackedVector2Array()
 	for i in 12:
@@ -255,11 +261,6 @@ func _draw_glasshouse() -> void:
 	_line_on(_on_glass_side, Vector2(GH_FRONT.x, 80.5), Vector2(GH_REAR.x, 80.5), COLOR_CHROME, 2.0, N_SIDE)
 	_line_on(_on_glass_side, Vector2(GH_FRONT.y + 2, Z_ROOF - 0.5), Vector2(GH_REAR.y - 2, Z_ROOF - 0.5), Color(COLOR_CHROME, 0.7), 2.0, N_TOP)
 
-	# Hatch glass.
-	var rear_glass := PackedVector2Array([Vector2(0.07, 0.1), Vector2(0.93, 0.1), Vector2(0.94, 0.9), Vector2(0.06, 0.9)])
-	_poly_on(_on_hatch, rear_glass, COLOR_GLASS, N_HATCH)
-	_glint_on(_on_hatch, rear_glass, [Vector2(0.18, 0), Vector2(0.3, 0), Vector2(0.44, 1), Vector2(0.32, 1)])
-
 
 func _draw_mirror() -> void:
 	var head := Vector3(-54, HY + 9, 88)
@@ -277,17 +278,131 @@ func _draw_mirror() -> void:
 func _draw_trunk_glow() -> void:
 	if trunk_glow <= 0.0:
 		return
-	var pts := PackedVector2Array()
-	for y in [-HY, HY]:
-		pts.append(iso(HX + 1.0, y, 33.0))
-		pts.append(iso(HX + 1.0, y, 70.0))
-		pts.append(iso(GH_REAR.x + 2.0, y, Z_BELT))
-		pts.append(iso(GH_REAR.y, y * GH_ROOF_Y / HY, Z_ROOF))
-	var outline := _hull(pts)
+	var outline := _hull(_project(OPENING))
 	draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
 	outline.append(outline[0])
 	draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
 		2.0 + trunk_glow * 3.0, true)
+
+
+## Looking in through the open hatch: cabin shadow, far trim, seat back and
+## floor, then the stand's kit. Everything is clipped to the opening.
+func _draw_trunk_interior() -> void:
+	var clip := _hull(_project(OPENING))
+	draw_colored_polygon(clip, COLOR_CABIN)
+	_clipped(clip, _project([Vector3(60, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
+		Vector3(150, -48, 131), Vector3(60, -48, 131)]), _shade(COLOR_TRIM, N_SIDE))
+	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(72, 48, Z_FLOOR),
+		Vector3(72, 48, 104), Vector3(72, -48, 104)]), _shade(COLOR_SEAT, N_REAR))
+	_clipped(clip, _project([Vector3(72, -48, 104), Vector3(72, 48, 104),
+		Vector3(80, 48, 104), Vector3(80, -48, 104)]), _shade(COLOR_SEAT.lightened(0.1), N_TOP))
+	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
+		Vector3(150, 48, Z_FLOOR), Vector3(72, 48, Z_FLOOR)]), _shade(COLOR_CARPET, N_TOP))
+	# Jars lined up against the seat back.
+	for i in JAR_COLORS.size():
+		var c := Vector3(84, -36 + i * 13, Z_FLOOR)
+		_cylinder(clip, c, 4.5, 4.5, 11, Color(JAR_COLORS[i], 0.95), Color(JAR_COLORS[i]).lightened(0.15))
+		_cylinder(clip, c + Vector3(0, 0, 11), 4.8, 4.8, 2.5, Color("c9a24a"), Color("e0bf6a"))
+	# Blender: squat base, glass jar with a splash of karkade, black lid.
+	var b := Vector3(118, -26, Z_FLOOR)
+	_cylinder(clip, b, 9, 8, 12, COLOR_BLENDER, COLOR_BLENDER.lightened(0.1))
+	_cylinder(clip, b + Vector3(0, 0, 12), 6, 8, 20, Color(0.8, 0.92, 1.0, 0.35), Color(0.3, 0.3, 0.35, 0.6))
+	_cylinder(clip, b + Vector3(0, 0, 12), 6, 6.8, 8, Color("a3183a", 0.85), Color("c43a58"))
+	_cylinder(clip, b + Vector3(0, 0, 32), 8.4, 8.4, 3, Color("2f2d34"), Color("45434b"))
+	# Gas cylinder with the burner and the كنكة on top, handle out to the side.
+	var g := Vector3(120, 12, Z_FLOOR)
+	_cylinder(clip, g, 11, 11, 22, COLOR_CYLINDER, COLOR_CYLINDER.lightened(0.15))
+	_cylinder(clip, g + Vector3(0, 0, 22), 6, 6, 4, Color("2c2a30"), Color("3a383f"))
+	_cylinder(clip, g + Vector3(0, 0, 26), 8, 9, 12, COLOR_STEEL, Color("2a211d"))
+	for piece in Geometry2D.intersect_polygons(clip, PackedVector2Array([iso3(g + Vector3(0, 7, 33)),
+			iso3(g + Vector3(0, 24, 36)), iso3(g + Vector3(0, 24, 39)), iso3(g + Vector3(0, 7, 36))])):
+		draw_colored_polygon(piece, Color("5a3620"))
+
+
+## The raised hatch: glass over a short painted tailgate, with its gas struts.
+func _draw_open_hatch() -> void:
+	var o := _hatch_outline()
+	var hinge_n: Vector3 = o[0]
+	var hinge_f: Vector3 = o[1]
+	var glass_f: Vector3 = o[2]
+	var tail_f: Vector3 = o[3]
+	var tail_n: Vector3 = o[4]
+	var glass_n: Vector3 = o[5]
+	# Raised this far we see the hatch's underside: trim panel round the glass.
+	var out2 := _swing(HINGE + Vector2(1, 0.8)) - HINGE
+	var n := Vector3(out2.x, 0, out2.y)
+	var outside := n.dot(VIEW_DIR) > 0.0
+	var skin := COLOR_PAINT if outside else COLOR_TRIM
+	if not outside:
+		n = -n
+	var inward := -n.normalized() * 4.0
+	# Near edge and bottom edge show the panel's thickness.
+	draw_colored_polygon(_project([hinge_n, glass_n, tail_n, tail_n + inward, glass_n + inward, hinge_n + inward]),
+		_shade(COLOR_PAINT.darkened(0.25), N_SIDE))
+	draw_colored_polygon(_project([tail_f, tail_n, tail_n + inward, tail_f + inward]),
+		_shade(COLOR_PAINT.darkened(0.35), N_REAR))
+	draw_colored_polygon(_project([hinge_f, glass_f, glass_n, hinge_n]), _shade(skin, n))
+	draw_colored_polygon(_project([glass_f, tail_f, tail_n, glass_n]), _shade(skin, n))
+	draw_polyline(_project([hinge_n, glass_n, tail_n, tail_f]), _shade(COLOR_PAINT, N_SIDE), 2.5, true)
+	var pane := [hinge_f.lerp(glass_f, 0.12).lerp(hinge_n.lerp(glass_n, 0.12), 0.06),
+		hinge_f.lerp(glass_f, 0.9).lerp(hinge_n.lerp(glass_n, 0.9), 0.06),
+		hinge_n.lerp(glass_n, 0.9).lerp(hinge_f.lerp(glass_f, 0.9), 0.06),
+		hinge_n.lerp(glass_n, 0.12).lerp(hinge_f.lerp(glass_f, 0.12), 0.06)]
+	var pane_2d := _project(pane)
+	draw_colored_polygon(pane_2d, _shade(COLOR_GLASS, n))
+	var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], 0.25), pane_2d[0].lerp(pane_2d[3], 0.4),
+		pane_2d[1].lerp(pane_2d[2], 0.55), pane_2d[1].lerp(pane_2d[2], 0.4)])
+	for piece in Geometry2D.intersect_polygons(pane_2d, glint):
+		draw_colored_polygon(piece, COLOR_GLINT)
+	# Lock on the tailgate's lip.
+	var lock := tail_f.lerp(tail_n, 0.5).lerp(glass_f.lerp(glass_n, 0.5), 0.2)
+	draw_line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)
+	for side in [-1.0, 1.0]:
+		var foot := Vector3(142, side * 50.0, 78)
+		var top := Vector3(hinge_n.x, side * 50.0, hinge_n.z).lerp(Vector3(glass_n.x, side * 50.0, glass_n.z), 0.55) + inward
+		draw_line(iso3(foot), iso3(foot.lerp(top, 0.55)), Color("2a2a30"), 3.0, true)
+		draw_line(iso3(foot.lerp(top, 0.5)), iso3(top), COLOR_CHROME, 1.8, true)
+
+
+## Corners of the open hatch: hinge (near, far), glass foot (far), tailgate
+## foot (far, near), glass foot (near).
+func _hatch_outline() -> Array:
+	var glass := _swing(Vector2(GH_REAR.x, Z_BELT))
+	var tail := _swing(Vector2(HX + 0.5, 46))
+	return [Vector3(HINGE.x, 54, HINGE.y), Vector3(HINGE.x, -54, HINGE.y),
+		Vector3(glass.x, -60, glass.y), Vector3(tail.x, -46, tail.y),
+		Vector3(tail.x, 46, tail.y), Vector3(glass.x, 60, glass.y)]
+
+
+## A point on the shut hatch, in (x, z), swung open about the hinge.
+func _swing(p: Vector2) -> Vector2:
+	var d := p - HINGE
+	return HINGE + Vector2(d.x * cos(HATCH_OPEN) - d.y * sin(HATCH_OPEN), d.x * sin(HATCH_OPEN) + d.y * cos(HATCH_OPEN))
+
+
+## Upright (optionally tapered) cylinder standing at c, clipped to a region.
+func _cylinder(clip: PackedVector2Array, c: Vector3, r0: float, r1: float, h: float, side: Color, top: Color) -> void:
+	var bottom := _flat_ring(c, r0)
+	var lid := _flat_ring(c + Vector3(0, 0, h), r1)
+	_clipped(clip, _hull(bottom + lid), _shade(side, N_SIDE))
+	# Darker rear-facing strip of the body, so it reads round.
+	_clipped(clip, _hull(PackedVector2Array([iso3(c + Vector3(r0 * 0.7, -r0 * 0.7, 0)), iso3(c + Vector3(r1 * 0.7, -r1 * 0.7, h)),
+		iso3(c + Vector3(r1, 0, h)), iso3(c + Vector3(r0, 0, 0))])), Color(0, 0, 0, 0.18))
+	_clipped(clip, lid, _shade(top, N_TOP))
+
+
+## Circle lying flat (in x-y) at c, projected.
+func _flat_ring(c: Vector3, r: float, segments := 18) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in segments:
+		var a := TAU * i / segments
+		pts.append(iso(c.x + r * cos(a), c.y + r * sin(a), c.z))
+	return pts
+
+
+func _clipped(clip: PackedVector2Array, poly: PackedVector2Array, color: Color) -> void:
+	for piece in Geometry2D.intersect_polygons(clip, poly):
+		draw_colored_polygon(piece, color)
 
 
 ## Visible faces of an axis-aligned box: top, rear (+x) and near side (+y).
@@ -327,13 +442,6 @@ func _on_rear(p: Vector2) -> Vector3:
 func _on_glass_side(p: Vector2) -> Vector3:
 	var t := (p.y - Z_BELT) / (Z_ROOF - Z_BELT)
 	return Vector3(p.x, GH_WAIST_Y - t * (GH_WAIST_Y - GH_ROOF_Y) + 0.5, p.y)
-
-
-## (s, t) across and up the hatch glass, s = 0 on the near (+y) side.
-func _on_hatch(p: Vector2) -> Vector3:
-	var bottom := Vector3(GH_REAR.x, GH_WAIST_Y, Z_BELT).lerp(Vector3(GH_REAR.x, -GH_WAIST_Y, Z_BELT), p.x)
-	var top := Vector3(GH_REAR.y, GH_ROOF_Y, Z_ROOF).lerp(Vector3(GH_REAR.y, -GH_ROOF_Y, Z_ROOF), p.x)
-	return bottom.lerp(top, p.y) + Vector3(0.5, 0, 0.25)
 
 
 func _poly_on(mapper: Callable, local, color: Color, normal: Vector3) -> void:
