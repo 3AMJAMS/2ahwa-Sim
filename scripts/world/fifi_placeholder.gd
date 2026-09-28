@@ -90,7 +90,25 @@ const FILL_DIR := Vector3(0.35, 1.0, 0.45)
 var trunk_glow := 0.0:
 	set(value):
 		trunk_glow = value
+		if _lights:
+			_lights.queue_redraw()
+## Time-of-day tint for everything lit by the sun/streetlights (DayClock).
+var ambient := Color.WHITE:
+	set(value):
+		ambient = value
 		queue_redraw()
+## 0 by day, 1 at night: how strongly the LED strips glow.
+var darkness := 1.0
+
+## LEDs and the tap glow animate every frame, so they live on their own
+## layer and the car body only redraws when the light changes.
+var _lights: Node2D
+
+
+func _ready() -> void:
+	_lights = Node2D.new()
+	add_child(_lights)
+	_lights.draw.connect(_draw_lights)
 
 
 ## World to screen: 2:1 dimetric, matching the 128×64 tile grid.
@@ -130,9 +148,12 @@ func _draw() -> void:
 	_draw_trunk_interior()
 	_draw_open_hatch()
 	_draw_mirror()
+	_draw_ice_box()
+
+
+func _draw_lights() -> void:
 	_draw_trunk_glow()
 	_draw_leds()
-	_draw_ice_box()
 
 
 func _draw_ground_shadow() -> void:
@@ -288,9 +309,9 @@ func _draw_trunk_glow() -> void:
 	if trunk_glow <= 0.0:
 		return
 	var outline := _hull(_project(OPENING))
-	draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
+	_lights.draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
 	outline.append(outline[0])
-	draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
+	_lights.draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
 		2.0 + trunk_glow * 3.0, true)
 
 
@@ -298,7 +319,7 @@ func _draw_trunk_glow() -> void:
 ## floor, then the stand's kit. Everything is clipped to the opening.
 func _draw_trunk_interior() -> void:
 	var clip := _hull(_project(OPENING))
-	draw_colored_polygon(clip, COLOR_CABIN)
+	draw_colored_polygon(clip, COLOR_CABIN * ambient)
 	_clipped(clip, _project([Vector3(60, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
 		Vector3(150, -48, 131), Vector3(60, -48, 131)]), _shade(COLOR_TRIM, N_SIDE))
 	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(72, 48, Z_FLOOR),
@@ -400,8 +421,8 @@ func _led_run(path: Array, start: int, chase: int) -> int:
 		for j in n:
 			var p := iso3(a.lerp(b, j / float(n)))
 			var c: Color = LED_COLORS[posmod(int(floor((k - chase) / 5.0)), LED_COLORS.size())]
-			draw_circle(p, 6.0, Color(c, 0.25))
-			draw_circle(p, 2.3, c.lerp(Color.WHITE, 0.5))
+			_lights.draw_circle(p, 6.0, Color(c, lerpf(0.12, 0.28, darkness)))
+			_lights.draw_circle(p, 2.3, c.lerp(Color.WHITE, 0.5))
 			k += 1
 	return k
 
@@ -419,7 +440,7 @@ func _draw_ice_box() -> void:
 	for f in [[Vector3(156, HY + 68, hi.z + 3), 4.2, Color("f2a324")], [Vector3(163, HY + 74, hi.z + 3), 4.0, Color("e8c33a")],
 			[Vector3(168, HY + 67, hi.z + 2.5), 3.0, Color("f4e04d")]]:
 		var at := iso3(f[0])
-		draw_circle(at, f[1] * SCALE, f[2])
+		draw_circle(at, f[1] * SCALE, f[2] * ambient)
 		draw_circle(at + Vector2(-1.2, -1.2) * SCALE, f[1] * 0.35 * SCALE, Color(1, 1, 1, 0.35))
 
 
@@ -584,12 +605,12 @@ static func _newell(points: Array) -> Vector3:
 	return n
 
 
-static func _shade(base: Color, normal: Vector3) -> Color:
+func _shade(base: Color, normal: Vector3) -> Color:
 	var n := normal.normalized()
 	var key := maxf(n.dot(KEY_DIR.normalized()), 0.0)
 	var fill := maxf(n.dot(FILL_DIR.normalized()), 0.0)
 	return Color(
-		base.r * (0.46 + 0.55 * key + 0.36 * fill),
-		base.g * (0.46 + 0.50 * key + 0.38 * fill),
-		base.b * (0.50 + 0.38 * key + 0.50 * fill),
+		base.r * (0.46 + 0.55 * key + 0.36 * fill) * ambient.r,
+		base.g * (0.46 + 0.50 * key + 0.38 * fill) * ambient.g,
+		base.b * (0.50 + 0.38 * key + 0.50 * fill) * ambient.b,
 		base.a)

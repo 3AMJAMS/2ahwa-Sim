@@ -63,6 +63,9 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 - FIFI repainted yellow and parked at the kerb with the hatch up, showing the Day-1 kit in the trunk (gas ring + كنكة, blender, and a wooden rack across the trunk holding jars of tea/sugar/hibiscus/coffee)
 - LED strips lining the trunk opening and the hatch edge, in chasing red/purple/yellow bands
 - Street now has asphalt, a kerb and pavement slabs on FIFI's passenger side, with the fruit ice box set down on the pavement beside the trunk
+- Day/night cycle: the clock starts at 4 pm and runs 1 game minute per real second through sunset and night (sky, ambient light, streetlights, string lights) and round the clock; the day only ends when the player taps "go home" (روّح), which shows the day's takings and starts the next day
+- Streetlights on both pavements, and the street drawn as long bands so it fills any screen
+- Prep station is a fixed 9:16 panel; wider/taller screens show the street around it (apartment blocks, road, pavement with streetlight and ice box). Its car backdrop is drawn once and only the LED strips animate, fixing the lag
 - Prep station drawn as the back of FIFI: raised hatch, pillars, trunk interior with a wooden rack of supplies (paper cups, tea glasses, jars, tea/coffee boxes, water), LED strips round the opening, and the rear panel with lamps, plate and bumper below the sill
 
 **Remaining:**

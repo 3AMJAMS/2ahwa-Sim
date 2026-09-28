@@ -20,6 +20,7 @@ config/features=PackedStringArray("4.3", "Mobile")
 GameData="*res://scripts/autoload/game_data.gd"
 SaveSystem="*res://scripts/autoload/save_system.gd"
 Economy="*res://scripts/autoload/economy.gd"
+DayClock="*res://scripts/autoload/day_clock.gd"
 
 [display]
 

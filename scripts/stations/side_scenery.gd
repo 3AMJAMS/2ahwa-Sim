@@ -1,0 +1,153 @@
+class_name SideScenery
+extends Control
+## What you see around FIFI's rear when the screen is wider (or taller) than
+## the fixed 9:16 prep panel: the street carrying on either side. Cairo
+## apartment blocks, the road with its lane dashes on the left, the pavement
+## with a streetlight and Sayed's ice box on the right, string lights above.
+## Lit by DayClock; redraws only on resize or when the game minute ticks.
+
+## Width / height of the prep panel it frames (matches the AspectRatioContainer).
+const PANEL_RATIO := 1080.0 / 1920.0
+const BUILDING := Color("3a3548")
+const WINDOW_LIT := Color("ffd27a")
+const WINDOW_DAY := Color("8aa3c2")
+const ASPHALT := Color("55575f")
+const PAVEMENT := Color("8f8a86")
+const KERB := Color("b8b4ae")
+const POLE := Color("3a3a42")
+const LAMP := Color("ffb45a")
+const BULB := Color("ffc861")
+const WIRE := Color("0e1022")
+const ICEBOX := Color("2f6fb3")
+const ICEBOX_LID := Color("eef1f4")
+
+var _soft := StationArt._make_soft_texture()
+
+
+func _ready() -> void:
+	mouse_filter = MOUSE_FILTER_IGNORE
+	resized.connect(queue_redraw)
+	DayClock.minute_changed.connect(queue_redraw)
+
+
+func panel_rect() -> Rect2:
+	var w := minf(size.x, size.y * PANEL_RATIO)
+	var h := w / PANEL_RATIO
+	return Rect2((size.x - w) * 0.5, (size.y - h) * 0.5, w, h)
+
+
+func _draw() -> void:
+	var panel := panel_rect()
+	var amb := DayClock.ambient()
+	var dark := DayClock.darkness()
+	var sky := DayClock.sky()
+	var horizon := panel.position.y + panel.size.y * 0.36
+	var cx := panel.get_center().x
+	# Sky, fading lighter toward the horizon.
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, horizon), Vector2(0, horizon)]),
+		PackedColorArray([sky.darkened(0.35), sky.darkened(0.35), sky.lightened(0.12), sky.lightened(0.12)]))
+	_draw_buildings(horizon, amb, dark)
+	# Road down to the viewer, with the far kerb under the buildings.
+	draw_rect(Rect2(0, horizon, size.x, size.y - horizon), ASPHALT * amb)
+	draw_rect(Rect2(0, horizon, size.x, 18), (PAVEMENT * amb).darkened(0.1))
+	# Perspective lines run out of a vanishing point behind the car.
+	var bottom := panel.end.y
+	var k := (panel.size.x * 0.62) / maxf(bottom - horizon, 1.0)
+	var kerb_at := func(y: float) -> float: return cx + (y - horizon) * k
+	# Pavement on the passenger side (the right, seen from behind).
+	var pave := PackedVector2Array([Vector2(kerb_at.call(horizon + 18), horizon + 18), Vector2(size.x, horizon + 18),
+		Vector2(size.x, size.y), Vector2(kerb_at.call(size.y), size.y)])
+	var screen := PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)])
+	for piece in Geometry2D.intersect_polygons(pave, screen):
+		draw_colored_polygon(piece, PAVEMENT * amb)
+	for i in range(1, 14):
+		var y := horizon + 18 + pow(i / 13.0, 1.6) * (size.y - horizon - 18)
+		draw_line(Vector2(kerb_at.call(y), y), Vector2(size.x, y), Color(0, 0, 0, 0.12), 2.0)
+	draw_line(Vector2(kerb_at.call(horizon + 18), horizon + 18), Vector2(kerb_at.call(size.y), size.y), KERB * amb, 10.0)
+	# Lane dashes on the road side.
+	for i in 10:
+		var y0 := horizon + 30 + pow(i / 10.0, 1.7) * (size.y - horizon)
+		var y1 := y0 + 12 + i * 10.0
+		var x0: float = cx - (y0 - horizon) * k * 1.7
+		var x1: float = cx - (y1 - horizon) * k * 1.7
+		draw_line(Vector2(x0, y0), Vector2(x1, y1), Color(0.9, 0.88, 0.8, 0.5) * amb, 4.0 + i)
+	_draw_string_lights(panel, horizon, dark)
+	_draw_streetlight(Vector2(panel.end.x + 260, bottom - 60), horizon, amb, dark)
+	_draw_icebox(Vector2(panel.end.x + 70, bottom - 40), amb)
+
+
+func _draw_buildings(horizon: float, amb: Color, dark: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 127
+	var x := -40.0
+	while x < size.x:
+		var bw := rng.randf_range(160, 280)
+		var bh := rng.randf_range(260, 560)
+		var top := horizon - bh
+		var tint := BUILDING.lightened(rng.randf_range(0.0, 0.12))
+		draw_rect(Rect2(x, top, bw, bh), tint * amb)
+		# Balcony ledges, water tanks and satellite dishes on the roofs.
+		var rows := int(bh / 64.0)
+		for r in rows:
+			var wy := top + 22 + r * 64
+			for c in int(bw / 52.0):
+				var wx := x + 16 + c * 52
+				var lit := rng.randf() < 0.45
+				var col := WINDOW_DAY * amb
+				if dark > 0.05:
+					col = col.lerp(WINDOW_LIT if lit else Color("1c1a28"), dark)
+				draw_rect(Rect2(wx, wy, 28, 34), col)
+			draw_rect(Rect2(x, wy + 42, bw, 5), (tint.darkened(0.3)) * amb)
+		if rng.randf() < 0.6:
+			draw_rect(Rect2(x + bw * 0.6, top - 26, 34, 26), Color("4a4656") * amb)
+		if rng.randf() < 0.7:
+			draw_circle(Vector2(x + bw * 0.25, top - 10), 12, Color("c8c4bc") * amb)
+		x += bw + rng.randf_range(4, 18)
+
+
+func _draw_string_lights(panel: Rect2, horizon: float, dark: float) -> void:
+	for side in [-1.0, 1.0]:
+		var a := Vector2(panel.position.x if side < 0 else panel.end.x, horizon - 330)
+		var b := Vector2(0 if side < 0 else size.x, horizon - 380)
+		var pts := PackedVector2Array()
+		for i in 17:
+			var t := i / 16.0
+			pts.append(a.lerp(b, t) + Vector2(0, sin(t * PI) * 60.0))
+		draw_polyline(pts, WIRE, 3.0, true)
+		for i in range(1, 16, 2):
+			var p := pts[i] + Vector2(0, 10)
+			_soft_blob(p, Vector2(26, 26), Color(BULB, 0.35 * dark))
+			draw_circle(p, 7, Color("6b6250").lerp(BULB, dark))
+
+
+func _draw_streetlight(base: Vector2, horizon: float, amb: Color, dark: float) -> void:
+	var top := Vector2(base.x, horizon - 420)
+	var head := top + Vector2(-150, 30)
+	if dark > 0.0:
+		_soft_blob(Vector2(head.x, base.y + 10), Vector2(260, 70), Color(LAMP, 0.3 * dark))
+	draw_rect(Rect2(base.x - 16, base.y - 20, 32, 20), POLE.lightened(0.2) * amb)
+	draw_line(base, top, POLE * amb, 12.0)
+	draw_polyline(PackedVector2Array([top, top + Vector2(-40, -20), head + Vector2(20, -12), head]), POLE * amb, 8.0, true)
+	draw_colored_polygon(PackedVector2Array([head + Vector2(-34, 0), head + Vector2(34, 0), head + Vector2(22, 14),
+		head + Vector2(-22, 14)]), (Color("5a5a64") * amb).lerp(LAMP.lightened(0.4), dark))
+	if dark > 0.0:
+		_soft_blob(head + Vector2(0, 14), Vector2(110, 110), Color(LAMP, 0.4 * dark))
+
+
+func _draw_icebox(base: Vector2, amb: Color) -> void:
+	var w := 170.0
+	var h := 110.0
+	_soft_blob(base + Vector2(w * 0.5, 6), Vector2(w * 0.7, 18), Color(0, 0, 0, 0.45))
+	draw_rect(Rect2(base.x, base.y - h, w, h), ICEBOX * amb)
+	draw_rect(Rect2(base.x + w - 30, base.y - h, 30, h), Color(0, 0, 0, 0.18))
+	draw_rect(Rect2(base.x - 6, base.y - h - 26, w + 12, 30), ICEBOX_LID * amb)
+	draw_rect(Rect2(base.x + 40, base.y - h - 36, w - 80, 12), ICEBOX_LID.darkened(0.2) * amb)
+	for f in [[Vector2(52, -150), 20.0, Color("f2a324")], [Vector2(92, -154), 19.0, Color("e8c33a")],
+			[Vector2(126, -146), 14.0, Color("f4e04d")]]:
+		var at: Vector2 = base + f[0]
+		draw_circle(at, f[1], f[2] * amb)
+		draw_circle(at + Vector2(-5, -6), f[1] * 0.3, Color(1, 1, 1, 0.3))
+
+
+func _soft_blob(c: Vector2, r: Vector2, color: Color) -> void:
+	draw_texture_rect(_soft, Rect2(c - r, r * 2.0), false, color)

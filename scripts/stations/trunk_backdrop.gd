@@ -41,17 +41,28 @@ var art_scale := 1.0
 
 var _font: Font = preload("res://assets/ui/main_theme.tres").default_font
 var _t := 0.0
+## LEDs live on their own layer so the chase only redraws the strips, not the car.
+var _leds := Control.new()
+var _chase := 0
 var _soft := StationArt._make_soft_texture()
 
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
+	_leds.mouse_filter = MOUSE_FILTER_IGNORE
+	_leds.set_anchors_preset(PRESET_FULL_RECT)
+	add_child(_leds)
+	_leds.draw.connect(_draw_leds)
 
 
 func _process(delta: float) -> void:
-	if is_visible_in_tree():
-		_t += delta
-		queue_redraw()
+	if not is_visible_in_tree():
+		return
+	_t += delta
+	var step := int(_t * 8.0)
+	if step != _chase:
+		_chase = step
+		_leds.queue_redraw()
 
 
 func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale: float) -> void:
@@ -63,6 +74,7 @@ func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale:
 	inner = new_inner
 	art_scale = new_scale
 	queue_redraw()
+	_leds.queue_redraw()
 
 
 func _draw() -> void:
@@ -73,7 +85,6 @@ func _draw() -> void:
 	_draw_interior(w)
 	_draw_pillars(w)
 	_draw_rear_panel(w, h)
-	_draw_leds(w)
 
 
 ## Underside of the lifted hatch: trim frame round the glass, painted lip, latch.
@@ -187,30 +198,6 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 	draw_rect(Rect2(x0, y + 22.0 * s, x1 - x0, 5.0 * s), Color(0, 0, 0, 0.3))
 
 
-## LED strips round the hatch lip, the roof edge, both pillars and the sill,
-## in repeating red/purple/yellow bands that slowly chase.
-func _draw_leds(w: float) -> void:
-	var l := inner.x - 3.0
-	var r := inner.y + 3.0
-	var i := _led_run(Vector2(0, HATCH_H - 3), Vector2(w, HATCH_H - 3), 0)
-	i = _led_run(Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
-	i = _led_run(Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
-	i = _led_run(Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
-	_led_run(Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
-
-
-func _led_run(a: Vector2, b: Vector2, start: int) -> int:
-	var n := maxi(1, int(a.distance_to(b) / LED_SPACING))
-	var chase := int(_t * 8.0)
-	for k in n:
-		var p := a.lerp(b, k / float(n))
-		var c: Color = LED_COLORS[posmod(int(floor((start + k - chase) / 7.0)), LED_COLORS.size())]
-		_soft_blob(p, Vector2(26, 26), Color(c, 0.45))
-		draw_circle(p, 5.0, c)
-		draw_circle(p, 2.6, c.lerp(Color.WHITE, 0.7))
-	return start + n
-
-
 func _draw_jar(base: Vector2, jw: float, jh: float, fill: Color) -> void:
 	draw_rect(Rect2(base.x, base.y - jh, jw, jh), Color(fill, 0.95))
 	draw_rect(Rect2(base.x, base.y - jh, jw, jh), Color(0.8, 0.9, 1.0, 0.25), false, 2.0)
@@ -289,6 +276,41 @@ func _draw_rear_panel(w: float, h: float) -> void:
 	_soft_blob(Vector2(w * 0.5, bumper_top + 60), Vector2(w * 0.6, 40), Color(0, 0, 0, 0.5))
 	draw_circle(Vector2(w * 0.3, bumper_top + 66), 14, Color("3a3a42"))
 	draw_circle(Vector2(w * 0.3, bumper_top + 66), 8, Color("121016"))
+
+
+## LED strips round the hatch lip, the roof edge, both pillars and the sill,
+## in repeating red/purple/yellow bands that slowly chase. Drawn on _leds.
+func _draw_leds() -> void:
+	var w := size.x
+	var l := inner.x - 3.0
+	var r := inner.y + 3.0
+	var i := _led_run(Vector2(0, HATCH_H - 3), Vector2(w, HATCH_H - 3), 0)
+	i = _led_run(Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
+	i = _led_run(Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
+	i = _led_run(Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
+	_led_run(Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
+
+
+## One straight run of strip: each colour band is a soft wide stroke plus a
+## bright core, with the individual LEDs dotted along it.
+func _led_run(a: Vector2, b: Vector2, start: int) -> int:
+	var n := maxi(1, int(a.distance_to(b) / LED_SPACING))
+	var band := 7
+	var k := 0
+	while k < n:
+		var idx := posmod(floori((start + k - _chase) / float(band)), LED_COLORS.size())
+		var run := band - posmod(start + k - _chase, band)
+		var k1 := mini(k + run, n)
+		var p0 := a.lerp(b, k / float(n))
+		var p1 := a.lerp(b, k1 / float(n))
+		var c: Color = LED_COLORS[idx]
+		_leds.draw_line(p0, p1, Color(c, 0.22), 22.0)
+		_leds.draw_line(p0, p1, Color(c, 0.9), 6.0)
+		k = k1
+	for j in n:
+		var p := a.lerp(b, j / float(n))
+		_leds.draw_rect(Rect2(p - Vector2(2.5, 2.5), Vector2(5, 5)), Color(1, 1, 1, 0.75))
+	return start + n
 
 
 func _soft_blob(c: Vector2, r: Vector2, color: Color) -> void:
