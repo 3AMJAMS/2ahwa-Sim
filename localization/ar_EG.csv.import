@@ -15,5 +15,3 @@ dest_files=["res://localization/ar_EG.ar_EG.translation"]
 
 compress=true
 delimiter=0
-unescape_keys=false
-unescape_translations=true
