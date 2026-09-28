@@ -58,6 +58,8 @@ var _m: MeshCanvas
 var _street_mesh: ArrayMesh
 var _lamp_mesh: ArrayMesh
 var _furniture := SidewalkFurniture.new()
+## Customers walking up to the trunk; main.gd drives the orders.
+var queue := CustomerQueue.new()
 
 @onready var fifi: Node2D = $FIFISprite
 @onready var trunk_area: Area2D = $TrunkArea
@@ -85,6 +87,8 @@ func _ready() -> void:
 	# Sayed's chairs stand on the pavement, nearer us than FIFI.
 	_furniture.position = fifi.position
 	fifi.add_sibling(_furniture)
+	# Customers stand on the pavement, in front of FIFI and the chair.
+	_furniture.add_sibling(queue)
 	Economy.currency_changed.connect(_pop_wallet.unbind(1))
 	get_viewport().size_changed.connect(_recenter)
 	Economy.currency_changed.connect(_update_wallet.unbind(1))
@@ -107,6 +111,11 @@ func trunk_screen_rect() -> Rect2:
 	return r
 
 
+## The line of guidance under FIFI ("tap the trunk", "serve the customer"...).
+func set_hint(text: String) -> void:
+	hint_label.text = text
+
+
 func set_interactive(value: bool) -> void:
 	interactive = value
 	hint_label.visible = value
@@ -121,6 +130,7 @@ func _relight() -> void:
 	fifi.ambient = DayClock.ambient()
 	fifi.darkness = dark
 	_furniture.ambient = DayClock.ambient()
+	queue.modulate = Color.WHITE.lerp(DayClock.ambient(), 0.8)
 	_traffic.set_light(DayClock.ambient(), dark)
 	for light in _lamp_lights:
 		light.energy = 1.25 * dark

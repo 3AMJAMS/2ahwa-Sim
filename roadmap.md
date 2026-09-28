@@ -90,6 +90,15 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-sort. **Also:** GameAnalytics SDK integration.
 **Exit benchmark:** full shift end-to-end incl. camera cut, across device/aspect-ratio matrix.
 
+**Built (as of 28 Sep 2026):**
+- Customer loop, following the blueprint's patience state machine: customers (placeholder figures: galabeya and kufi, shirt and trousers, hijab and abaya, t-shirt and jeans) walk up the pavement to one of three spots by the trunk, shout their order in Ammiya in a speech bubble, and wait with a patience bar over their head
+- Order tickets clip onto a rail at the top of the street view (drink icon, name, patience bar, on-the-stove / ready marks); tapping a ticket, the customer or the trunk makes that order (the trunk picks whoever is most impatient)
+- Serve: back on the street with the drink, tap the customer to hand it over. Tips are paid on serving: price × venue × drink quality (brew accuracy × pick penalty) × speed (60–100% by patience left). Customers who run out of patience leave angry and the ticket tears off
+- Day summary adds orders served and customers lost; tutorial extended: the first customer (who waits forever), their ticket, the trunk, and handing the first drink over
+- App icon, hidden five-tap save reset for testers, Android APK + Web builds for friends
+
+**Remaining:** shisha coal-rotation station, "ask to repeat", day-start/day-end time-lapse, GameAnalytics, device/aspect-ratio pass
+
 ## Phase 3 · Personas & Economy (Weeks 17–24)
 Customer archetypes, sugar ladder, full menu (+ noodle-pack art), Store Upgrades, vehicle/venue tier gate, roof-rack upgrade, shisha حجر economy. **Also:** new-station tutorial triggers.
 **Exit benchmark:** testers want "one more day"; watch first-3-day retention via GameAnalytics.

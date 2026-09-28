@@ -1,24 +1,29 @@
 extends Node
-## Entry point. Owns the WORLD ↔ PREP state machine and the fade between them:
-## trunk_tapped → fade out → prep station → prep_complete → fade out → street.
+## Entry point. Runs the shift loop and the fades between the two views:
+##   a customer walks up and shouts an order → it's clipped to the ticket rail
+##   → tap the trunk (or the ticket) → fade to the prep station → make it
+##   → fade back holding the drink → tap the customer to serve → tips.
+## Customers who wait too long leave angry and the ticket is torn off.
 ## The day never ends on its own: "go home" fades out on the day's takings,
-## advances the day, and starts the clock again in the afternoon.
+## sends everyone home, advances the day, and starts the clock again.
 
 enum State { WORLD, TO_PREP, PREP, TO_WORLD, GOING_HOME }
 
 ## How long the end-of-day summary stays up.
 @export var day_summary_sec := 2.2
-
-## The first order of a session is always شاي كشري; after that orders are
-## picked at random from what's unlocked. Phase 2 replaces this with the ticket rail.
-@export var first_order_id := "tea_koshari"
+## Tip multiplier from how much patience was left when served: from `x` for a
+## customer who was about to walk off to `y` for one served straight away.
+@export var speed_tip := Vector2(0.6, 1.0)
 
 var state := State.WORLD
-var _last_order := ""
-var _rng := RandomNumberGenerator.new()
 var _day_start_money := 0
+## The customer whose drink is being made, and the drink in Sayed's hands
+## ({customer, quality}), if any.
+var _making: Customer
+var _holding := {}
 
 @onready var world_host: Node2D = $WorldHost
+@onready var queue: CustomerQueue = $WorldHost.queue
 @onready var prep_layer: Control = $PrepLayer
 @onready var prep_station: Control = $PrepLayer/PrepStation
 @onready var fade_rect: ColorRect = $FadeLayer/FadeRect
@@ -26,18 +31,29 @@ var _day_start_money := 0
 @onready var anim: AnimationPlayer = $AnimationPlayer
 @onready var go_home_button: Button = $Hud/GoHomeButton
 @onready var vignette: ColorRect = $VignetteLayer/Vignette
+var rail := TicketRail.new()
 
 
 func _ready() -> void:
-	world_host.trunk_tapped.connect(transition_to_prep)
+	world_host.trunk_tapped.connect(_on_trunk_tapped)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
 	world_host.reset_requested.connect(_confirm_reset)
+	queue.customer_ordered.connect(_on_customer_ordered)
+	queue.customer_left.connect(_on_customer_left)
+	queue.customer_tapped.connect(_on_customer_tapped)
 	DayClock.minute_changed.connect(_relight)
+	# Tickets clip along the top, under the day/money line.
+	rail.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	rail.offset_top = 262
+	rail.offset_bottom = 412
+	rail.ticket_pressed.connect(_on_ticket_pressed)
+	$Hud.add_child(rail)
 	_day_start_money = Economy.currency_egp
 	prep_layer.visible = false
 	fade_rect.modulate.a = 0.0
 	fade_label.visible = false
+	_update_hint()
 	_intro.call_deferred()
 
 
@@ -59,7 +75,8 @@ func _confirm_reset() -> void:
 	dialog.popup_centered()
 
 
-## First launch: Sayed shows round the street, ending on the trunk tap.
+## First launch: Sayed shows round the street, waits for the first customer
+## and ends on the trunk tap.
 func _intro() -> void:
 	if not Tutorial.pending("ui_intro"):
 		return
@@ -67,6 +84,15 @@ func _intro() -> void:
 		{"text": tr("TUT_WELCOME")},
 		{"text": tr("TUT_HUD"), "target": world_host.wallet_label.get_global_rect},
 		{"text": tr("TUT_GO_HOME"), "target": go_home_button.get_global_rect},
+	])
+	if not Tutorial.pending("ui_intro"):
+		return
+	if queue.waiting().is_empty():
+		await queue.customer_ordered
+	var first: Customer = queue.waiting()[0]
+	await Tutorial.play([
+		{"text": tr("TUT_CUSTOMER"), "target": first.screen_rect},
+		{"text": tr("TUT_TICKET"), "target": rail.ticket_rect.bind(first)},
 		{"text": tr("TUT_TAP_TRUNK"), "target": world_host.trunk_screen_rect, "until": world_host.trunk_tapped},
 	])
 	Tutorial.mark("ui_intro")
@@ -76,20 +102,134 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Keyboard shortcut for desktop testing: Space/Enter opens the trunk.
 	if state == State.WORLD and event.is_action_pressed("ui_accept"):
 		get_viewport().set_input_as_handled()
-		transition_to_prep()
+		_on_trunk_tapped()
 
 
-func transition_to_prep() -> void:
+# --- Orders ------------------------------------------------------------------
+
+func _on_customer_ordered(c: Customer) -> void:
+	rail.add_order(c)
+	_update_hint()
+
+
+func _on_customer_left(c: Customer, angry: bool) -> void:
+	rail.remove_order(c)
+	if angry:
+		Economy.record_order(false)
+		if _holding.get("customer") == c:
+			_holding = {}
+			_flash_hint(tr("UI_CUSTOMER_GONE"))
+	_update_hint()
+
+
+## The trunk makes the most urgent order (or nudges if there's nothing to do).
+func _on_trunk_tapped() -> void:
 	if state != State.WORLD:
 		return
+	if not _holding.is_empty():
+		_flash_hint(tr("UI_SERVE_FIRST"))
+		return
+	var c := queue.most_urgent()
+	if c == null:
+		_flash_hint(tr("UI_NO_ORDERS"))
+		return
+	transition_to_prep(c)
+
+
+func _on_ticket_pressed(c: Customer) -> void:
+	if state != State.WORLD:
+		return
+	if c.drink_ready:
+		_on_customer_tapped(c)
+	elif _holding.is_empty():
+		transition_to_prep(c)
+	else:
+		_flash_hint(tr("UI_SERVE_FIRST"))
+
+
+func _on_customer_tapped(c: Customer) -> void:
+	if state != State.WORLD or not c.is_waiting():
+		return
+	if _holding.get("customer") == c:
+		_serve(c)
+	elif not _holding.is_empty():
+		_flash_hint(tr("UI_WRONG_CUSTOMER"))
+	else:
+		transition_to_prep(c)
+
+
+## Hand over the drink: tips = price × venue × quality × how quickly it came.
+func _serve(c: Customer) -> void:
+	var quality: float = _holding.quality
+	_holding = {}
+	var price := GameData.price_for(c.item_id, Economy.current_venue_tier)
+	var speed := lerpf(speed_tip.x, speed_tip.y, c.patience / c.patience_max)
+	var tips := maxi(1, roundi(price * quality * speed))
+	Economy.add_tips(tips)
+	Economy.record_order(true)
+	_tip_pop(c, tips)
+	queue.served(c)
+	_update_hint()
+	if Tutorial.pending("first_tips"):
+		await get_tree().create_timer(0.9).timeout
+		await Tutorial.play([{"text": tr("TUT_FIRST_TIPS"), "target": world_host.wallet_label.get_global_rect}])
+		Tutorial.mark("first_tips")
+
+
+## "+12 ج.م" floating up off the customer, and a buzz on a big tip.
+func _tip_pop(c: Customer, tips: int) -> void:
+	var pop := Label.new()
+	pop.text = "+%s %s" % [GameData.ar_digits(tips), tr("UI_CURRENCY")]
+	pop.add_theme_font_size_override("font_size", 52)
+	pop.add_theme_color_override("font_color", StationArt.hdr(Color(1.0, 0.84, 0.4), 1.3))
+	pop.add_theme_color_override("font_outline_color", Color(0.1, 0.06, 0.02))
+	pop.add_theme_constant_override("outline_size", 12)
+	pop.light_mask = 0
+	world_host.add_child(pop)
+	pop.position = c.position + Vector2(-90, -300)
+	var t := pop.create_tween()
+	t.tween_property(pop, "position:y", pop.position.y - 150.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(pop, "modulate:a", 0.0, 0.5).set_delay(0.7)
+	t.tween_callback(pop.queue_free)
+	if tips >= 10:
+		Input.vibrate_handheld(30)
+
+
+func _update_hint() -> void:
+	if not _holding.is_empty():
+		world_host.set_hint(tr("UI_TAP_CUSTOMER"))
+	elif queue.most_urgent() != null:
+		world_host.set_hint(tr("UI_TAP_TRUNK"))
+	else:
+		world_host.set_hint(tr("UI_WAITING_CUSTOMERS"))
+
+
+func _flash_hint(text: String) -> void:
+	world_host.set_hint(text)
+	var label: Label = world_host.hint_label
+	label.pivot_offset = label.size * 0.5
+	var t := create_tween()
+	t.tween_property(label, "scale", Vector2(1.1, 1.1), 0.1)
+	t.tween_property(label, "scale", Vector2.ONE, 0.2)
+	t.tween_interval(1.6)
+	t.tween_callback(_update_hint)
+
+
+# --- The two views -----------------------------------------------------------
+
+func transition_to_prep(c: Customer) -> void:
+	if state != State.WORLD or c == null:
+		return
 	state = State.TO_PREP
+	_making = c
+	c.being_made = true
 	world_host.set_interactive(false)
 	go_home_button.visible = false
+	rail.visible = false
 	await _fade("fade_out")
 	world_host.visible = false
 	prep_layer.visible = true
-	_last_order = first_order_id if _last_order.is_empty() else GameData.pick_order(_rng, _last_order)
-	prep_station.load_order(_last_order)
+	prep_station.load_order(c.item_id)
 	await _fade("fade_in")
 	state = State.PREP
 	prep_station.start_order()
@@ -104,11 +244,31 @@ func transition_to_world() -> void:
 	await _fade("fade_out")
 	prep_layer.visible = false
 	world_host.visible = true
+	rail.visible = true
 	await _fade("fade_in")
 	fade_label.visible = false
 	world_host.set_interactive(true)
 	go_home_button.visible = true
 	state = State.WORLD
+	_update_hint()
+	# First drink in hand: show how to hand it over.
+	if not _holding.is_empty() and Tutorial.pending("first_serve"):
+		var c: Customer = _holding.customer
+		await Tutorial.play([{"text": tr("TUT_SERVE"), "target": c.screen_rect, "until": queue.customer_served}])
+		Tutorial.mark("first_serve")
+
+
+func _on_prep_complete(result: Dictionary) -> void:
+	var c := _making
+	_making = null
+	if is_instance_valid(c):
+		c.being_made = false
+		if result.get("success", false) and c.is_waiting():
+			c.drink_ready = true
+			_holding = {"customer": c, "quality": float(result.get("quality", 0.5))}
+		elif result.get("success", false):
+			_flash_hint.call_deferred(tr("UI_CUSTOMER_GONE"))
+	transition_to_world()
 
 
 func go_home() -> void:
@@ -117,11 +277,17 @@ func go_home() -> void:
 	state = State.GOING_HOME
 	world_host.set_interactive(false)
 	go_home_button.visible = false
+	rail.visible = false
 	fade_label.text = tr("UI_DAY_OVER").format({
 		"day": GameData.ar_digits(Economy.day_number),
-		"amount": GameData.ar_digits(Economy.currency_egp - _day_start_money)})
+		"amount": GameData.ar_digits(Economy.currency_egp - _day_start_money),
+		"served": GameData.ar_digits(Economy.served_today),
+		"failed": GameData.ar_digits(Economy.failed_today)})
 	fade_label.visible = true
 	await _fade("fade_out")
+	_holding = {}
+	rail.clear()
+	queue.clear()
 	await get_tree().create_timer(day_summary_sec).timeout
 	Economy.end_day()
 	DayClock.start_day()
@@ -130,16 +296,14 @@ func go_home() -> void:
 	await _fade("fade_in")
 	world_host.set_interactive(true)
 	go_home_button.visible = true
+	rail.visible = true
 	state = State.WORLD
+	_update_hint()
 
 
 ## The vignette closes in after dusk.
 func _relight() -> void:
 	(vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.22 + 0.28 * DayClock.darkness())
-
-
-func _on_prep_complete(_result: Dictionary) -> void:
-	transition_to_world()
 
 
 func _fade(anim_name: String) -> void:

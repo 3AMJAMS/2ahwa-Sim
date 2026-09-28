@@ -21,7 +21,10 @@ First launch plays Sayed's tutorial (street, first order, each tool the first ti
 
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
-- **Tap FIFI's glowing trunk** (or press Space/Enter on desktop) to start an order.
+- **Customers walk up to FIFI** and shout their order; it's clipped to a ticket at the top of the screen with a
+  patience bar. **Tap the trunk** (makes whoever is most impatient), the ticket, or the customer to make an order;
+  once it's made, **tap the customer to serve it**. Tips are paid on serving and shrink the longer they waited;
+  customers who run out of patience walk off. Space/Enter opens the trunk on desktop.
 - **Pick what goes in it** from the tray at the bottom — شاي, بن, كركديه, مانجا, تلج (كركديه ساقع needs two:
   كركديه and تلج) — then **pick the tool**: الكنكة for hot drinks, الخلاط for cold ones. Each wrong pick shakes
   the car and takes 20% off the tip (down to half).
@@ -57,6 +60,8 @@ Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you 
 | `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
 | `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |
+| `scripts/world/customer.gd`, `customer_queue.gd` | Customers: walk up, shout the order, patience, served/angry exits; the queue spawns them into three spots by the trunk |
+| `scripts/ui/ticket_rail.gd` | Order tickets along the top of the street view |
 | `scripts/world/sidewalk_furniture.gd` | Sayed's folding lawn chair, his tea and his radio on the pavement (customer seating comes later as an upgrade) |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Runs an order: ingredients → tool → gauge, pays tips (docked for wrong picks), tutorial hooks |

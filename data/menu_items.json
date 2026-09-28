@@ -5,7 +5,14 @@
       "name_key": "PREP_TEA_KOSHARI",
       "name_ar": "شاي كشري",
       "station": "heat",
-      "ingredients": ["tea"],
+      "ingredients": [
+        "tea"
+      ],
+      "shout_keys": [
+        "SHOUT_TEA_1",
+        "SHOUT_TEA_2",
+        "SHOUT_TEA_3"
+      ],
       "unlock_tier": 0,
       "base_price_egp": 8,
       "prep_time_sec": 12,
@@ -23,7 +30,14 @@
       "name_key": "PREP_COFFEE_TURKISH",
       "name_ar": "قهوة تركي",
       "station": "heat",
-      "ingredients": ["coffee"],
+      "ingredients": [
+        "coffee"
+      ],
+      "shout_keys": [
+        "SHOUT_COFFEE_1",
+        "SHOUT_COFFEE_2",
+        "SHOUT_COFFEE_3"
+      ],
       "unlock_tier": 0,
       "base_price_egp": 10,
       "prep_time_sec": 10,
@@ -40,7 +54,14 @@
       "name_key": "PREP_KARKADE_HOT",
       "name_ar": "كركديه سخن",
       "station": "heat",
-      "ingredients": ["karkade"],
+      "ingredients": [
+        "karkade"
+      ],
+      "shout_keys": [
+        "SHOUT_KARKADE_HOT_1",
+        "SHOUT_KARKADE_HOT_2",
+        "SHOUT_KARKADE_HOT_3"
+      ],
       "unlock_tier": 0,
       "base_price_egp": 8,
       "prep_time_sec": 11,
@@ -57,7 +78,15 @@
       "name_key": "PREP_KARKADE_COLD",
       "name_ar": "كركديه ساقع",
       "station": "blend",
-      "ingredients": ["karkade", "ice"],
+      "ingredients": [
+        "karkade",
+        "ice"
+      ],
+      "shout_keys": [
+        "SHOUT_KARKADE_COLD_1",
+        "SHOUT_KARKADE_COLD_2",
+        "SHOUT_KARKADE_COLD_3"
+      ],
       "unlock_tier": 0,
       "base_price_egp": 12,
       "prep_time_sec": 9,
@@ -74,7 +103,14 @@
       "name_key": "PREP_MANGO",
       "name_ar": "عصير مانجا",
       "station": "blend",
-      "ingredients": ["mango"],
+      "ingredients": [
+        "mango"
+      ],
+      "shout_keys": [
+        "SHOUT_MANGO_1",
+        "SHOUT_MANGO_2",
+        "SHOUT_MANGO_3"
+      ],
       "unlock_tier": 0,
       "base_price_egp": 15,
       "prep_time_sec": 11,
