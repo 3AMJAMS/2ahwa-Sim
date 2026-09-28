@@ -81,6 +81,7 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 - Prep station reworked into making the drink: the player picks the ingredients from a tray of cards (شاي, بن, كركديه, مانجا, تلج — كركديه ساقع needs كركديه + تلج), then the tool (الكنكة on the fire, or الخلاط), and only then plays that tool's gauge. The stove waits in front and the blender behind until the tool is chosen. Wrong picks shake the car and dock 20% of the tip each (floor 50%). Recipes live in `menu_items.json` (`ingredients`); the pickable items and tools in `prep_items.json`
 - Tutorial system (TutorialManager autoload, `tutorials_seen` in the save): Sayed talks the player through it in a speech bubble with his portrait, a spotlight dims everything else, and a pointing hand shows where to tap. Stage 1 (first launch): welcome, day/clock/wallet, going home, tapping the trunk. Stage 2 (first order): reading the order, picking the ingredient, picking the tool; then the stove's first use (take it off in the green, don't let it boil over), the blender's first use (hold for turbo, watch the motor), and where the tips go. On "do it" steps only the spotlit card/trunk takes taps, so the first order can't go wrong. "تخطّي الشرح" turns tutorials off for the save
 - Detail pass: vehicles rebuilt with rounded profiles, framed windscreens and door glass, door shut lines, handles, mirrors, five-spoke rims with tyre depth, grilles, headlights/tail lamps, bumpers, plates, exhaust, roof racks, ladders and bed walls; hammered كنكة with an engraved band, gas cylinder with weld seam, dents, chipped band, foot slots, shroud, regulator and hose, burner ports; faceted tea glass; blender with feet, cord, screws, speed dial and ribbed jug; shelf jars with contents, labels and ridged lids, printed paper cups, faceted glasses, rack brackets; FIFI gets a fuel flap, door keyhole and trim, "127" badge, reversing lamp, mud flap and aerial
+- Performance: the street, lamp posts, FIFI, the lawn chair and every passing vehicle are now baked into one vertex-coloured mesh each (`MeshCanvas`), cutting the street's draw calls about 4× (≈1,020 → ≈250 per frame) — fixes the world-screen lag on the phone. Traffic runs faster (≈5.5–8.5 tiles/s for cars) and overtakes slow tuk-tuks by switching lanes instead of queueing; the tuk-tuk is redrawn Bajaj-style (low tub, open sides with bench and driver, rounded canopy, rear window)
 
 **Remaining:**
 - RTL + aspect-ratio device checks; exit playtest
@@ -88,6 +89,15 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 ## Phase 2 · Station Loop MVP (Weeks 9–16)
 Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-sort. **Also:** GameAnalytics SDK integration.
 **Exit benchmark:** full shift end-to-end incl. camera cut, across device/aspect-ratio matrix.
+
+**Built (as of 28 Sep 2026):**
+- Customer loop, following the blueprint's patience state machine: customers (placeholder figures: galabeya and kufi, shirt and trousers, hijab and abaya, t-shirt and jeans) walk up the pavement to one of three spots by the trunk, shout their order in Ammiya in a speech bubble, and wait with a patience bar over their head
+- Order tickets clip onto a rail at the top of the street view (drink icon, name, patience bar, on-the-stove / ready marks); tapping a ticket, the customer or the trunk makes that order (the trunk picks whoever is most impatient)
+- Serve: back on the street with the drink, tap the customer to hand it over. Tips are paid on serving: price × venue × drink quality (brew accuracy × pick penalty) × speed (60–100% by patience left). Customers who run out of patience leave angry and the ticket tears off
+- Day summary adds orders served and customers lost; tutorial extended: the first customer (who waits forever), their ticket, the trunk, and handing the first drink over
+- App icon, hidden five-tap save reset for testers, Android APK + Web builds for friends
+
+**Remaining:** shisha coal-rotation station, "ask to repeat", day-start/day-end time-lapse, GameAnalytics, device/aspect-ratio pass
 
 ## Phase 3 · Personas & Economy (Weeks 17–24)
 Customer archetypes, sugar ladder, full menu (+ noodle-pack art), Store Upgrades, vehicle/venue tier gate, roof-rack upgrade, shisha حجر economy. **Also:** new-station tutorial triggers.

@@ -8,6 +8,10 @@ signal upgrade_purchased(id: String)
 signal day_advanced(day_number: int)
 
 var data: SaveData
+## Today's orders (not saved; shown on the day summary, and fed to
+## telemetry once GameAnalytics is in).
+var served_today := 0
+var failed_today := 0
 
 var currency_egp: int:
 	get: return data.currency_egp
@@ -70,7 +74,16 @@ func owns_slot(slot: String) -> bool:
 	return false
 
 
+func record_order(served: bool) -> void:
+	if served:
+		served_today += 1
+	else:
+		failed_today += 1
+
+
 func end_day() -> void:
+	served_today = 0
+	failed_today = 0
 	data.day_number += 1
 	day_advanced.emit(data.day_number)
 	save()

@@ -18,9 +18,9 @@ polygon = PackedVector2Array(55, -27, 205, 48, 205, -32, 55, -107)
 
 [node name="HintLabel" type="Label" parent="."]
 offset_left = -480.0
-offset_top = 360.0
+offset_top = 540.0
 offset_right = 480.0
-offset_bottom = 520.0
+offset_bottom = 680.0
 theme_override_colors/font_color = Color(1, 0.784, 0.38, 1)
 text = "UI_TAP_TRUNK"
 horizontal_alignment = 1

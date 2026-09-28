@@ -163,32 +163,26 @@ func _on_wrong_pick(_id: String) -> void:
 	_jolt(5.0, 0.2, 40)
 
 
+## The drink's done. Tips are paid when it's handed over on the street, so
+## this only reports how good it came out: brew accuracy × the pick penalty.
 func _on_gauge_completed(accuracy: float) -> void:
-	var run := _run
-	var price := GameData.price_for(_item.id, Economy.current_venue_tier)
 	var penalty := maxf(0.5, 1.0 - mistake_penalty * _mistakes)
-	var tips := maxi(1, roundi(price * accuracy * penalty))
-	Economy.add_tips(tips)
-	var headline := tr("RESULT_SUCCESS") if accuracy >= 1.0 and _mistakes == 0 else tr("RESULT_OK")
-	result_label.text = "%s\n%s" % [headline, tr("RESULT_TIPS").format({"amount": GameData.ar_digits(tips)})]
-	_celebrate(tips, accuracy >= 1.0 and _mistakes == 0)
-	if Tutorial.pending("first_tips"):
-		await get_tree().create_timer(0.8).timeout
-		await Tutorial.play([{"text": tr("TUT_FIRST_TIPS")}])
-		Tutorial.mark("first_tips")
-		if run != _run:
-			return
-	_finish({"success": true, "item_id": _item.id, "accuracy": accuracy, "tips": tips, "mistakes": _mistakes})
+	var perfect := accuracy >= 1.0 and _mistakes == 0
+	var headline := tr("RESULT_SUCCESS") if perfect else tr("RESULT_OK")
+	result_label.text = "%s\n%s" % [headline, tr("RESULT_READY")]
+	_celebrate(perfect)
+	_finish({"success": true, "item_id": _item.id, "accuracy": accuracy, "quality": accuracy * penalty,
+		"mistakes": _mistakes})
 
 
 func _on_gauge_failed() -> void:
 	result_label.text = tr("RESULT_FAIL")
-	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "tips": 0, "mistakes": _mistakes})
+	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "quality": 0.0, "mistakes": _mistakes})
 
 
-## Payday feedback at the glass: a burst of gold sparks and the tip floating
-## up; a perfect brew gets a bigger burst and a short buzz.
-func _celebrate(tips: int, perfect: bool) -> void:
+## A good pour: a burst of gold sparks at the glass; a perfect one gets a
+## bigger burst and a short buzz. (The tip pops up when it's served.)
+func _celebrate(perfect: bool) -> void:
 	var car := backdrop.get_parent() as Control
 	var at := car.get_global_transform().affine_inverse() * _active_art().scene_to_global(Vector2(250, 440))
 	var sparks := CPUParticles2D.new()
@@ -208,18 +202,6 @@ func _celebrate(tips: int, perfect: bool) -> void:
 	car.add_child(sparks)
 	sparks.emitting = true
 	get_tree().create_timer(1.6).timeout.connect(sparks.queue_free)
-	var pop := Label.new()
-	pop.text = "+%s %s" % [GameData.ar_digits(tips), tr("UI_CURRENCY")]
-	pop.add_theme_font_size_override("font_size", 64)
-	pop.add_theme_color_override("font_color", StationArt.hdr(Color(1.0, 0.84, 0.4), 1.3))
-	pop.add_theme_color_override("font_outline_color", Color(0.1, 0.06, 0.02))
-	pop.add_theme_constant_override("outline_size", 14)
-	car.add_child(pop)
-	pop.position = at - Vector2(120, 60)
-	var t := pop.create_tween()
-	t.tween_property(pop, "position:y", pop.position.y - 170.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	t.parallel().tween_property(pop, "modulate:a", 0.0, 0.5).set_delay(0.6)
-	t.tween_callback(pop.queue_free)
 	if perfect:
 		Input.vibrate_handheld(35)
 
