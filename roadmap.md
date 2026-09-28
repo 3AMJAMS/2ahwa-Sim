@@ -111,7 +111,7 @@ Project: **2ahwa Sim**. Effectively solo (you + AI assistance); friends' input i
 ---
 
 ## Feature Ideas Backlog
-Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambient events, seasonal weather, khamaseen wind) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special, equipment wear: a blender pushed too hard can break and needs a paid repair — Phase 1 only has the free thermal cut-out) · Sharing (photo-mode/receipt screen)
+Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambient events, seasonal weather, khamaseen wind, a daily-changing street: pavement on either side of FIFI, then new spots each day with trees, street corners, cats/dogs) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special, equipment wear: a blender pushed too hard can break and needs a paid repair — Phase 1 only has the free thermal cut-out) · Sharing (photo-mode/receipt screen)
 
 ---
 
