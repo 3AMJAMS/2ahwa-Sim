@@ -4,10 +4,13 @@ extends Node
 
 enum State { WORLD, TO_PREP, PREP, TO_WORLD }
 
-## Phase 1 always serves one شاي كشري; Phase 2 replaces this with the ticket rail.
-@export var phase1_order_id := "tea_koshari"
+## The first order of a session is always شاي كشري; after that orders are
+## picked at random from what's unlocked. Phase 2 replaces this with the ticket rail.
+@export var first_order_id := "tea_koshari"
 
 var state := State.WORLD
+var _last_order := ""
+var _rng := RandomNumberGenerator.new()
 
 @onready var world_host: Node2D = $WorldHost
 @onready var prep_layer: Control = $PrepLayer
@@ -40,7 +43,8 @@ func transition_to_prep() -> void:
 	await _fade("fade_out")
 	world_host.visible = false
 	prep_layer.visible = true
-	prep_station.load_order(phase1_order_id)
+	_last_order = first_order_id if _last_order.is_empty() else GameData.pick_order(_rng, _last_order)
+	prep_station.load_order(_last_order)
 	await _fade("fade_in")
 	state = State.PREP
 	prep_station.start_order()

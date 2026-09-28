@@ -62,6 +62,14 @@ func owns(id: String) -> bool:
 	return id in data.owned_upgrades or bool(GameData.get_equipment(id).get("unlocked", false))
 
 
+## True if any equipment for this station slot ("heat", "blend", ...) is owned.
+func owns_slot(slot: String) -> bool:
+	for id in GameData.equipment:
+		if GameData.equipment[id].get("slot", "") == slot and owns(id):
+			return true
+	return false
+
+
 func end_day() -> void:
 	data.day_number += 1
 	day_advanced.emit(data.day_number)

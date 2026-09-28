@@ -15,3 +15,6 @@ data_*/
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Godot 4.4+ generates these per machine; scenes here reference scripts by path
+*.uid

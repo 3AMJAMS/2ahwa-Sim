@@ -1,16 +1,17 @@
 class_name BlendGauge
 extends Control
-## Cold blender gauge (hidden in Phase 1, shown from Phase 2).
-## Blend progress fills on its own; holding speeds it up but heats the motor.
-## Staying in the motor's red zone longer than overheat_grace_sec burns it out.
+## Cold blender mechanic. Blend progress fills on its own; holding runs the
+## motor on turbo to finish faster but heats it. Staying in the motor's red
+## zone longer than overheat_grace_sec burns it out. BlenderView draws it;
+## the two slim bars are the readout (blend on the right, motor beside it).
 
 signal gauge_completed(accuracy: float)
 signal gauge_failed()
 
 enum State { IDLE, BLENDING, DONE }
 
-const COLOR_BLEND := Color("c2185b")
 const COLOR_MOTOR_OK := Color("4caf50")
+const COLOR_MOTOR_WARM := Color("e6c33a")
 const COLOR_MOTOR_RED := Color("e0452b")
 const COLOR_TRACK := Color("1b1e3a")
 
@@ -18,6 +19,7 @@ const COLOR_TRACK := Color("1b1e3a")
 @export var boost_multiplier := 2.5
 @export var motor_heat_rate := 45.0   # per second while held
 @export var motor_cool_rate := 30.0   # per second while released
+@export_range(0.0, 100.0) var motor_warn_min := 55.0
 @export_range(0.0, 100.0) var motor_red_min := 80.0
 ## Grace period in the red before failing, so a brief overshoot is forgiven.
 @export var overheat_grace_sec := 0.6
@@ -31,6 +33,8 @@ var motor_heat := 0.0
 var holding := false
 var elapsed := 0.0
 var _red_time := 0.0
+## Bumped on every start/reset so a pour that outlives its order is ignored.
+var _run_id := 0
 
 var _blend_fill := StyleBoxFlat.new()
 var _motor_fill := StyleBoxFlat.new()
@@ -38,18 +42,25 @@ var _motor_fill := StyleBoxFlat.new()
 @onready var status_label: Label = %StatusLabel
 @onready var blend_bar: ProgressBar = %BlendBar
 @onready var motor_bar: ProgressBar = %MotorBar
+@onready var hold_label: Label = %HoldLabel
+@onready var blender: BlenderView = %BlenderView
 
 
 func _ready() -> void:
 	for pair in [[blend_bar, _blend_fill], [motor_bar, _motor_fill]]:
 		var track := StyleBoxFlat.new()
 		track.bg_color = COLOR_TRACK
-		track.set_corner_radius_all(16)
-		pair[1].set_corner_radius_all(16)
+		track.set_corner_radius_all(22)
+		pair[1].set_corner_radius_all(22)
 		pair[0].add_theme_stylebox_override("background", track)
 		pair[0].add_theme_stylebox_override("fill", pair[1])
-	_blend_fill.bg_color = COLOR_BLEND
 	reset()
+
+
+## Recolours the blender contents from a menu item's "look" block.
+func set_look(look: Dictionary) -> void:
+	blender.set_look(look)
+	_blend_fill.bg_color = Color(look.get("liquid", "#c2185b"))
 
 
 func start(time_sec: float = prep_time_sec) -> void:
@@ -60,7 +71,9 @@ func start(time_sec: float = prep_time_sec) -> void:
 	_red_time = 0.0
 	holding = false
 	state = State.BLENDING
-	status_label.text = tr("PREP_BLEND_HOLD")
+	_run_id += 1
+	blender.reset()
+	blender.running = true
 	set_process(true)
 	_refresh()
 
@@ -70,8 +83,9 @@ func reset() -> void:
 	progress = 0.0
 	motor_heat = 0.0
 	holding = false
+	_run_id += 1
 	set_process(false)
-	status_label.text = ""
+	blender.reset()
 	_refresh()
 
 
@@ -86,13 +100,9 @@ func _process(delta: float) -> void:
 	_red_time = _red_time + delta if motor_heat >= motor_red_min else 0.0
 	_refresh()
 	if _red_time > overheat_grace_sec:
-		_finish()
-		status_label.text = tr("PREP_BLEND_OVERHEAT")
-		gauge_failed.emit()
+		_burn_out()
 	elif progress >= 100.0:
-		_finish()
-		status_label.text = tr("PREP_BLEND_DONE")
-		gauge_completed.emit(score(elapsed))
+		_serve()
 
 
 func score(time_taken: float) -> float:
@@ -105,22 +115,68 @@ func score(time_taken: float) -> float:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
-		holding = event.pressed and state == State.BLENDING
+		_set_holding(event.pressed)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if state == State.BLENDING and event.is_action("ui_accept"):
 		get_viewport().set_input_as_handled()
-		holding = event.is_pressed()
+		_set_holding(event.is_pressed())
+
+
+func _set_holding(value: bool) -> void:
+	holding = value and state == State.BLENDING
+	_refresh()
+
+
+func _serve() -> void:
+	var accuracy := score(elapsed)
+	_finish()
+	status_label.text = tr("PREP_BLEND_DONE")
+	var run := _run_id
+	await blender.pour()
+	if run == _run_id:
+		gauge_completed.emit(accuracy)
+
+
+func _burn_out() -> void:
+	_finish()
+	status_label.text = tr("PREP_BLEND_OVERHEAT")
+	var run := _run_id
+	await blender.burn_out()
+	if run == _run_id:
+		gauge_failed.emit()
 
 
 func _finish() -> void:
 	state = State.DONE
 	holding = false
 	set_process(false)
+	_refresh()
 
 
 func _refresh() -> void:
 	blend_bar.value = progress
 	motor_bar.value = motor_heat
-	_motor_fill.bg_color = COLOR_MOTOR_RED if motor_heat >= motor_red_min else COLOR_MOTOR_OK
+	if motor_heat >= motor_red_min:
+		_motor_fill.bg_color = COLOR_MOTOR_RED
+	elif motor_heat >= motor_warn_min:
+		_motor_fill.bg_color = COLOR_MOTOR_WARM
+	else:
+		_motor_fill.bg_color = COLOR_MOTOR_OK
+	blender.progress = progress
+	blender.motor_heat = motor_heat
+	blender.holding = holding
+	var blending := state == State.BLENDING
+	hold_label.modulate.a = 1.0 if blending and not holding and motor_heat < motor_warn_min else 0.0
+	if blending:
+		if motor_heat >= motor_red_min:
+			status_label.text = tr("PREP_BLEND_TOO_HOT")
+		elif motor_heat >= motor_warn_min:
+			status_label.text = tr("PREP_BLEND_WARM")
+		elif holding:
+			status_label.text = tr("PREP_BLEND_TURBO")
+		else:
+			status_label.text = tr("PREP_BLEND_HOLD")
+	elif state == State.IDLE:
+		status_label.text = ""

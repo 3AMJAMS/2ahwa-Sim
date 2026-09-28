@@ -14,8 +14,7 @@
       "tier": 0,
       "name_ar": "خلاط بسيط",
       "cost_egp": 0,
-      "unlocked": false,
-      "hint_ar": "يفتح في المرحلة الجاية"
+      "unlocked": true
     },
     {
       "id": "espresso_none",

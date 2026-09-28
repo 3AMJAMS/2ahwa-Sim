@@ -48,9 +48,22 @@ Arabic-only through Phase 5. Translation-key architecture from Phase 1 (key → 
 
 ---
 
-## Phase 1 · Core Minigame (Weeks 4–8)
-Hot sand-bath gauge + cold blender gauge, in isolation. **Also:** aspect-ratio/stretch-mode implementation, RTL font validation, translation-key architecture, tutorial Stages 1–2.
+## Phase 1 · Core Minigame (Weeks 4–8) — in progress
+Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes later as a heat-slot upgrade) + cold blender gauge, in isolation. **Also:** aspect-ratio/stretch-mode implementation, RTL font validation, translation-key architecture, tutorial Stages 1–2.
 **Exit benchmark:** both loops satisfying 10–15 min, tested across aspect ratios + mid-range Android + desktop.
+
+**Built (as of 28 Sep 2026):**
+- Loop: tap FIFI's trunk → fade to prep station → brew → tips → fade back to the street
+- Heat gauge drawn as a real stove: gas ring + كنكة, rising foam, steam, lift-tilt-pour into a tea glass, boil-over with spill + smoke
+- Placeholder FIFI redrawn as a Fiat 127-style hatchback; trunk tap area covers the whole rear
+- Isometric street placeholder (pulled forward from Phase 2 to host the trunk tap)
+- Translation keys (`ar_EG.csv`), Cairo font, portrait `canvas_items` + `expand` stretch, local save, locked espresso slot with price
+- Blend gauge on screen: blender art with fruit/ice chunks blending down, vortex, motor heat lights + smoke, pour into a tall glass with ice and straw; overheat = burn-out, lid pops, juice splattered everywhere
+- Five orders rotating at random (no repeats back to back): شاي كشري, قهوة تركي (in a فنجان), كركديه سخن, كركديه ساقع, عصير مانجا
+
+**Remaining:**
+- Tutorial Stages 1–2 (`tutorials_seen` already in save data)
+- RTL + aspect-ratio device checks; exit playtest
 
 ## Phase 2 · Station Loop MVP (Weeks 9–16)
 Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-sort. **Also:** GameAnalytics SDK integration.

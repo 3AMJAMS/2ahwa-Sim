@@ -1,23 +1,32 @@
 keys,ar_EG
 PREP_TEA_KOSHARI,شاي كشري
+PREP_COFFEE_TURKISH,قهوة تركي
+PREP_KARKADE_HOT,كركديه سخن
+PREP_KARKADE_COLD,كركديه ساقع
+PREP_MANGO,عصير مانجا
 PREP_ORDER_TITLE,الطلب
-PREP_WAITING,"إنتظر... الشاي يسخن"
+PREP_WAITING,"استنى... لسه بيسخن"
 PREP_WOSH_RISING,"✓ الوش جاي! اضغط"
 PREP_TOO_HOT,"⚠ درجة حرارة عالية!"
-PREP_BURNT,"✗ حرقت! الشاي اتحرق"
-PREP_PERFECT,"✓ مظبوط! شاي لذيذ"
+PREP_BURNT,"✗ فار واتحرق!"
+PREP_PERFECT,"✓ مظبوط! تسلم إيدك"
 PREP_LUKEWARM,"⚠ دافي شوية"
-PREP_BLEND_HOLD,"اضغط باستمرار عشان تسرّع الخلاط"
+PREP_BLEND_HOLD,"الخلاط شغال... دوس باستمرار عشان تسرّعه"
 PREP_BLEND_OVERHEAT,"✗ الموتور سخن! الخلاط وقف"
 PREP_BLEND_DONE,"✓ العصير جاهز"
+PREP_BLEND_TURBO,"⚡ تيربو!"
+PREP_BLEND_WARM,"⚠ الموتور بيسخن... سيبه شوية"
+PREP_BLEND_TOO_HOT,"⚠ سيبه! الموتور هيولع"
 PREP_ESPRESSO_LOCKED,"إسبريسو — مقفول"
 RESULT_SUCCESS,"✓ مظبوط! 🎉"
 RESULT_OK,"✓ ماشي الحال"
 RESULT_FAIL,"✗ حرقت! 🔥"
+RESULT_FAIL_BLEND,"✗ الخلاط ولّع! 💥"
 RESULT_TIPS,"بقشيش: {amount} ج.م"
 UI_TAP_TO_STOP,"[اضغط للإيقاف]"
+UI_HOLD_TO_BLEND,"[دوس باستمرار للتيربو]"
 UI_RETURNING,"عودة للشارع..."
-UI_TAP_TRUNK,"اضغط على شنطة فيفي عشان تعمل شاي"
+UI_TAP_TRUNK,"اضغط على شنطة فيفي عشان تحضّر الطلب"
 UI_WALLET,"الفلوس: {amount} ج.م"
 UI_DAY,"اليوم {day}"
 UI_CURRENCY,ج.م
