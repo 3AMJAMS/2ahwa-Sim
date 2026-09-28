@@ -32,12 +32,31 @@ func _ready() -> void:
 	world_host.trunk_tapped.connect(transition_to_prep)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
+	world_host.reset_requested.connect(_confirm_reset)
 	DayClock.minute_changed.connect(_relight)
 	_day_start_money = Economy.currency_egp
 	prep_layer.visible = false
 	fade_rect.modulate.a = 0.0
 	fade_label.visible = false
 	_intro.call_deferred()
+
+
+## Hidden "start over" (five taps on the day/money line): wipes the save
+## and restarts, so the tutorial plays again. Handy for testers.
+func _confirm_reset() -> void:
+	if state != State.WORLD:
+		return
+	var dialog := ConfirmationDialog.new()
+	dialog.dialog_text = tr("UI_RESET_CONFIRM")
+	dialog.ok_button_text = tr("UI_RESET_YES")
+	dialog.cancel_button_text = tr("UI_RESET_NO")
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void:
+		Economy.reset()
+		DayClock.start_day()
+		get_tree().reload_current_scene())
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
 
 
 ## First launch: Sayed shows round the street, ending on the trunk tap.

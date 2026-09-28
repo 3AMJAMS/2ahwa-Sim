@@ -5,6 +5,8 @@ extends Node2D
 ## Cairo sodium streetlights. Drawn procedurally and lit by DayClock.
 
 signal trunk_tapped
+## Five quick taps on the day/clock/money line: the hidden "start over".
+signal reset_requested
 
 const TILE_W := 128.0
 const TILE_H := 64.0
@@ -73,6 +75,8 @@ func _ready() -> void:
 	# The labels are UI, not scenery: keep the streetlights off them.
 	hint_label.light_mask = 0
 	wallet_label.light_mask = 0
+	wallet_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	wallet_label.gui_input.connect(_on_wallet_input)
 	for lamp in STREETLIGHTS:
 		_build_lamp_effects(lamp[0], lamp[1])
 	# Passing traffic drives in the lanes behind FIFI, so it goes under her.
@@ -404,3 +408,18 @@ func _ground_ellipse(c: Vector2, r: Vector2, color: Color) -> void:
 		var a := TAU * k / 20.0
 		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
 	_m.colored_polygon(pts, color)
+
+
+var _wallet_taps := 0
+var _wallet_tap_at := 0
+
+
+func _on_wallet_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	var now := Time.get_ticks_msec()
+	_wallet_taps = _wallet_taps + 1 if now - _wallet_tap_at < 600 else 1
+	_wallet_tap_at = now
+	if _wallet_taps >= 5:
+		_wallet_taps = 0
+		reset_requested.emit()
