@@ -8,7 +8,7 @@ extends Control
 ## Lit by DayClock; redraws only on resize or when the game minute ticks.
 
 ## Width / height of the prep panel it frames (matches the AspectRatioContainer).
-const PANEL_RATIO := 1080.0 / 1920.0
+const PANEL_RATIO := 0.75
 const BUILDING := Color("3a3548")
 const WINDOW_LIT := Color("ffd27a")
 const WINDOW_DAY := Color("8aa3c2")

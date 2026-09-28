@@ -94,10 +94,20 @@ var _glass_steam_acc := 0.0
 ## Heat shimmer over the ring: a screen-reading shader on a rect that follows
 ## the flame, stronger as the heat builds.
 var _haze := ColorRect.new()
+## The gas flame is drawn additively on its own layer so it reads as
+## see-through fire that brightens where the tongues overlap.
+var _flame_layer := Control.new()
 
 
 func _ready() -> void:
 	super()
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_flame_layer.material = add
+	_flame_layer.mouse_filter = MOUSE_FILTER_IGNORE
+	_flame_layer.set_anchors_preset(PRESET_FULL_RECT)
+	_flame_layer.draw.connect(_draw_flame_layer)
+	add_child(_flame_layer)
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://shaders/heat_haze.gdshader")
 	_haze.material = mat
@@ -196,6 +206,7 @@ func _process(delta: float) -> void:
 	_emit_particles(delta)
 	_step_particles(delta)
 	queue_redraw()
+	_flame_layer.queue_redraw()
 
 
 func _served_color(kind: Pour) -> Color:
@@ -343,35 +354,41 @@ func _draw_cylinder() -> void:
 
 
 func _draw_flame() -> void:
-	if flame <= 0.01:
-		_draw_front_prong()
-		return
-	var f := flame
-	if burn > 0.0:
-		f *= 0.55 + 0.45 * absf(sin(_t * 23.0))
-	_soft_blob(Vector2(BURNER_TOP.x, RING_Y - 14), Vector2(190, 80), Color(COLOR_GLOW, 0.35 * f))
-	var n := 9
-	for i in n:
-		var u := i / float(n - 1) * 2.0 - 1.0
-		var base := Vector2(BURNER_TOP.x + u * 48.0, RING_Y)
-		var h := (30.0 + 12.0 * absf(u)) * f * (0.85 + 0.15 * sin(_t * 19.0 + i * 2.3) + 0.08 * sin(_t * 31.0 + i))
-		var lean := u * 24.0 + sin(_t * 7.0 + i) * 2.0
-		_tongue(base, 13.0, h, lean, hdr(COLOR_FLAME, 1.7))
-		_tongue(base, 6.0, h * 0.5, lean * 0.5, hdr(COLOR_FLAME_CORE, 2.4))
-		if h > 4.0:
-			draw_circle(base + Vector2(lean, -h + 4.0), 3.5 * f, hdr(COLOR_FLAME_TIP, 2.0))
 	_draw_front_prong()
 
 
-func _draw_front_prong() -> void:
-	var x := BURNER_TOP.x + 8.0
-	draw_polyline(PackedVector2Array([Vector2(x, 448), Vector2(x, 400)]), COLOR_IRON.lightened(0.08), 6.0, true)
+## Additive layer: a faint wide veil, the blue body and a bright core per
+## tongue, orange licks at the tips. Colours add up, so overlaps glow.
+func _draw_flame_layer() -> void:
+	if flame <= 0.01 or _scene_scale() <= 0.0:
+		return
+	var ci := _flame_layer
+	ci.draw_set_transform_matrix(_scene_xf())
+	var f := flame
+	if burn > 0.0:
+		f *= 0.55 + 0.45 * absf(sin(_t * 23.0))
+	ci.draw_texture_rect(_soft, Rect2(Vector2(BURNER_TOP.x, RING_Y - 14) - Vector2(190, 80), Vector2(380, 160)), false,
+		Color(COLOR_GLOW, 0.22 * f))
+	var n := 11
+	for i in n:
+		var u := i / float(n - 1) * 2.0 - 1.0
+		var base := Vector2(BURNER_TOP.x + u * 50.0, RING_Y)
+		var flicker := 0.85 + 0.15 * sin(_t * 19.0 + i * 2.3) + 0.08 * sin(_t * 31.0 + i)
+		var h := (30.0 + 12.0 * absf(u)) * f * flicker
+		var lean := u * 24.0 + sin(_t * 7.0 + i) * 2.5
+		_tongue_on(ci, base, 18.0, h * 1.15, lean * 1.1, Color(0.2, 0.35, 1.0, 0.18))
+		_tongue_on(ci, base, 12.0, h, lean, hdr(Color(0.3, 0.5, 1.0, 0.42), 1.5))
+		_tongue_on(ci, base, 5.0, h * 0.5, lean * 0.5, hdr(Color(0.7, 0.88, 1.0, 0.55), 2.0))
+		if h > 6.0:
+			var tip := base + Vector2(lean, -h + 3.0)
+			ci.draw_circle(tip, 3.2 * f, hdr(Color(1.0, 0.55, 0.2, 0.45), 1.8))
+	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
-func _tongue(base: Vector2, w: float, h: float, lean: float, color: Color) -> void:
+func _tongue_on(ci: CanvasItem, base: Vector2, w: float, h: float, lean: float, color: Color) -> void:
 	if h < 1.0:
 		return
-	draw_colored_polygon(PackedVector2Array([
+	ci.draw_colored_polygon(PackedVector2Array([
 		base + Vector2(-w * 0.5, 0),
 		base + Vector2(-w * 0.55 + lean * 0.25, -h * 0.35),
 		base + Vector2(-w * 0.3 + lean * 0.65, -h * 0.72),
@@ -380,6 +397,11 @@ func _tongue(base: Vector2, w: float, h: float, lean: float, color: Color) -> vo
 		base + Vector2(w * 0.55 + lean * 0.25, -h * 0.35),
 		base + Vector2(w * 0.5, 0),
 	]), color)
+
+
+func _draw_front_prong() -> void:
+	var x := BURNER_TOP.x + 8.0
+	draw_polyline(PackedVector2Array([Vector2(x, 448), Vector2(x, 400)]), COLOR_IRON.lightened(0.08), 6.0, true)
 
 
 ## Drawn in kanaka-local space.

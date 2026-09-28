@@ -6,7 +6,9 @@ extends Control
 ## bulbs hang under the roof; painted pillars run down the sides,
 ## the trunk (headliner, rear seat back, side trim, carpet) with a wooden rack
 ## of supplies across it, and the rear panel with lamps, plate and bumper
-## below the sill. LED strips chase round the opening and the hatch lip.
+## below the sill. LED strips line the opening and the hatch, their colours
+## breathing in and out in a slow wave. The idle appliance (blender while
+## brewing, stove while blending) waits at the back of the trunk.
 ## PrepStation feeds it where the station art's trunk floor sits on screen,
 ## so the carpet and the sill line up with whatever the gauge is drawing.
 
@@ -27,12 +29,14 @@ const PLATE_BAND := Color("4b87c6")
 ## Day-1 jars on the rack: tea, sugar, dried hibiscus, coffee.
 const JAR_COLORS := [Color("3b2412"), Color("f1ede4"), Color("7a1428"), Color("4a2b1b")]
 const WOOD := Color("9a6a3e")
-## LED strip colours, repeating in bands that chase round the opening.
-const LED_COLORS := [Color("ff4a4a"), Color("b45cff"), Color("ffcf3a")]
+## LED strip colours, repeating in short bands; each colour breathes in turn.
+const LED_COLORS := [Color("ff3b3b"), Color("ff8a1f"), Color("ffd23a"), Color("3bff6a"),
+	Color("2fe0ff"), Color("3b6bff"), Color("b45cff"), Color("ff4fb8")]
 const LED_SPACING := 13.0
-const HATCH_H := 270.0
-const ROOF_TOP := 282.0
-const ROOF_BOTTOM := 312.0
+const LED_BAND := 4
+const HATCH_H := 190.0
+const ROOF_TOP := 200.0
+const ROOF_BOTTOM := 226.0
 const SODIUM := Color("ffa94d")
 const BULB := Color("fff1d6")
 
@@ -44,20 +48,29 @@ var sill_y := 1426.0
 var inner := Vector2(60, 1020)
 var art_scale := 1.0
 
+## Which appliance is idle at the back of the trunk: "blend" or "heat".
+var idle_station := "blend":
+	set(value):
+		idle_station = value
+		queue_redraw()
+
 var _font: Font = preload("res://assets/ui/main_theme.tres").default_font
 var _t := 0.0
-## LEDs live on their own layer so the chase only redraws the strips, not the car.
-var _leds := Control.new()
-var _chase := 0
+## One layer per LED colour, each drawn once; the breathing is just their
+## modulate, so animating the strips costs nothing to redraw.
+var _led_groups: Array[Control] = []
 var _soft := StationArt._make_soft_texture()
 
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	_leds.mouse_filter = MOUSE_FILTER_IGNORE
-	_leds.set_anchors_preset(PRESET_FULL_RECT)
-	add_child(_leds)
-	_leds.draw.connect(_draw_leds)
+	for g in LED_COLORS.size():
+		var layer := Control.new()
+		layer.mouse_filter = MOUSE_FILTER_IGNORE
+		layer.set_anchors_preset(PRESET_FULL_RECT)
+		add_child(layer)
+		layer.draw.connect(_draw_leds.bind(g))
+		_led_groups.append(layer)
 	# The sky through the rear windscreen follows the time of day.
 	DayClock.minute_changed.connect(queue_redraw)
 
@@ -66,10 +79,9 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_t += delta
-	var step := int(_t * 8.0)
-	if step != _chase:
-		_chase = step
-		_leds.queue_redraw()
+	for g in _led_groups.size():
+		var breath := 0.5 + 0.5 * sin(_t * 1.4 - g * TAU / _led_groups.size())
+		_led_groups[g].modulate = Color(1, 1, 1, 0.25 + 0.75 * breath * breath)
 
 
 func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale: float) -> void:
@@ -81,7 +93,8 @@ func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale:
 	inner = new_inner
 	art_scale = new_scale
 	queue_redraw()
-	_leds.queue_redraw()
+	for layer in _led_groups:
+		layer.queue_redraw()
 
 
 func _draw() -> void:
@@ -118,11 +131,11 @@ func _draw_hatch(w: float) -> void:
 	draw_polygon(pane, PackedColorArray([top_col, top_col, low_col, low_col]))
 	if dark > 0.05:
 		for k in 14:
-			var p := Vector2(110 + float((k * 173) % 860), 50 + float((k * 67) % 160))
+			var p := Vector2(110 + float((k * 173) % 860), 44 + float((k * 67) % 100))
 			if Geometry2D.is_point_in_polygon(p, pane):
 				draw_circle(p, 1.6, Color(1, 1, 1, 0.6 * dark))
 		# The streetlight overhead, seen through the glass.
-		var lamp := Vector2(w * 0.74, 96)
+		var lamp := Vector2(w * 0.8, 70)
 		_soft_blob(lamp, Vector2(150, 110), Color(SODIUM, 0.35 * dark))
 		draw_line(lamp + Vector2(120, -60), lamp + Vector2(20, -6), Color("2a2a32"), 6.0, true)
 		draw_colored_polygon(PackedVector2Array([lamp + Vector2(-34, -8), lamp + Vector2(30, -8), lamp + Vector2(24, 6),
@@ -138,9 +151,9 @@ func _draw_hatch(w: float) -> void:
 		var a := pane[0].lerp(pane[3], t)
 		var b := pane[1].lerp(pane[2], t)
 		draw_line(a.lerp(b, 0.04), b.lerp(a, 0.04), Color(0.6, 0.32, 0.2, 0.55), 1.5 + t)
-	var pivot := Vector2(w * 0.5, 52)
-	draw_line(pivot, pivot + Vector2(-260, 150), SEAL, 6.0, true)
-	draw_line(pivot + Vector2(-60, 35), pivot + Vector2(-300, 172), Color("2c2c30"), 4.0, true)
+	var pivot := Vector2(w * 0.22, 48)
+	draw_line(pivot, pivot + Vector2(-60, 100), SEAL, 6.0, true)
+	draw_line(pivot + Vector2(-14, 24), pivot + Vector2(-70, 118), Color("2c2c30"), 4.0, true)
 	draw_circle(pivot, 9, SEAL)
 	var seal := pane.duplicate()
 	seal.append(pane[0])
@@ -154,9 +167,9 @@ func _draw_hatch(w: float) -> void:
 
 ## Two bare work bulbs hanging from the roof edge into the trunk.
 func _draw_bulbs(l: float, r: float) -> void:
-	for x in [l + 120.0, r - 120.0]:
+	for x in [l + 70.0, r - 70.0]:
 		var hook := Vector2(x, ROOF_BOTTOM + 4)
-		var bulb := hook + Vector2(0, 74)
+		var bulb := hook + Vector2(0, 40)
 		_soft_blob(bulb + Vector2(0, 60), Vector2(260, 220), Color(BULB, 0.1))
 		draw_line(hook, bulb + Vector2(0, -16), Color("1d1b20"), 3.0)
 		draw_rect(Rect2(bulb + Vector2(-7, -22), Vector2(14, 12)), Color("8a8579"))
@@ -207,6 +220,7 @@ func _draw_interior(w: float) -> void:
 		var y := lerpf(back, floor_y, d)
 		var x := lerpf(lerpf(bl, l, d), lerpf(br, r, d), t)
 		draw_circle(Vector2(x, y), 1.5, Color(1, 1, 1, 0.05))
+	_draw_idle_appliance(Vector2(br - 110.0 * art_scale, back + 4.0), art_scale * 0.62)
 	_draw_rack(l, r, bl, br, back, seat_top)
 	_draw_bulbs(l, r)
 
@@ -238,7 +252,9 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 		draw_colored_polygon(PackedVector2Array([Vector2(gx - 2 * s, base), Vector2(gx + 26 * s, base),
 			Vector2(gx + 22 * s, base - 40 * s), Vector2(gx + 2 * s, base - 40 * s)]), Color(0.8, 0.92, 1.0, 0.3))
 		draw_line(Vector2(gx + 5 * s, base - 4 * s), Vector2(gx + 7 * s, base - 36 * s), Color(1, 1, 1, 0.45), 2.0)
-	x += 110.0 * s
+	x += 100.0 * s
+	_draw_straw_cup(Vector2(x, base), s)
+	x += 50.0 * s
 	var jw := 30.0 * s
 	for i in JAR_COLORS.size():
 		_draw_jar(Vector2(x, base), jw, 46.0 * s, JAR_COLORS[i])
@@ -285,7 +301,7 @@ func _draw_pillars(w: float) -> void:
 	draw_rect(Rect2(r, ROOF_BOTTOM, 6, sill_y - ROOF_BOTTOM), SEAL)
 	draw_rect(Rect2(8, ROOF_TOP + 10, 8, sill_y - ROOF_TOP - 20), Color(1, 1, 1, 0.18))
 	for side in [-1.0, 1.0]:
-		var foot := Vector2(l + 10 if side < 0 else r - 10, ROOF_BOTTOM + 380)
+		var foot := Vector2(l + 10 if side < 0 else r - 10, ROOF_BOTTOM + 260)
 		var head := Vector2(l + 40 if side < 0 else r - 40, HATCH_H - 40)
 		draw_line(foot, foot.lerp(head, 0.55), Color("2a2a30"), 11.0, true)
 		draw_line(foot.lerp(head, 0.5), head, CHROME, 5.0, true)
@@ -344,44 +360,91 @@ func _draw_rear_panel(w: float, h: float) -> void:
 	draw_circle(Vector2(w * 0.3, bumper_top + 66), 8, Color("121016"))
 
 
-## LED strips round the hatch lip, the roof edge, both pillars and the sill,
-## in repeating red/purple/yellow bands that slowly chase. Drawn on _leds.
-func _draw_leds() -> void:
+## LED strips down the raised hatch's sides and along its hinge edge, then
+## round the roof edge, both pillars and the sill. Layer `group` draws only
+## the LEDs of its colour; bands of LED_BAND LEDs cycle through the colours.
+func _draw_leds(group: int) -> void:
 	var w := size.x
 	if w < inner.y or inner.y <= inner.x:
 		return
+	var layer := _led_groups[group]
 	var l := inner.x - 3.0
 	var r := inner.y + 3.0
-	# Down one side of the raised hatch, along its hinge edge, back up the other.
-	var i := _led_run(Vector2(-40, 0), Vector2(l - 2, HATCH_H - 3), 0)
-	i = _led_run(Vector2(l - 2, HATCH_H - 3), Vector2(r + 2, HATCH_H - 3), i)
-	i = _led_run(Vector2(r + 2, HATCH_H - 3), Vector2(w + 40, 0), i)
-	i = _led_run(Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
-	i = _led_run(Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
-	i = _led_run(Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
-	_led_run(Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
+	var i := _led_run(layer, group, Vector2(-40, 0), Vector2(l - 2, HATCH_H - 3), 0)
+	i = _led_run(layer, group, Vector2(l - 2, HATCH_H - 3), Vector2(r + 2, HATCH_H - 3), i)
+	i = _led_run(layer, group, Vector2(r + 2, HATCH_H - 3), Vector2(w + 40, 0), i)
+	i = _led_run(layer, group, Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
+	i = _led_run(layer, group, Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
+	i = _led_run(layer, group, Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
+	_led_run(layer, group, Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
 
 
-## One straight run of strip: each colour band is a soft wide stroke plus a
-## bright core, with the individual LEDs dotted along it.
-func _led_run(a: Vector2, b: Vector2, start: int) -> int:
+## One straight run of strip; draws this group's bands as a soft wide stroke
+## plus a bright core, with the individual LEDs dotted along them.
+func _led_run(layer: Control, group: int, a: Vector2, b: Vector2, start: int) -> int:
 	var n := maxi(1, int(a.distance_to(b) / LED_SPACING))
-	var band := 7
-	var k := 0
-	while k < n:
-		var idx := posmod(floori((start + k - _chase) / float(band)), LED_COLORS.size())
-		var run := band - posmod(start + k - _chase, band)
-		var k1 := mini(k + run, n)
+	var c: Color = LED_COLORS[group]
+	for k in n:
+		if posmod(floori((start + k) / float(LED_BAND)), LED_COLORS.size()) != group:
+			continue
 		var p0 := a.lerp(b, k / float(n))
-		var p1 := a.lerp(b, k1 / float(n))
-		var c: Color = LED_COLORS[idx]
-		_leds.draw_line(p0, p1, Color(c, 0.16), 20.0)
-		_leds.draw_line(p0, p1, StationArt.hdr(c, 1.45), 6.0)
-		k = k1
-	for j in n:
-		var p := a.lerp(b, j / float(n))
-		_leds.draw_rect(Rect2(p - Vector2(2.5, 2.5), Vector2(5, 5)), StationArt.hdr(Color(1, 1, 1, 0.8), 1.6))
+		var p1 := a.lerp(b, (k + 1) / float(n))
+		layer.draw_line(p0, p1, Color(c, 0.18), 20.0)
+		layer.draw_line(p0, p1, StationArt.hdr(c, 1.5), 6.0)
+		layer.draw_rect(Rect2(p0 - Vector2(2.5, 2.5), Vector2(5, 5)), StationArt.hdr(c.lerp(Color.WHITE, 0.6), 1.7))
 	return start + n
+
+
+## A paper cup of striped straws on the rack.
+func _draw_straw_cup(base: Vector2, s: float) -> void:
+	var straws := [Color("e8433a"), Color("3b8fe0"), Color("f2c230"), Color("4cc26a"), Color("ff6fb5")]
+	for k in straws.size():
+		var foot := base + Vector2((8 + k * 5) * s, -30 * s)
+		var tip := foot + Vector2((k - 2) * 7 * s, -58 * s + (k % 2) * 8 * s)
+		draw_line(foot, tip, straws[k], 4.0 * s)
+		draw_line(foot.lerp(tip, 0.3), foot.lerp(tip, 0.4), Color.WHITE, 4.0 * s)
+		draw_line(foot.lerp(tip, 0.65), foot.lerp(tip, 0.75), Color.WHITE, 4.0 * s)
+	draw_colored_polygon(PackedVector2Array([base, base + Vector2(34 * s, 0), base + Vector2(38 * s, -36 * s),
+		base + Vector2(-4 * s, -36 * s)]), Color("f3efe6"))
+	draw_rect(Rect2(base + Vector2(-2 * s, -26 * s), Vector2(38 * s, 9 * s)), Color("c8322b"))
+	draw_line(base + Vector2(-4 * s, -36 * s), base + Vector2(38 * s, -36 * s), Color("d8d2c6"), 3.0 * s)
+
+
+## The appliance not in use, waiting at the back of the trunk (smaller and a
+## touch darker, since it sits further away).
+func _draw_idle_appliance(base: Vector2, k: float) -> void:
+	if k <= 0.05:
+		return
+	var dim := Color(0.82, 0.8, 0.85)
+	if idle_station == "heat":
+		# Gas cylinder, burner and the كنكة resting on it, flame off.
+		draw_rect(Rect2(base + Vector2(-86, -16) * k, Vector2(172, 16) * k), Color("2c2a30") * dim)
+		var body := PackedVector2Array([base + Vector2(-100, -14) * k, base + Vector2(100, -14) * k])
+		for i in 9:
+			var a := PI * i / 8.0
+			body.append(base + Vector2(100 * cos(a), -112 - 26 * sin(a)) * k)
+		draw_colored_polygon(body, Color("b8452f") * dim)
+		draw_rect(Rect2(base + Vector2(-100, -66) * k, Vector2(200, 16) * k), Color("efe6d2") * dim)
+		draw_rect(Rect2(base + Vector2(-20, -162) * k, Vector2(40, 24) * k), Color("c9a24a") * dim)
+		draw_rect(Rect2(base + Vector2(-50, -176) * k, Vector2(100, 12) * k), Color("2c2a30") * dim)
+		var pot := PackedVector2Array([base + Vector2(-76, -176) * k, base + Vector2(76, -176) * k,
+			base + Vector2(62, -300) * k, base + Vector2(-62, -300) * k])
+		draw_colored_polygon(pot, Color("b3b9c2") * dim)
+		draw_rect(Rect2(base + Vector2(-66, -306) * k, Vector2(132, 10) * k), Color("e6e9ee") * dim)
+		draw_line(base + Vector2(60, -260) * k, base + Vector2(220, -290) * k, Color("5a3620") * dim, 14.0 * k)
+	else:
+		# The blender: cream motor base, button panel, empty glass jar, black lid.
+		draw_colored_polygon(PackedVector2Array([base + Vector2(-116, 0) * k, base + Vector2(116, 0) * k,
+			base + Vector2(92, -130) * k, base + Vector2(-92, -130) * k]), Color("e8e0cc") * dim)
+		draw_rect(Rect2(base + Vector2(-70, -104) * k, Vector2(140, 60) * k), Color("2b2a30") * dim)
+		for i in 3:
+			draw_circle(base + Vector2(-40 + i * 40, -64) * k, 11 * k, Color("55535c"))
+		draw_rect(Rect2(base + Vector2(-80, -148) * k, Vector2(160, 18) * k), Color("2f2d34") * dim)
+		draw_colored_polygon(PackedVector2Array([base + Vector2(-66, -148) * k, base + Vector2(66, -148) * k,
+			base + Vector2(98, -410) * k, base + Vector2(-98, -410) * k]), Color(0.8, 0.92, 1.0, 0.22))
+		draw_line(base + Vector2(-66, -148) * k, base + Vector2(-98, -410) * k, Color(1, 1, 1, 0.4), 3.0 * k)
+		draw_line(base + Vector2(66, -148) * k, base + Vector2(98, -410) * k, Color(1, 1, 1, 0.4), 3.0 * k)
+		draw_rect(Rect2(base + Vector2(-102, -436) * k, Vector2(204, 26) * k), Color("2f2d34") * dim)
 
 
 func _soft_blob(c: Vector2, r: Vector2, color: Color) -> void:

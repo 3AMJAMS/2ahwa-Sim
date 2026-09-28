@@ -49,6 +49,7 @@ var _soft := StationArt._make_soft_texture()
 var _lamp_lights: Array[PointLight2D] = []
 var _lamp_moths: Array[CPUParticles2D] = []
 var _lamp_dust: Array[CPUParticles2D] = []
+var _traffic := Traffic.new()
 
 @onready var fifi: Node2D = $FIFISprite
 @onready var trunk_area: Area2D = $TrunkArea
@@ -68,6 +69,10 @@ func _ready() -> void:
 	wallet_label.light_mask = 0
 	for lamp in STREETLIGHTS:
 		_build_lamp_effects(lamp[0], lamp[1])
+	# Passing traffic drives in the lanes behind FIFI, so it goes under her.
+	add_child(_traffic)
+	move_child(_traffic, 0)
+	Economy.currency_changed.connect(_pop_wallet.unbind(1))
 	get_viewport().size_changed.connect(_recenter)
 	Economy.currency_changed.connect(_update_wallet.unbind(1))
 	DayClock.minute_changed.connect(_relight)
@@ -93,6 +98,7 @@ func _relight() -> void:
 	var dark := DayClock.darkness()
 	fifi.ambient = DayClock.ambient()
 	fifi.darkness = dark
+	_traffic.set_light(DayClock.ambient(), dark)
 	for light in _lamp_lights:
 		light.energy = 1.25 * dark
 		light.visible = dark > 0.01
@@ -100,6 +106,14 @@ func _relight() -> void:
 		p.emitting = dark > 0.4
 	_update_wallet()
 	queue_redraw()
+
+
+## A quick bounce on the wallet whenever the money changes.
+func _pop_wallet() -> void:
+	wallet_label.pivot_offset = wallet_label.size * 0.5
+	var t := create_tween()
+	t.tween_property(wallet_label, "scale", Vector2(1.18, 1.18), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(wallet_label, "scale", Vector2.ONE, 0.25)
 
 
 func _update_wallet() -> void:

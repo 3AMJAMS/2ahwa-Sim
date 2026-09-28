@@ -37,6 +37,7 @@ The project uses Godot's built-in effects, so run it with the **Mobile** (or For
 HDR 2D + glow (`rendering/viewport/hdr_2d`, `WorldEnvironment` in `scenes/main.tscn`), `PointLight2D` streetlights,
 `CPUParticles2D` moths/dust, and shaders in `shaders/` (heat haze over the stove, screen vignette).
 Anything that should glow is drawn with a colour brighter than white (`StationArt.hdr()`).
+Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you set up the Android export preset.
 
 ### Project layout
 | Path | What |
@@ -48,6 +49,7 @@ Anything that should glow is drawn with a colour brighter than white (`StationAr
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
 | `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
+| `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing taxis, microbuses and tuk-tuks on the street |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
 | `scripts/world/` | Isometric street (four-lane road, painted kerbs, pavements, Cairo streetlights) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |

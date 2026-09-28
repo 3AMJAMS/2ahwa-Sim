@@ -33,7 +33,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-ratio = 0.5625
+ratio = 0.75
 
 [node name="Car" type="Control" parent="Frame"]
 clip_contents = true
@@ -60,7 +60,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/margin_left = 60
-theme_override_constants/margin_top = 330
+theme_override_constants/margin_top = 232
 theme_override_constants/margin_right = 60
 theme_override_constants/margin_bottom = 0
 
@@ -68,19 +68,6 @@ theme_override_constants/margin_bottom = 0
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 24
-
-[node name="OrderTitle" type="Label" parent="Frame/Car/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.784, 0.38, 0.7)
-text = "PREP_ORDER_TITLE"
-horizontal_alignment = 1
-
-[node name="OrderDisplay" type="Label" parent="Frame/Car/Margin/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.784, 0.38, 1)
-theme_override_font_sizes/font_size = 84
-horizontal_alignment = 1
 
 [node name="HeatGauge" parent="Frame/Car/Margin/VBox" instance=ExtResource("2_heat")]
 unique_name_in_owner = true
@@ -92,27 +79,56 @@ visible = false
 layout_mode = 2
 
 [node name="RearPanel" type="Control" parent="Frame/Car/Margin/VBox"]
-custom_minimum_size = Vector2(0, 300)
+custom_minimum_size = Vector2(0, 210)
 layout_mode = 2
 mouse_filter = 2
+
+[node name="OrderBox" type="VBoxContainer" parent="Frame/Car"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 36.0
+offset_bottom = 150.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = -6
+alignment = 1
+
+[node name="OrderTitle" type="Label" parent="Frame/Car/OrderBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.784, 0.38, 0.75)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.1, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 26
+text = "PREP_ORDER_TITLE"
+horizontal_alignment = 1
+
+[node name="OrderDisplay" type="Label" parent="Frame/Car/OrderBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.784, 0.38, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.1, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 54
+horizontal_alignment = 1
 
 [node name="EspressoSlot" type="PanelContainer" parent="Frame/Car"]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -300.0
-offset_top = 44.0
-offset_right = 300.0
-offset_bottom = 96.0
-grow_horizontal = 2
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -330.0
+offset_top = 124.0
+offset_right = -96.0
+offset_bottom = 158.0
+grow_horizontal = 0
 mouse_filter = 2
 
 [node name="EspressoLabel" type="Label" parent="Frame/Car/EspressoSlot"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 vertical_alignment = 1
 
