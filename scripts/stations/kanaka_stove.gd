@@ -1,17 +1,12 @@
 class_name KanakaStove
-extends Control
-## Hot-station art for the flat "Right Mix" view: a gas ring on a small
-## cylinder with a كنكة on top, and a tea glass on its saucer. Purely visual —
-## HeatGauge feeds it `heat` and calls ignite()/pour()/boil_over(); scoring
-## never reads anything from here.
-
-signal sequence_finished
+extends StationArt
+## Hot-station art: a gas ring on a small cylinder with a كنكة on top, and a
+## tea glass (or a coffee فنجان) on its saucer. Purely visual — HeatGauge feeds
+## it `heat` and calls ignite()/pour()/boil_over(); scoring never reads it.
+## set_look() recolours it per drink from the menu item's "look" block.
 
 enum Pour { PERFECT, LUKEWARM, TOO_HOT }
 
-## Everything is authored in a 960×740 box, scaled to fit and pinned to the bottom.
-const SCENE_SIZE := Vector2(960, 740)
-const COUNTER_Y := 606.0
 ## Where the kanaka's base rests on the pot support.
 const BURNER_TOP := Vector2(590, 400)
 const RING_Y := 436.0
@@ -22,6 +17,9 @@ const GLASS_FOOT := 14.0
 ## Half-width at the foot and at the rim.
 const GLASS_HW := Vector2(42, 56)
 const GLASS_FULL := 0.86
+## فنجان: height and half-width at the foot and rim.
+const CUP_H := 92.0
+const CUP_HW := Vector2(34, 50)
 
 # Kanaka local space: origin at the base centre, -y is up.
 ## (half-width, y) up the side: wide belly, pinched neck, flared lip.
@@ -51,32 +49,25 @@ const COLOR_METAL := Color("b3b9c2")
 const COLOR_METAL_DARK := Color("6f7682")
 const COLOR_METAL_LIGHT := Color("e6e9ee")
 const COLOR_GRIP := Color("5a3620")
-const COLOR_POT_TEA := Color("6e2a10")
 const COLOR_BURNT := Color("1e0f08")
-const COLOR_FOAM := Color("dcb88a")
 const COLOR_FOAM_BURNT := Color("4a3020")
-const COLOR_FOAM_LIGHT := Color("f2dfbb")
 const COLOR_CYLINDER := Color("b8452f")
 const COLOR_BRASS := Color("c9a24a")
 const COLOR_IRON := Color("2c2a30")
-const COLOR_COUNTER_TOP := Color("8b5a35")
-const COLOR_COUNTER_FRONT := Color("5c381f")
-const COLOR_SAUCER := Color("ebe6dc")
 const COLOR_FLAME := Color(0.3, 0.5, 1.0, 0.8)
 const COLOR_FLAME_CORE := Color(0.72, 0.88, 1.0, 0.95)
 const COLOR_FLAME_TIP := Color(1.0, 0.62, 0.22, 0.7)
 const COLOR_GLOW := Color("ff9f45")
 const COLOR_SMOKE := Color(0.16, 0.14, 0.15, 0.5)
-## Tea in the glass, indexed by Pour: rich amber, weak and pale, stewed dark.
-const GLASS_TEA := [Color("9c3d16"), Color("c98f4c"), Color("4a1a0b")]
-## How hard the poured glass steams, indexed by Pour.
+const COLOR_GOLD_BAND := Color("c9a24a")
+## How hard the poured drink steams, indexed by Pour.
 const GLASS_STEAM := [1.0, 0.35, 1.3]
 
 var heat := 0.0
 var flame := 0.0
 var pot_pivot := REST_PIVOT
 var pot_tilt := 0.0
-## Tea left in the kanaka, 0..1.
+## Drink left in the kanaka, 0..1.
 var pot_level := 1.0
 var stream := 0.0
 var glass_fill := 0.0
@@ -84,12 +75,12 @@ var glass_foam := 0.0
 var overflow := 0.0
 var burn := 0.0
 
+var _liquid := Color("9c3d16")
+var _foam := Color("dcb88a")
+var _leaves := Color("2e1b0e")
+var _cup := false
 var _on_burner := true
-var _busy := false
 var _pour_kind := Pour.PERFECT
-var _t := 0.0
-var _tween: Tween
-var _rng := RandomNumberGenerator.new()
 var _puffs := []
 var _bubbles := []
 var _drops := []
@@ -98,22 +89,20 @@ var _bubble_acc := 0.0
 var _smoke_acc := 0.0
 var _drop_acc := 0.0
 var _glass_steam_acc := 0.0
-## Soft round sprite for glows, steam and smoke.
-var _soft := _make_soft_texture()
-
-
-class Particle:
-	var pos: Vector2
-	var vel: Vector2
-	var age := 0.0
-	var life := 1.0
-	var size := 4.0
-	var color := Color.WHITE
 
 
 func _ready() -> void:
-	mouse_filter = MOUSE_FILTER_IGNORE
+	super()
 	reset()
+
+
+## Recolours the drink: {"liquid", "foam", "vessel": "glass"|"cup", "leaves"}.
+func set_look(look: Dictionary) -> void:
+	_liquid = Color(look.get("liquid", "#9c3d16"))
+	_foam = Color(look.get("foam", "#dcb88a"))
+	_leaves = Color(look["leaves"]) if look.has("leaves") else Color.TRANSPARENT
+	_cup = look.get("vessel", "glass") == "cup"
+	queue_redraw()
 
 
 ## Kanaka back on a cold ring, full; glass empty.
@@ -144,8 +133,8 @@ func ignite() -> void:
 	_tween.tween_property(self, "flame", 1.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## Lifts the kanaka off the ring and pours it into the glass. Returns once the
-## glass is full; the kanaka then settles back on the ring by itself.
+## Lifts the kanaka off the ring and pours it out. Returns once the glass is
+## full; the kanaka then settles back on the ring by itself.
 func pour(kind: Pour) -> void:
 	_kill_tween()
 	_pour_kind = kind
@@ -172,7 +161,7 @@ func pour(kind: Pour) -> void:
 	await sequence_finished
 
 
-## The tea foams over, the spill chokes the flame and it all turns to smoke.
+## The drink foams over, the spill chokes the flame and it all turns to smoke.
 func boil_over() -> void:
 	_kill_tween()
 	_busy = true
@@ -185,18 +174,6 @@ func boil_over() -> void:
 	await sequence_finished
 
 
-func _finish_sequence() -> void:
-	if _busy:
-		_busy = false
-		sequence_finished.emit()
-
-
-func _kill_tween() -> void:
-	if _tween and _tween.is_valid():
-		_tween.kill()
-	_tween = null
-
-
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
@@ -204,6 +181,19 @@ func _process(delta: float) -> void:
 	_emit_particles(delta)
 	_step_particles(delta)
 	queue_redraw()
+
+
+func _served_color(kind: Pour) -> Color:
+	match kind:
+		Pour.LUKEWARM:
+			return _liquid.lerp(Color("d8b48a"), 0.45)
+		Pour.TOO_HOT:
+			return _liquid.darkened(0.55)
+	return _liquid
+
+
+func _foam_light() -> Color:
+	return _foam.lightened(0.45)
 
 
 #region Particles
@@ -241,7 +231,7 @@ func _emit_particles(delta: float) -> void:
 		while _drop_acc >= 1.0:
 			_drop_acc -= 1.0
 			_drops.append(_particle(_stream_end(), Vector2(_rng.randf_range(-90, 90), _rng.randf_range(-170, -70)),
-				_rng.randf_range(0.2, 0.35), _rng.randf_range(2.5, 4.0), GLASS_TEA[_pour_kind]))
+				_rng.randf_range(0.2, 0.35), _rng.randf_range(2.5, 4.0), _served_color(_pour_kind)))
 	if glass_fill > 0.1 and _puffs.size() < 120:
 		_glass_steam_acc += delta * 7.0 * GLASS_STEAM[_pour_kind] * glass_fill
 		while _glass_steam_acc >= 1.0:
@@ -267,38 +257,35 @@ func _step_particles(delta: float) -> void:
 	_drops = _drops.filter(func(p): return p.age < p.life)
 	_bubbles = _bubbles.filter(func(p): return p.age < p.life)
 
-
-func _particle(pos: Vector2, vel: Vector2, life: float, size_px: float, color: Color) -> Particle:
-	var p := Particle.new()
-	p.pos = pos
-	p.vel = vel
-	p.life = life
-	p.size = size_px
-	p.color = color
-	return p
-
 #endregion
 
 
 #region Drawing
 
 func _draw() -> void:
-	var s := minf(size.x / SCENE_SIZE.x, size.y / SCENE_SIZE.y)
-	if s <= 0.0:
+	if _scene_scale() <= 0.0:
 		return
-	var origin := Vector2((size.x - SCENE_SIZE.x * s) * 0.5, size.y - SCENE_SIZE.y * s)
-	var scene_xf := Transform2D(0.0, Vector2(s, s), 0.0, origin)
+	var scene_xf := _scene_xf()
+	var span := _scene_span()
 	draw_set_transform_matrix(scene_xf)
 	_draw_backdrop()
-	_draw_counter(-origin.x / s, (size.x - origin.x) / s)
+	_draw_counter(span.x, span.y)
+	_fill_ellipse(Vector2(BURNER_TOP.x, COUNTER_Y + 2), Vector2(118, 10), Color(0, 0, 0, 0.3))
 	_draw_cylinder()
 	_draw_flame()
 	draw_set_transform_matrix(scene_xf * _pot_xf())
 	_draw_pot()
 	draw_set_transform_matrix(scene_xf)
-	_draw_glass_back()
-	_draw_stream()
-	_draw_glass_front()
+	if _cup:
+		_draw_cup_back()
+	else:
+		_draw_glass_back()
+	if stream > 0.01:
+		_draw_stream(pot_pivot + Vector2(-2, 3), _stream_end(), stream, _served_color(_pour_kind))
+	if _cup:
+		_draw_cup_front()
+	else:
+		_draw_glass_front()
 	for p in _drops:
 		draw_circle(p.pos, p.size * (1.0 - 0.5 * p.age / p.life), p.color)
 	for p in _puffs:
@@ -309,21 +296,6 @@ func _draw() -> void:
 
 func _draw_backdrop() -> void:
 	_soft_blob(BURNER_TOP + Vector2(-80, -40), Vector2(520, 380), Color(COLOR_GLOW, 0.1 + 0.12 * flame))
-
-
-func _draw_counter(left: float, right: float) -> void:
-	var top := COUNTER_Y - 8.0
-	draw_rect(Rect2(left, top, right - left, 26), COLOR_COUNTER_TOP)
-	draw_rect(Rect2(left, top + 26, right - left, SCENE_SIZE.y - top - 26), COLOR_COUNTER_FRONT)
-	draw_line(Vector2(left, top), Vector2(right, top), COLOR_COUNTER_TOP.lightened(0.25), 3.0)
-	draw_line(Vector2(left, top + 26), Vector2(right, top + 26), Color(0, 0, 0, 0.3), 2.0)
-	for i in 7:
-		var y := top + 40.0 + i * 14.0 + (i % 3) * 3.0
-		var grain := PackedVector2Array()
-		for k in 13:
-			grain.append(Vector2(lerpf(left, right, k / 12.0), y + sin(k * 1.3 + i) * 2.0))
-		draw_polyline(grain, Color(0, 0, 0, 0.12), 1.5)
-	_fill_ellipse(Vector2(BURNER_TOP.x, COUNTER_Y + 2), Vector2(118, 10), Color(0, 0, 0, 0.3))
 
 
 func _draw_cylinder() -> void:
@@ -398,14 +370,15 @@ func _tongue(base: Vector2, w: float, h: float, lean: float, color: Color) -> vo
 ## Drawn in kanaka-local space.
 func _draw_pot() -> void:
 	var upright := clampf(1.0 - absf(pot_tilt) / 0.3, 0.0, 1.0) * pot_level
-	var liquid := COLOR_POT_TEA.lerp(COLOR_BURNT, burn)
-	var foam := COLOR_FOAM.lerp(COLOR_FOAM_BURNT, burn)
+	var liquid := _liquid.darkened(0.3).lerp(COLOR_BURNT, burn)
+	var foam := _foam.lerp(COLOR_FOAM_BURNT, burn)
+	var foam_light := _foam_light().lerp(foam, burn)
 	var cover := smoothstep(42.0, 66.0, heat)
 	var rise := _foam_rise()
 	var spill := _spill()
 	var rim_c := Vector2(0, K_RIM_Y)
 
-	# Inside: dark back wall and back lip, then the tea and its foam.
+	# Inside: dark back wall and back lip, then the drink and its foam.
 	_fill_ellipse(rim_c, K_RIM - Vector2(3, 2), Color("29211d"))
 	_arc(rim_c, K_RIM, PI, TAU, COLOR_METAL_DARK, 3.0)
 	if upright > 0.0:
@@ -414,7 +387,7 @@ func _draw_pot() -> void:
 		for i in 14:
 			var x := (float((i * 53) % 130) - 65.0)
 			var y := surf.y + float((i * 29) % 15) - 7.0
-			draw_circle(Vector2(x, y), 3.0 + (i % 3), Color(COLOR_FOAM_LIGHT.lerp(foam, burn), cover * 0.6 * upright))
+			draw_circle(Vector2(x, y), 3.0 + (i % 3), Color(foam_light, cover * 0.6 * upright))
 		if rise > 0.5:
 			var half := 74.0 + spill * 14.0
 			var dome := PackedVector2Array()
@@ -430,12 +403,12 @@ func _draw_pot() -> void:
 				var c := Vector2(u * half, surf.y - rise * sqrt(1.0 - u * u) * 0.85)
 				var r := 10.0 + 4.0 * sin(_t * 3.0 + i * 1.7)
 				draw_circle(c, r, Color(foam.lightened(0.08), upright))
-				draw_circle(c + Vector2(-r * 0.3, -r * 0.35), r * 0.35, Color(COLOR_FOAM_LIGHT.lerp(foam, burn), 0.8 * upright))
+				draw_circle(c + Vector2(-r * 0.3, -r * 0.35), r * 0.35, Color(foam_light, 0.8 * upright))
 		for b in _bubbles:
 			var k: float = b.age / b.life
 			var r: float = b.size * minf(1.0, k * 1.6)
 			var a := (1.0 - smoothstep(0.75, 1.0, k)) * upright
-			draw_circle(b.pos, r, Color(liquid.lerp(COLOR_FOAM_LIGHT, 0.55), 0.85 * a))
+			draw_circle(b.pos, r, Color(liquid.lerp(foam_light, 0.55), 0.85 * a))
 			draw_circle(b.pos + Vector2(-r * 0.35, -r * 0.35), r * 0.3, Color(1, 1, 1, 0.6 * a))
 
 	# Body, shading, flame reflection on the base.
@@ -498,52 +471,27 @@ func _draw_pot() -> void:
 
 func _draw_glass_back() -> void:
 	var b := GLASS_BASE
-	_fill_ellipse(b + Vector2(0, 9), Vector2(104, 15), Color(0, 0, 0, 0.3))
-	_fill_ellipse(b + Vector2(0, 5), Vector2(98, 15), COLOR_SAUCER.darkened(0.25))
-	_fill_ellipse(b + Vector2(0, 2), Vector2(98, 14), COLOR_SAUCER)
-	_fill_ellipse(b + Vector2(0, 2), Vector2(58, 8), COLOR_SAUCER.darkened(0.07))
+	_draw_saucer(b)
 	draw_colored_polygon(_glass_poly(b.y, b.y - GLASS_H, 0.0), Color(0.8, 0.9, 1.0, 0.1))
 	_arc(Vector2(b.x, b.y - GLASS_H), Vector2(GLASS_HW.y, 8), PI, TAU, Color(1, 1, 1, 0.3), 2.0)
-	# Loose tea leaves waiting at the bottom (it's شاي كشري).
 	var floor_y := b.y - GLASS_FOOT
-	for i in 16:
-		var x := b.x + float((i * 37) % 66) - 33.0
-		draw_circle(Vector2(x, floor_y - 2.0 - float((i * 13) % 6)), 2.4, Color("2e1b0e"))
+	if _leaves.a > 0.0:
+		# Loose leaves waiting at the bottom (شاي كشري is brewed straight in).
+		for i in 16:
+			var x := b.x + float((i * 37) % 66) - 33.0
+			draw_circle(Vector2(x, floor_y - 2.0 - float((i * 13) % 6)), 2.4, _leaves)
 	if glass_fill <= 0.001:
 		return
-	var col: Color = GLASS_TEA[_pour_kind]
+	var col := _served_color(_pour_kind)
 	var top_y := _glass_surface_y()
 	var hw := _glass_hw(top_y) - 4.0
 	draw_colored_polygon(_glass_poly(floor_y, top_y, 4.0), Color(col, 0.9))
 	_fill_ellipse(Vector2(b.x, top_y), Vector2(hw, 6), Color(col.lightened(0.15), 0.95))
 	if glass_foam > 0.0:
-		_fill_ellipse(Vector2(b.x, top_y - 1.0), Vector2(hw - 1.0, 6.5), Color(COLOR_FOAM_LIGHT, glass_foam))
+		_fill_ellipse(Vector2(b.x, top_y - 1.0), Vector2(hw - 1.0, 6.5), Color(_foam_light(), glass_foam))
 		for i in 9:
 			draw_circle(Vector2(b.x - hw * 0.7 + i * hw * 0.17, top_y + sin(i * 2.1) * 2.5), 2.2,
-				Color(COLOR_FOAM, glass_foam))
-
-
-func _draw_stream() -> void:
-	if stream <= 0.01:
-		return
-	var p0 := pot_pivot + Vector2(-2, 3)
-	var p2 := _stream_end()
-	var p1 := Vector2(p0.x - 46, p0.y + 6)
-	var left := PackedVector2Array()
-	var right := PackedVector2Array()
-	var n := 16
-	for i in n + 1:
-		var t := i / float(n)
-		var p := p0.lerp(p1, t).lerp(p1.lerp(p2, t), t)
-		var tangent := (p1 - p0).lerp(p2 - p1, t).normalized()
-		var normal := Vector2(-tangent.y, tangent.x)
-		p += normal * sin(_t * 25.0 + t * 9.0) * 1.2 * t
-		var w := lerpf(5.5, 3.5, t) * stream
-		left.append(p + normal * w)
-		right.append(p - normal * w)
-	right.reverse()
-	var col: Color = GLASS_TEA[_pour_kind]
-	draw_colored_polygon(left + right, Color(col.lightened(0.1), 0.95))
+				Color(_foam, glass_foam))
 
 
 func _draw_glass_front() -> void:
@@ -560,6 +508,47 @@ func _draw_glass_front() -> void:
 	# Teaspoon leaning out of the glass.
 	draw_line(Vector2(b.x - 20, top + 12), Vector2(b.x - 66, top - 44), COLOR_METAL, 5.0, true)
 	_fill_ellipse(Vector2(b.x - 68, top - 47), Vector2(5, 6), COLOR_METAL_LIGHT)
+
+
+## Inside of the فنجان: dark well, then the coffee surface seen through the rim.
+func _draw_cup_back() -> void:
+	var b := GLASS_BASE
+	_draw_saucer(b)
+	var rim := Vector2(b.x, b.y - CUP_H)
+	var mouth := _ellipse(rim, Vector2(CUP_HW.y - 3.0, 8.0))
+	draw_colored_polygon(mouth, COLOR_SAUCER.darkened(0.35))
+	if glass_fill <= 0.001:
+		return
+	var col := _served_color(_pour_kind)
+	var surf := _ellipse(Vector2(b.x, _glass_surface_y()), Vector2(CUP_HW.y - 4.0, 8.0))
+	for piece in Geometry2D.intersect_polygons(mouth, surf):
+		draw_colored_polygon(piece, col)
+		if glass_foam > 0.0:
+			draw_colored_polygon(piece, Color(_foam, glass_foam * 0.9))
+	if glass_foam > 0.0:
+		for i in 7:
+			var p := Vector2(b.x - 30.0 + i * 10.0, _glass_surface_y() + sin(i * 1.9) * 2.5)
+			draw_circle(p, 2.0, Color(_foam_light(), glass_foam * 0.8))
+
+
+func _draw_cup_front() -> void:
+	var b := GLASS_BASE
+	var top := b.y - CUP_H
+	var body := PackedVector2Array([Vector2(b.x - CUP_HW.x, b.y - 4.0), Vector2(b.x + CUP_HW.x, b.y - 4.0)])
+	for i in 17:
+		var a := PI * i / 16.0
+		body.append(Vector2(b.x + CUP_HW.y * cos(a), top + 8.0 * sin(a)))
+	# Handle first, so the body overlaps its roots.
+	draw_arc(Vector2(b.x + CUP_HW.y + 2.0, top + 34.0), 17.0, -PI * 0.55, PI * 0.55, 16, COLOR_SAUCER.darkened(0.12), 9.0, true)
+	draw_colored_polygon(body, COLOR_SAUCER)
+	_clip_fill(body, [Vector2(b.x + 14, top - 10), Vector2(b.x + 60, top - 10), Vector2(b.x + 60, b.y), Vector2(b.x + 10, b.y)],
+		Color(0, 0, 0, 0.14))
+	_clip_fill(body, [Vector2(b.x - 32, top), Vector2(b.x - 22, top), Vector2(b.x - 18, b.y), Vector2(b.x - 26, b.y)],
+		Color(1, 1, 1, 0.5))
+	_fill_ellipse(Vector2(b.x, b.y - 3.0), Vector2(CUP_HW.x + 4.0, 5.0), COLOR_SAUCER.darkened(0.1))
+	# Gold band under the lip, and the lip itself.
+	_arc(Vector2(b.x, top + 12.0), Vector2(CUP_HW.y - 2.5, 8.0), 0.0, PI, COLOR_GOLD_BAND, 3.0)
+	_arc(Vector2(b.x, top), Vector2(CUP_HW.y, 8.0), 0.0, PI, Color.WHITE, 2.5)
 
 #endregion
 
@@ -616,52 +605,13 @@ func _glass_poly(y_bottom: float, y_top: float, inset: float) -> PackedVector2Ar
 
 
 func _glass_surface_y() -> float:
+	if _cup:
+		# Only the top of the coffee shows, sinking out of sight when empty.
+		return GLASS_BASE.y - CUP_H + lerpf(40.0, 3.0, glass_fill / GLASS_FULL)
 	return GLASS_BASE.y - GLASS_FOOT - glass_fill * (GLASS_H - GLASS_FOOT - 8.0)
 
 
 func _stream_end() -> Vector2:
 	return Vector2(GLASS_BASE.x + 8.0, _glass_surface_y())
-
-
-func _soft_blob(c: Vector2, r: Vector2, color: Color) -> void:
-	draw_texture_rect(_soft, Rect2(c - r, r * 2.0), false, color)
-
-
-static func _make_soft_texture() -> GradientTexture2D:
-	var gradient := Gradient.new()
-	gradient.set_color(0, Color.WHITE)
-	gradient.set_color(1, Color(1, 1, 1, 0))
-	var tex := GradientTexture2D.new()
-	tex.gradient = gradient
-	tex.fill = GradientTexture2D.FILL_RADIAL
-	tex.fill_from = Vector2(0.5, 0.5)
-	tex.fill_to = Vector2(1.0, 0.5)
-	tex.width = 64
-	tex.height = 64
-	return tex
-
-
-func _fill_ellipse(c: Vector2, r: Vector2, color: Color, segments := 32) -> void:
-	if r.x <= 0.0 or r.y <= 0.0:
-		return
-	var pts := PackedVector2Array()
-	for i in segments:
-		var a := TAU * i / segments
-		pts.append(c + Vector2(r.x * cos(a), r.y * sin(a)))
-	draw_colored_polygon(pts, color)
-
-
-## Ellipse arc from angle a0 to a1; 0..PI is the front (lower) half.
-func _arc(c: Vector2, r: Vector2, a0: float, a1: float, color: Color, width: float) -> void:
-	var pts := PackedVector2Array()
-	for i in 17:
-		var a := lerpf(a0, a1, i / 16.0)
-		pts.append(c + Vector2(r.x * cos(a), r.y * sin(a)))
-	draw_polyline(pts, color, width, true)
-
-
-func _clip_fill(shape: PackedVector2Array, region, color: Color) -> void:
-	for piece in Geometry2D.intersect_polygons(shape, PackedVector2Array(region)):
-		draw_colored_polygon(piece, color)
 
 #endregion

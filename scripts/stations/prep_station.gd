@@ -36,6 +36,8 @@ func load_order(item_id: String) -> bool:
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.reset()
 		gauge.visible = gauge == active
+	if active:
+		active.call("set_look", _item.get("look", {}))
 	return active != null
 
 
@@ -66,7 +68,7 @@ func _on_gauge_completed(accuracy: float) -> void:
 
 
 func _on_gauge_failed() -> void:
-	result_label.text = tr("RESULT_FAIL")
+	result_label.text = tr("RESULT_FAIL_BLEND" if _item.get("station", "") == "blend" else "RESULT_FAIL")
 	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "tips": 0})
 
 

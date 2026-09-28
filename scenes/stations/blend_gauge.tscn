@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/stations/blend_gauge.gd" id="1_blend"]
+[ext_resource type="Script" path="res://scripts/stations/blender_view.gd" id="2_view"]
 
 [node name="BlendGauge" type="Control"]
 layout_mode = 3
@@ -20,35 +21,67 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 24
+theme_override_constants/separation = 12
 
 [node name="StatusLabel" type="Label" parent="VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 140)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
+theme_override_font_sizes/font_size = 56
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="BarRow" type="HBoxContainer" parent="VBox"]
+[node name="Stage" type="Control" parent="VBox"]
+layout_direction = 2
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 60
-alignment = 1
 
-[node name="BlendBar" type="ProgressBar" parent="VBox/BarRow"]
+[node name="BlenderView" type="Control" parent="VBox/Stage"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 600)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_view")
+
+[node name="BlendBar" type="ProgressBar" parent="VBox/Stage"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 0.14
+anchor_right = 1.0
+anchor_bottom = 0.78
+offset_left = -50.0
+offset_right = -6.0
+grow_horizontal = 0
 mouse_filter = 2
 fill_mode = 3
 show_percentage = false
 
-[node name="MotorBar" type="ProgressBar" parent="VBox/BarRow"]
+[node name="MotorBar" type="ProgressBar" parent="VBox/Stage"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(80, 600)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_top = 0.14
+anchor_right = 1.0
+anchor_bottom = 0.78
+offset_left = -84.0
+offset_right = -62.0
+grow_horizontal = 0
 mouse_filter = 2
 fill_mode = 3
 show_percentage = false
+
+[node name="HoldLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.702, 0.278, 1)
+text = "UI_HOLD_TO_BLEND"
+horizontal_alignment = 1

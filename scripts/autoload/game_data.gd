@@ -27,6 +27,20 @@ func get_menu_item(id: String) -> Dictionary:
 	return menu_items.get(id, {})
 
 
+## Random orderable item: unlocked at the current venue tier, with its station
+## slot owned. Avoids repeating avoid_id when there's anything else to pick.
+func pick_order(rng: RandomNumberGenerator, avoid_id := "") -> String:
+	var pool: Array[String] = []
+	for id in menu_items:
+		var item: Dictionary = menu_items[id]
+		if int(item.get("unlock_tier", 0)) <= Economy.current_venue_tier \
+				and Economy.owns_slot(item.get("station", "")):
+			pool.append(id)
+	if pool.size() > 1:
+		pool.erase(avoid_id)
+	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
+
+
 func get_equipment(id: String) -> Dictionary:
 	return equipment.get(id, {})
 

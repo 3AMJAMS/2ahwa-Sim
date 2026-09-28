@@ -14,14 +14,18 @@ An Egyptian-Arabic ahwa/bartending-style game. You play as **سيد (Sayed)**, s
 Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH), and launch platform locked.
 
 Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → fade to the flat prep station →
-boil one شاي كشري in the كنكة and pour it → tips paid → fade back to the street.
+make the order (شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع or عصير مانجا in the blender) →
+tips paid → fade back to the street. The first order is always شاي كشري, then orders rotate at random.
 
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 - **Tap FIFI's glowing trunk** (or press Space/Enter on desktop) to start an order.
-- **Tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
+- **Hot orders — tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
+- **Cold orders — the blender runs by itself.** Press and hold (or hold Space) for turbo: it finishes faster
+  and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
+  too long and the motor burns out, the lid pops off and the juice goes everywhere.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
 
 ### Project layout
@@ -29,12 +33,14 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 |---|---|
 | `scripts/main.gd` | WORLD ↔ PREP state machine + fades |
 | `scripts/stations/heat_gauge.gd` | Hot brew timing + scoring (tap in the green zone) |
-| `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour and boil-over animations |
-| `scripts/stations/blend_gauge.gd` | Cold blender gauge (hold to boost, don't overheat) — hidden until Phase 2 |
+| `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
+| `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
+| `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, burn-out mess |
+| `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
 | `scripts/world/` | Isometric street + placeholder FIFI (procedural Fiat 127-style hatchback, swap for art later) |
 | `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy` |
-| `data/*.json` | Menu, equipment/upgrades, venue tiers — edit these, not scripts, to tune |
+| `data/*.json` | Menu (incl. each drink's colours under `look`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |
 | `assets/fonts/` | Cairo (OFL) — Arabic + Latin subsets |
 

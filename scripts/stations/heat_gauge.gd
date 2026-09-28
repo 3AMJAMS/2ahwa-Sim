@@ -50,6 +50,11 @@ func _ready() -> void:
 	reset()
 
 
+## Recolours the stove's drink from a menu item's "look" block.
+func set_look(look: Dictionary) -> void:
+	stove.set_look(look)
+
+
 func start(time_sec: float = prep_time_sec) -> void:
 	prep_time_sec = maxf(time_sec, 0.1)
 	heat = 0.0
