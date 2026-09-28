@@ -112,26 +112,6 @@ theme_override_constants/outline_size = 12
 theme_override_font_sizes/font_size = 54
 horizontal_alignment = 1
 
-[node name="EspressoSlot" type="PanelContainer" parent="Frame/Car"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -330.0
-offset_top = 124.0
-offset_right = -96.0
-offset_bottom = 158.0
-grow_horizontal = 0
-mouse_filter = 2
-
-[node name="EspressoLabel" type="Label" parent="Frame/Car/EspressoSlot"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="ResultLabel" type="Label" parent="Frame/Car"]
 unique_name_in_owner = true
 layout_mode = 1

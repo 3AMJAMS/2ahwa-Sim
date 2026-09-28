@@ -30,8 +30,10 @@ const FAR_KERB_ROW := -12
 const LANE_LINES := [-1.25, -4.75, -8.25]
 ## How far the kerbs and pavements stand above the road, in screen pixels.
 const PAVEMENT_RISE := 10.4
-const COLOR_POLE := Color("8d9199")
-const COLOR_HEAD := Color("7c8088")
+## Streetlights are galvanised silver from foot to lantern.
+const COLOR_POLE := Color("a9adb5")
+const COLOR_POLE_SHINE := Color("e9ecf1")
+const COLOR_HEAD := Color("9a9ea6")
 const COLOR_SODIUM := Color("ffa94d")
 ## Streetlights along the kerb edges: where each stands (tile coords) and which
 ## way its arm reaches over the road (-1 toward -j, +1 toward +j).
@@ -50,6 +52,7 @@ var _lamp_lights: Array[PointLight2D] = []
 var _lamp_moths: Array[CPUParticles2D] = []
 var _lamp_dust: Array[CPUParticles2D] = []
 var _traffic := Traffic.new()
+var _furniture := SidewalkFurniture.new()
 
 @onready var fifi: Node2D = $FIFISprite
 @onready var trunk_area: Area2D = $TrunkArea
@@ -72,6 +75,9 @@ func _ready() -> void:
 	# Passing traffic drives in the lanes behind FIFI, so it goes under her.
 	add_child(_traffic)
 	move_child(_traffic, 0)
+	# Sayed's chairs stand on the pavement, nearer us than FIFI.
+	_furniture.position = fifi.position
+	fifi.add_sibling(_furniture)
 	Economy.currency_changed.connect(_pop_wallet.unbind(1))
 	get_viewport().size_changed.connect(_recenter)
 	Economy.currency_changed.connect(_update_wallet.unbind(1))
@@ -98,6 +104,7 @@ func _relight() -> void:
 	var dark := DayClock.darkness()
 	fifi.ambient = DayClock.ambient()
 	fifi.darkness = dark
+	_furniture.ambient = DayClock.ambient()
 	_traffic.set_light(DayClock.ambient(), dark)
 	for light in _lamp_lights:
 		light.energy = 1.25 * dark
@@ -229,9 +236,8 @@ func _draw_light_pool(at: Vector2, reach: float, dark: float) -> void:
 			Color(COLOR_SODIUM, 0.0), Color(COLOR_SODIUM, 0.0)]))
 
 
-## A Cairo street lamp: concrete foot, tapered galvanised pole with its lower
-## part painted in black-and-white bands, a swan-neck arm reaching over the
-## road and a cobra-head sodium lantern.
+## A Cairo street lamp: concrete foot, tapered all-silver galvanised pole, a
+## swan-neck arm reaching over the road and a cobra-head sodium lantern.
 func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> void:
 	var g := _lamp_geometry(at, reach)
 	var base: Vector2 = g.base
@@ -249,15 +255,14 @@ func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> vo
 		Vector2(top.x - ht, top.y)]), COLOR_POLE.lightened(0.15) * amb)
 	draw_colored_polygon(PackedVector2Array([Vector2(base.x, y0), Vector2(base.x + hb, y0), Vector2(top.x + ht, top.y),
 		Vector2(top.x, top.y)]), COLOR_POLE.darkened(0.2) * amb)
-	for k in 6:
-		var ya := y0 - k * 11.0
-		var w := lerpf(hb, ht, (y0 - ya) / (y0 - top.y)) + 0.3
-		if k % 2 == 0:
-			draw_rect(Rect2(base.x - w, ya - 11.0, w * 2.0, 11.0), COLOR_KERB_DARK * amb)
-		else:
-			draw_rect(Rect2(base.x - w, ya - 11.0, w * 2.0, 11.0), COLOR_KERB_LIGHT * amb)
-	# Access hatch just above the painted bands.
-	draw_rect(Rect2(base.x - 2.5, y0 - 84, 5, 12), COLOR_POLE.darkened(0.35) * amb)
+	# Specular streak down the lit side, and collars where the sections join.
+	draw_line(Vector2(base.x - hb * 0.45, y0), Vector2(top.x - ht * 0.45, top.y), COLOR_POLE_SHINE * amb, 1.2)
+	for ya in [y0 - 4.0, y0 - 100.0]:
+		var w := lerpf(hb, ht, (y0 - ya) / (y0 - top.y)) + 1.0
+		draw_rect(Rect2(base.x - w, ya - 4.0, w * 2.0, 4.0), COLOR_POLE.darkened(0.12) * amb)
+		draw_line(Vector2(base.x - w, ya - 4.0), Vector2(base.x + w, ya - 4.0), COLOR_POLE_SHINE * amb, 1.0)
+	# Access hatch low on the pole.
+	draw_rect(Rect2(base.x - 2.5, y0 - 70, 5, 12), COLOR_POLE.darkened(0.3) * amb)
 	# Swan-neck arm: up off the pole top, curving out over the road.
 	var arm := PackedVector2Array()
 	var c1 := top + Vector2(0, -34)

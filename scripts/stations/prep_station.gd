@@ -11,8 +11,6 @@ var _item: Dictionary = {}
 @onready var order_display: Label = %OrderDisplay
 @onready var heat_gauge: HeatGauge = %HeatGauge
 @onready var blend_gauge: BlendGauge = %BlendGauge
-@onready var espresso_slot: Control = %EspressoSlot
-@onready var espresso_label: Label = %EspressoLabel
 @onready var result_label: Label = %ResultLabel
 @onready var backdrop: TrunkBackdrop = %Backdrop
 
@@ -24,7 +22,6 @@ func _ready() -> void:
 	heat_gauge.boiled_over.connect(_jolt.bind(16.0, 0.45, 160))
 	blend_gauge.motor_tripped.connect(_jolt.bind(9.0, 0.3, 80))
 	DayClock.minute_changed.connect(_relight)
-	_refresh_espresso()
 	_relight()
 
 
@@ -156,11 +153,3 @@ func _active_art() -> StationArt:
 func _finish(result: Dictionary) -> void:
 	await get_tree().create_timer(result_hold_sec).timeout
 	prep_complete.emit(result)
-
-
-func _refresh_espresso() -> void:
-	var unlocked := Economy.owns("espresso_basic")
-	espresso_slot.modulate.a = 1.0 if unlocked else 0.55
-	if not unlocked:
-		var cost := int(GameData.get_equipment("espresso_basic").get("cost_egp", 0))
-		espresso_label.text = "🔒 %s · %s %s" % [tr("PREP_ESPRESSO_LOCKED"), GameData.ar_digits(cost), tr("UI_CURRENCY")]

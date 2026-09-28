@@ -237,41 +237,22 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 	draw_rect(Rect2(x0, y - 12.0 * s, x1 - x0, 12.0 * s), WOOD.lightened(0.12))
 	if s <= 0.05:
 		return
-	# Supplies, left to right, standing on the plank.
+	# Supplies, left to right, standing on the plank. Each entry is its width
+	# (at art scale 1) and how to draw it; the row shrinks to fit the plank.
 	var base := y - 10.0 * s
-	var x := x0 + 40.0 * s
-	# A tall stack of paper cups.
-	for k in 9:
-		var cy := base - k * 11.0 * s
-		draw_colored_polygon(PackedVector2Array([Vector2(x, cy), Vector2(x + 30 * s, cy),
-			Vector2(x + 34 * s, cy - 14 * s), Vector2(x - 4 * s, cy - 14 * s)]), Color("f3efe6").darkened(0.04 * (k % 2)))
-	x += 58.0 * s
-	# Upturned tea glasses.
-	for k in 3:
-		var gx := x + k * 30.0 * s
-		draw_colored_polygon(PackedVector2Array([Vector2(gx - 2 * s, base), Vector2(gx + 26 * s, base),
-			Vector2(gx + 22 * s, base - 40 * s), Vector2(gx + 2 * s, base - 40 * s)]), Color(0.8, 0.92, 1.0, 0.3))
-		draw_line(Vector2(gx + 5 * s, base - 4 * s), Vector2(gx + 7 * s, base - 36 * s), Color(1, 1, 1, 0.45), 2.0)
-	x += 100.0 * s
-	_draw_straw_cup(Vector2(x, base), s)
-	x += 50.0 * s
-	var jw := 30.0 * s
-	for i in JAR_COLORS.size():
-		_draw_jar(Vector2(x, base), jw, 46.0 * s, JAR_COLORS[i])
-		x += jw + 10.0 * s
-	x += 14.0 * s
-	# Plain boxes of tea and coffee grounds.
-	for box in [[Color("b8322a"), "شاي"], [Color("3b6fb3"), "بن"]]:
-		var rect := Rect2(x, base - 74 * s, 62 * s, 74 * s)
-		draw_rect(rect, box[0])
-		draw_rect(Rect2(x, base - 50 * s, 62 * s, 22 * s), Color(1, 1, 1, 0.85))
-		draw_string(_font, Vector2(x, base - 32 * s), box[1], HORIZONTAL_ALIGNMENT_CENTER, 62 * s, int(20 * s), box[0])
-		draw_rect(Rect2(x + 50 * s, base - 74 * s, 12 * s, 74 * s), Color(0, 0, 0, 0.18))
-		x += 72.0 * s
-	# A water bottle at the end.
-	draw_rect(Rect2(x + 4 * s, base - 80 * s, 28 * s, 80 * s), Color(0.7, 0.85, 1.0, 0.45))
-	draw_rect(Rect2(x + 4 * s, base - 50 * s, 28 * s, 20 * s), Color("4b87c6"))
-	draw_rect(Rect2(x + 11 * s, base - 92 * s, 14 * s, 12 * s), Color("2f6fb3"))
+	var stock := [
+		[44.0, _stock_cups], [96.0, _stock_glasses], [48.0, _stock_straws], [160.0, _stock_jars],
+		[64.0, _stock_tea_carton], [58.0, _stock_coffee_bag], [66.0, _stock_mix_box], [48.0, _stock_kettle],
+		[40.0, _stock_matches], [40.0, _stock_bottle],
+	]
+	var total := 0.0
+	for item in stock:
+		total += item[0] + 8.0
+	var fit := s * minf(1.0, (x1 - x0 - 60.0 * s) / (total * s))
+	var x := x0 + 30.0 * s
+	for item in stock:
+		(item[1] as Callable).call(Vector2(x, base), fit)
+		x += (item[0] + 8.0) * fit
 	# The plank's front edge and its grain.
 	draw_rect(Rect2(x0, y, x1 - x0, 22.0 * s), WOOD)
 	for k in 3:
@@ -285,6 +266,124 @@ func _draw_jar(base: Vector2, jw: float, jh: float, fill: Color) -> void:
 	draw_rect(Rect2(base.x, base.y - jh, jw, jh), Color(0.8, 0.9, 1.0, 0.25), false, 2.0)
 	draw_rect(Rect2(base.x + jw * 0.15, base.y - jh + 6, jw * 0.14, jh - 12), Color(1, 1, 1, 0.22))
 	draw_rect(Rect2(base.x - 2, base.y - jh - 9 * art_scale, jw + 4, 10 * art_scale), Color("c9a24a"))
+
+
+# Rack stock. Each draws standing on `at` (its bottom-left corner) at scale s.
+# The packets are generic Egyptian corner-shop types, not real brands: plain
+# descriptive words, no logos, mascots or copied pack designs.
+
+func _stock_cups(at: Vector2, s: float) -> void:
+	for k in 9:
+		var cy := at.y - k * 11.0 * s
+		draw_colored_polygon(PackedVector2Array([Vector2(at.x + 6 * s, cy), Vector2(at.x + 36 * s, cy),
+			Vector2(at.x + 40 * s, cy - 14 * s), Vector2(at.x + 2 * s, cy - 14 * s)]), Color("f3efe6").darkened(0.04 * (k % 2)))
+
+
+func _stock_glasses(at: Vector2, s: float) -> void:
+	for k in 3:
+		var gx := at.x + k * 32.0 * s
+		draw_colored_polygon(PackedVector2Array([Vector2(gx, at.y), Vector2(gx + 28 * s, at.y),
+			Vector2(gx + 24 * s, at.y - 40 * s), Vector2(gx + 4 * s, at.y - 40 * s)]), Color(0.8, 0.92, 1.0, 0.3))
+		draw_line(Vector2(gx + 7 * s, at.y - 4 * s), Vector2(gx + 9 * s, at.y - 36 * s), Color(1, 1, 1, 0.45), 2.0)
+
+
+func _stock_straws(at: Vector2, s: float) -> void:
+	_draw_straw_cup(at + Vector2(6 * s, 0), s)
+
+
+func _stock_jars(at: Vector2, s: float) -> void:
+	for i in JAR_COLORS.size():
+		_draw_jar(at + Vector2(i * 40.0 * s, 0), 30.0 * s, 46.0 * s, JAR_COLORS[i])
+
+
+## Loose-tea carton: tall box, warm colours, a leaf and a steaming glass.
+func _stock_tea_carton(at: Vector2, s: float) -> void:
+	var r := Rect2(at.x, at.y - 86 * s, 56 * s, 86 * s)
+	draw_rect(r, Color("c2471f"))
+	draw_rect(Rect2(r.position, Vector2(r.size.x, 10 * s)), Color("e9c46a"))
+	draw_rect(Rect2(r.position.x, r.position.y + 44 * s, r.size.x, 26 * s), Color("f4ead2"))
+	draw_string(_font, Vector2(r.position.x, r.position.y + 64 * s), "شاي", HORIZONTAL_ALIGNMENT_CENTER, r.size.x,
+		maxi(1, int(20 * s)), Color("7a1e10"))
+	# Tea glass with a leaf beside it.
+	var g := r.position + Vector2(20 * s, 38 * s)
+	draw_colored_polygon(PackedVector2Array([g, g + Vector2(12 * s, 0), g + Vector2(14 * s, -18 * s), g + Vector2(-2 * s, -18 * s)]),
+		Color("f4ead2"))
+	draw_rect(Rect2(g + Vector2(0, -10 * s), Vector2(12 * s, 10 * s)), Color("8a2e10"))
+	_leaf(r.position + Vector2(44 * s, 26 * s), 9 * s, Color("3f8a3a"))
+	draw_rect(Rect2(r.end.x - 10 * s, r.position.y, 10 * s, r.size.y), Color(0, 0, 0, 0.2))
+
+
+## Ground-coffee pouch, kraft paper with its top rolled down and a dark band.
+func _stock_coffee_bag(at: Vector2, s: float) -> void:
+	var kraft := Color("b98a52")
+	var body := PackedVector2Array([at + Vector2(2 * s, 0), at + Vector2(52 * s, 0), at + Vector2(50 * s, -70 * s),
+		at + Vector2(4 * s, -70 * s)])
+	draw_colored_polygon(body, kraft)
+	draw_rect(Rect2(at + Vector2(2 * s, -80 * s), Vector2(50 * s, 12 * s)), kraft.darkened(0.15))
+	draw_line(at + Vector2(2 * s, -68 * s), at + Vector2(52 * s, -68 * s), kraft.darkened(0.35), 2.0)
+	draw_rect(Rect2(at + Vector2(3 * s, -48 * s), Vector2(48 * s, 22 * s)), Color("3a2215"))
+	draw_string(_font, at + Vector2(3 * s, -31 * s), "بن", HORIZONTAL_ALIGNMENT_CENTER, 48 * s, maxi(1, int(18 * s)), Color("e8c98a"))
+	# Two roasted beans.
+	for b in [Vector2(18, -14), Vector2(34, -16)]:
+		draw_set_transform(at + b * s, 0.5, Vector2(1.0, 0.65))
+		draw_circle(Vector2.ZERO, 6 * s, Color("4a2b1b"))
+		draw_set_transform(Vector2.ZERO)
+		draw_line(at + (b + Vector2(-4, -2)) * s, at + (b + Vector2(4, 2)) * s, Color("24140c"), 1.5)
+	draw_line(at + Vector2(10 * s, -64 * s), at + Vector2(8 * s, -6 * s), Color(1, 1, 1, 0.18), 2.0)
+
+
+## Counter box of three-in-one coffee sachets, the sachets standing up in it.
+func _stock_mix_box(at: Vector2, s: float) -> void:
+	var sachet := [Color("d9b27c"), Color("8c5a36"), Color("efe3cf"), Color("b0452e"), Color("d9b27c"), Color("8c5a36")]
+	for i in sachet.size():
+		var sx := at.x + (4 + i * 10) * s
+		var lift := (i % 3) * 5.0 * s
+		draw_rect(Rect2(sx, at.y - 70 * s - lift, 9 * s, 40 * s), sachet[i])
+		draw_line(Vector2(sx, at.y - 70 * s - lift), Vector2(sx + 9 * s, at.y - 70 * s - lift), Color(0, 0, 0, 0.25), 1.5)
+	var box := Rect2(at.x, at.y - 40 * s, 66 * s, 40 * s)
+	draw_rect(box, Color("5b3420"))
+	draw_rect(Rect2(box.position, Vector2(box.size.x, 6 * s)), Color("e0a458"))
+	draw_string(_font, Vector2(box.position.x, box.end.y - 10 * s), "٣ في ١", HORIZONTAL_ALIGNMENT_CENTER, box.size.x,
+		maxi(1, int(17 * s)), Color("f4ead2"))
+
+
+## Aluminium teapot (براد) for the tea.
+func _stock_kettle(at: Vector2, s: float) -> void:
+	var c := at + Vector2(24 * s, -22 * s)
+	var alu := Color("b9bec6")
+	draw_line(c + Vector2(14 * s, -2 * s), c + Vector2(28 * s, -16 * s), alu.darkened(0.2), 4.0 * s)
+	draw_set_transform(c, 0.0, Vector2(1.0, 0.85))
+	draw_circle(Vector2.ZERO, 20 * s, alu)
+	draw_set_transform(Vector2.ZERO)
+	draw_rect(Rect2(c + Vector2(-20 * s, 8 * s), Vector2(40 * s, 6 * s)), alu.darkened(0.12))
+	draw_rect(Rect2(c + Vector2(-9 * s, -24 * s), Vector2(18 * s, 6 * s)), alu.darkened(0.1))
+	draw_circle(c + Vector2(0, -26 * s), 3.5 * s, Color("2a2a30"))
+	draw_arc(c + Vector2(0, -20 * s), 16 * s, PI * 1.1, PI * 1.9, 10, Color("2a2a30"), 3.0 * s)
+	draw_line(c + Vector2(-10 * s, -10 * s), c + Vector2(-12 * s, 6 * s), Color(1, 1, 1, 0.45), 3.0 * s)
+
+
+## A little stack of matchboxes for the burner.
+func _stock_matches(at: Vector2, s: float) -> void:
+	for k in 3:
+		var r := Rect2(at.x + (2 + (k % 2) * 3) * s, at.y - (k + 1) * 11 * s, 32 * s, 11 * s)
+		draw_rect(r, Color("e6d8b4"))
+		draw_rect(Rect2(r.position.x + 4 * s, r.position.y + 2 * s, 14 * s, 7 * s), Color("2f6fb3") if k % 2 == 0 else Color("c8322b"))
+		draw_rect(Rect2(r.end.x - 4 * s, r.position.y, 4 * s, r.size.y), Color("5a3a28"))
+
+
+func _stock_bottle(at: Vector2, s: float) -> void:
+	draw_rect(Rect2(at.x + 4 * s, at.y - 80 * s, 28 * s, 80 * s), Color(0.7, 0.85, 1.0, 0.45))
+	draw_rect(Rect2(at.x + 4 * s, at.y - 50 * s, 28 * s, 20 * s), Color("4b87c6"))
+	draw_rect(Rect2(at.x + 11 * s, at.y - 92 * s, 14 * s, 12 * s), Color("2f6fb3"))
+
+
+func _leaf(c: Vector2, r: float, color: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 12:
+		var a := TAU * i / 12.0
+		pts.append(c + Vector2(cos(a) * r * 0.5, sin(a) * r).rotated(0.6))
+	draw_colored_polygon(pts, color)
+	draw_line(c + Vector2(0, -r).rotated(0.6), c + Vector2(0, r).rotated(0.6), color.darkened(0.35), 1.2)
 
 
 ## Roof edge over the opening and the painted pillars either side, with the

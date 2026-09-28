@@ -15,8 +15,9 @@ const WINDOW_DAY := Color("8aa3c2")
 const ASPHALT := Color("55575f")
 const PAVEMENT := Color("8f8a86")
 const KERB := Color("b8b4ae")
-const POLE := Color("8d9199")
-const HEAD := Color("7c8088")
+const POLE := Color("a9adb5")
+const SILVER_SHINE := Color("e9ecf1")
+const HEAD := Color("9a9ea6")
 const SODIUM := Color("ffa94d")
 const PAINT_DARK := Color("2c2c31")
 const PAINT_LIGHT := Color("e6e3dc")
@@ -115,8 +116,8 @@ func _draw_buildings(horizon: float, amb: Color, dark: float) -> void:
 		x += bw + rng.randf_range(4, 18)
 
 
-## A Cairo street lamp seen side-on: concrete foot, tapered galvanised pole
-## with black-and-white bands low down, a swan-neck arm reaching over the road
+## A Cairo street lamp seen side-on: concrete foot, tapered all-silver
+## galvanised pole, a swan-neck arm reaching over the road
 ## (reach -1 = to the left), a cobra-head lantern, and after dusk its sodium
 ## cone and pool of light. `k` scales it for distance.
 func _draw_streetlight(base: Vector2, reach: float, k: float, horizon: float, amb: Color, dark: float) -> void:
@@ -136,11 +137,14 @@ func _draw_streetlight(base: Vector2, reach: float, k: float, horizon: float, am
 		POLE.lightened(0.15) * amb)
 	draw_colored_polygon(PackedVector2Array([Vector2(base.x, y0), Vector2(base.x + hb, y0), top + Vector2(ht, 0), top]),
 		POLE.darkened(0.2) * amb)
-	for band in 6:
-		var ya := y0 - band * 22.0 * k
-		var w := lerpf(hb, ht, (y0 - ya) / maxf(y0 - top.y, 1.0)) + 0.5
-		draw_rect(Rect2(base.x - w, ya - 22.0 * k, w * 2.0, 22.0 * k), (PAINT_DARK if band % 2 == 0 else PAINT_LIGHT) * amb)
-	draw_rect(Rect2(base.x - 5 * k, y0 - 170 * k, 10 * k, 26 * k), POLE.darkened(0.35) * amb)
+	# Bright specular streak down the lit side, and a collar where the pole
+	# sections join.
+	draw_line(Vector2(base.x - hb * 0.45, y0), top - Vector2(ht * 0.45, 0), SILVER_SHINE * amb, 2.0 * k)
+	for ya in [y0 - 8.0 * k, y0 - 200.0 * k]:
+		var w := lerpf(hb, ht, (y0 - ya) / maxf(y0 - top.y, 1.0)) + 2.0 * k
+		draw_rect(Rect2(base.x - w, ya - 8.0 * k, w * 2.0, 8.0 * k), POLE.darkened(0.12) * amb)
+		draw_line(Vector2(base.x - w, ya - 8.0 * k), Vector2(base.x + w, ya - 8.0 * k), SILVER_SHINE * amb, 1.5 * k)
+	draw_rect(Rect2(base.x - 5 * k, y0 - 170 * k, 10 * k, 26 * k), POLE.darkened(0.3) * amb)
 	# Swan-neck arm curving up and out to the lantern.
 	var arm := PackedVector2Array()
 	var c1 := top + Vector2(0, -70 * k)
