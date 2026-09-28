@@ -37,6 +37,20 @@ func _ready() -> void:
 	prep_layer.visible = false
 	fade_rect.modulate.a = 0.0
 	fade_label.visible = false
+	_intro.call_deferred()
+
+
+## First launch: Sayed shows round the street, ending on the trunk tap.
+func _intro() -> void:
+	if not Tutorial.pending("ui_intro"):
+		return
+	await Tutorial.play([
+		{"text": tr("TUT_WELCOME")},
+		{"text": tr("TUT_HUD"), "target": world_host.wallet_label.get_global_rect},
+		{"text": tr("TUT_GO_HOME"), "target": go_home_button.get_global_rect},
+		{"text": tr("TUT_TAP_TRUNK"), "target": world_host.trunk_screen_rect, "until": world_host.trunk_tapped},
+	])
+	Tutorial.mark("ui_intro")
 
 
 func _unhandled_input(event: InputEvent) -> void:

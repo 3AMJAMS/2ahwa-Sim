@@ -234,6 +234,12 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 	var post_foot := lerpf(floor_y, back, 0.5)
 	for x in [x0 + 10.0 * s, x1 - 26.0 * s]:
 		draw_rect(Rect2(x, y, 16.0 * s, post_foot - y), WOOD.darkened(0.35))
+		draw_rect(Rect2(x, y, 4.0 * s, post_foot - y), WOOD.darkened(0.2))
+		# Steel angle bracket under the plank, and the screws holding it.
+		draw_colored_polygon(PackedVector2Array([Vector2(x - 6 * s, y + 20 * s), Vector2(x + 22 * s, y + 20 * s),
+			Vector2(x + 22 * s, y + 26 * s), Vector2(x + 2 * s, y + 46 * s), Vector2(x - 6 * s, y + 46 * s)]), Color("6f7682"))
+		for sy in [y + 23.0 * s, y + 38.0 * s]:
+			draw_circle(Vector2(x - 2 * s, sy), 1.8 * s, Color("d4d9e1"))
 	draw_rect(Rect2(x0, y - 12.0 * s, x1 - x0, 12.0 * s), WOOD.lightened(0.12))
 	if s <= 0.05:
 		return
@@ -262,10 +268,30 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 
 
 func _draw_jar(base: Vector2, jw: float, jh: float, fill: Color) -> void:
-	draw_rect(Rect2(base.x, base.y - jh, jw, jh), Color(fill, 0.95))
-	draw_rect(Rect2(base.x, base.y - jh, jw, jh), Color(0.8, 0.9, 1.0, 0.25), false, 2.0)
-	draw_rect(Rect2(base.x + jw * 0.15, base.y - jh + 6, jw * 0.14, jh - 12), Color(1, 1, 1, 0.22))
-	draw_rect(Rect2(base.x - 2, base.y - jh - 9 * art_scale, jw + 4, 10 * art_scale), Color("c9a24a"))
+	var k := jh / 46.0
+	var glass := PrepIcons._rrect(Rect2(base.x, base.y - jh, jw, jh), 5 * k)
+	draw_colored_polygon(glass, Color(0.8, 0.9, 1.0, 0.18))
+	# Contents three-quarters up, with a grainy top and a few specks.
+	var fill_top := base.y - jh * 0.78
+	draw_colored_polygon(PrepIcons._rrect(Rect2(base.x + 2, fill_top, jw - 4, base.y - fill_top - 2), 4 * k), Color(fill, 0.95))
+	draw_rect(Rect2(base.x + 2, fill_top, jw - 4, 3 * k), fill.lightened(0.15))
+	for i in 6:
+		draw_circle(Vector2(base.x + 5 * k + (i * 7) % int(maxf(jw - 8, 1.0)), fill_top + (4 + (i * 5) % 22) * k), 1.2 * k,
+			fill.lightened(0.25) if fill.v < 0.5 else fill.darkened(0.2))
+	# Paper label, glass edge, shine.
+	draw_rect(Rect2(base.x + 2, base.y - jh * 0.5, jw - 4, jh * 0.24), Color("f4ead2"))
+	draw_line(Vector2(base.x + 5 * k, base.y - jh * 0.4), Vector2(base.x + jw - 5 * k, base.y - jh * 0.4), Color("7a5a2e", 0.6), 1.0)
+	var edge := glass.duplicate()
+	edge.append(glass[0])
+	draw_polyline(edge, Color(0.85, 0.93, 1.0, 0.45), 1.5, true)
+	draw_rect(Rect2(base.x + jw * 0.15, base.y - jh + 6, jw * 0.12, jh - 12), Color(1, 1, 1, 0.2))
+	# Screw lid with ridges.
+	var lid := Rect2(base.x - 2, base.y - jh - 9 * art_scale, jw + 4, 10 * art_scale)
+	draw_colored_polygon(PrepIcons._rrect(lid, 2.5 * k), Color("c9a24a"))
+	draw_rect(Rect2(lid.position, Vector2(lid.size.x, lid.size.y * 0.3)), Color("e6c56e"))
+	for r in 6:
+		var x := lid.position.x + (r + 0.5) * lid.size.x / 6.0
+		draw_line(Vector2(x, lid.position.y + lid.size.y * 0.35), Vector2(x, lid.end.y - 1), Color("9c7a2c"), 1.0)
 
 
 # Rack stock. Each draws standing on `at` (its bottom-left corner) at scale s.
@@ -275,8 +301,13 @@ func _draw_jar(base: Vector2, jw: float, jh: float, fill: Color) -> void:
 func _stock_cups(at: Vector2, s: float) -> void:
 	for k in 9:
 		var cy := at.y - k * 11.0 * s
-		draw_colored_polygon(PackedVector2Array([Vector2(at.x + 6 * s, cy), Vector2(at.x + 36 * s, cy),
-			Vector2(at.x + 40 * s, cy - 14 * s), Vector2(at.x + 2 * s, cy - 14 * s)]), Color("f3efe6").darkened(0.04 * (k % 2)))
+		var cup := PackedVector2Array([Vector2(at.x + 6 * s, cy), Vector2(at.x + 36 * s, cy),
+			Vector2(at.x + 40 * s, cy - 14 * s), Vector2(at.x + 2 * s, cy - 14 * s)])
+		draw_colored_polygon(cup, Color("f3efe6").darkened(0.04 * (k % 2)))
+		# Printed band and the rolled rim of each cup in the stack.
+		draw_line(Vector2(at.x + 4 * s, cy - 7 * s), Vector2(at.x + 38 * s, cy - 7 * s), Color("b8322a", 0.55), 2.0 * s)
+		draw_line(Vector2(at.x + 2 * s, cy - 14 * s), Vector2(at.x + 40 * s, cy - 14 * s), Color("d8d2c6"), 1.5 * s)
+		draw_line(Vector2(at.x + 33 * s, cy - 1 * s), Vector2(at.x + 36 * s, cy - 13 * s), Color(0, 0, 0, 0.08), 3.0 * s)
 
 
 func _stock_glasses(at: Vector2, s: float) -> void:
@@ -285,6 +316,12 @@ func _stock_glasses(at: Vector2, s: float) -> void:
 		draw_colored_polygon(PackedVector2Array([Vector2(gx, at.y), Vector2(gx + 28 * s, at.y),
 			Vector2(gx + 24 * s, at.y - 40 * s), Vector2(gx + 4 * s, at.y - 40 * s)]), Color(0.8, 0.92, 1.0, 0.3))
 		draw_line(Vector2(gx + 7 * s, at.y - 4 * s), Vector2(gx + 9 * s, at.y - 36 * s), Color(1, 1, 1, 0.45), 2.0)
+		# Thick base (upturned, so it's on top) and pressed facets.
+		draw_rect(Rect2(gx + 4 * s, at.y - 40 * s, 20 * s, 5 * s), Color(0.85, 0.95, 1.0, 0.35))
+		for f in 3:
+			var fx := gx + (9 + f * 5) * s
+			draw_line(Vector2(fx, at.y - 34 * s), Vector2(fx - 0.5 * s, at.y - 20 * s), Color(1, 1, 1, 0.18), 1.0)
+		draw_line(Vector2(gx, at.y), Vector2(gx + 28 * s, at.y), Color(1, 1, 1, 0.35), 1.5)
 
 
 func _stock_straws(at: Vector2, s: float) -> void:

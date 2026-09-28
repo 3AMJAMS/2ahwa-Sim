@@ -1,18 +1,27 @@
 extends Control
-## Flat "Right Mix" prep station. Shows the order, routes it to the matching
-## gauge, pays out tips, then reports back to main via prep_complete.
+## Flat "Right Mix" prep station. Shows the order, then the player makes it:
+## pick the ingredients from the tray, pick the tool to make it with, then
+## play that tool's gauge. Pays out tips (docked for wrong picks) and reports
+## back to main via prep_complete. Sayed's tutorials hook in at each step.
 
 signal prep_complete(result: Dictionary)
 
 @export var result_hold_sec := 1.4
+## Each wrong pick takes this share off the tip, down to half.
+@export_range(0.0, 1.0) var mistake_penalty := 0.2
 
 var _item: Dictionary = {}
+var _mistakes := 0
+## Bumped per order so a flow that outlives its order stops.
+var _run := 0
 
 @onready var order_display: Label = %OrderDisplay
+@onready var order_box: Control = $Frame/Car/OrderBox
 @onready var heat_gauge: HeatGauge = %HeatGauge
 @onready var blend_gauge: BlendGauge = %BlendGauge
 @onready var result_label: Label = %ResultLabel
 @onready var backdrop: TrunkBackdrop = %Backdrop
+@onready var picker: PrepPicker = %Picker
 
 
 func _ready() -> void:
@@ -21,34 +30,104 @@ func _ready() -> void:
 	heat_gauge.gauge_failed.connect(_on_gauge_failed)
 	heat_gauge.boiled_over.connect(_jolt.bind(16.0, 0.45, 160))
 	blend_gauge.motor_tripped.connect(_jolt.bind(9.0, 0.3, 80))
+	picker.wrong_pick.connect(_on_wrong_pick)
 	DayClock.minute_changed.connect(_relight)
 	_relight()
 
 
-## Shows the order and resets gauges without starting the clock
-## (called while the screen is still fading in).
+## Shows the order with the stove idle in front and the blender behind,
+## without starting anything (called while the screen is still fading in).
 func load_order(item_id: String) -> bool:
+	_run += 1
 	_item = GameData.get_menu_item(item_id)
 	if _item.is_empty():
 		push_error("PrepStation: unknown menu item '%s'" % item_id)
 		return false
 	order_display.text = tr(_item.get("name_key", "")) if _item.has("name_key") else _item.get("name_ar", item_id)
 	result_label.text = ""
+	_mistakes = 0
 	var active := _gauge_for(_item.get("station", ""))
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.reset()
-		gauge.visible = gauge == active
+		gauge.visible = gauge == heat_gauge
+		gauge.modulate.a = 1.0
 	if active:
 		active.call("set_look", _item.get("look", {}))
-	backdrop.idle_station = "heat" if active == blend_gauge else "blend"
+	backdrop.idle_station = "blend"
+	picker.hide_now()
 	return active != null
 
 
-## Starts the loaded order's gauge.
+## Runs the order: ingredients → tool → gauge.
 func start_order() -> void:
+	var run := _run
+	var order_name := order_display.text
+	var needs: Array = _item.get("ingredients", [])
+	var tool_id := GameData.tool_for_station(_item.get("station", ""))
+	var guided := Tutorial.pending("first_prep")
+
+	# 1. Ingredients.
+	picker.show_step(tr("PREP_PICK_INGREDIENTS"), GameData.ingredients, needs)
+	if guided and not needs.is_empty():
+		var steps := [{"text": tr("TUT_ORDER").format({"order": order_name}), "target": order_box.get_global_rect}]
+		for i in needs.size():
+			var key := "TUT_PICK_INGREDIENTS" if i == 0 else "TUT_PICK_MORE"
+			steps.append({"text": tr(key).format({"order": order_name, "item": GameData.prep_item_name(needs[i])}),
+				"target": picker.card_rect.bind(needs[i]), "until": picker.picked_right})
+		await Tutorial.play(steps)
+	if run != _run:
+		return
+	if not picker.step_complete:
+		await picker.step_done
+	if run != _run:
+		return
+
+	# 2. The tool.
+	picker.show_step(tr("PREP_PICK_TOOL"), GameData.owned_tools(), [tool_id])
+	if guided and Tutorial.pending("first_prep"):
+		await Tutorial.play([{"text": tr("TUT_PICK_TOOL_" + tool_id.to_upper()), "target": picker.card_rect.bind(tool_id),
+			"until": picker.picked_right}])
+		Tutorial.mark("first_prep")
+	if run != _run:
+		return
+	if not picker.step_complete:
+		await picker.step_done
+	if run != _run:
+		return
+	await picker.slide_away()
+	if run != _run:
+		return
+
+	# 3. Bring the chosen tool forward, explain it the first time, then go.
 	var gauge := _gauge_for(_item.get("station", ""))
-	if gauge:
-		gauge.start(float(_item.get("prep_time_sec", 10)))
+	if gauge == null:
+		return
+	if not gauge.visible:
+		heat_gauge.visible = false
+		gauge.visible = true
+		gauge.modulate.a = 0.0
+		create_tween().tween_property(gauge, "modulate:a", 1.0, 0.3)
+		backdrop.idle_station = "heat"
+	await _explain_station(gauge)
+	if run != _run:
+		return
+	gauge.start(float(_item.get("prep_time_sec", 10)))
+
+
+## First time on each tool, Sayed shows what to watch.
+func _explain_station(gauge: Control) -> void:
+	if gauge == heat_gauge and Tutorial.pending("hot_station"):
+		await Tutorial.play([
+			{"text": tr("TUT_HOT_GAUGE"), "target": func() -> Rect2: return heat_gauge.green_zone.get_global_rect().grow_individual(30, 10, 30, 10)},
+			{"text": tr("TUT_HOT_WARN"), "target": heat_gauge.stove.focus_rect},
+		])
+		Tutorial.mark("hot_station")
+	elif gauge == blend_gauge and Tutorial.pending("cold_station"):
+		await Tutorial.play([
+			{"text": tr("TUT_COLD_GAUGE"), "target": blend_gauge.blender.focus_rect},
+			{"text": tr("TUT_COLD_WARN"), "target": blend_gauge.motor_bar.get_global_rect},
+		])
+		Tutorial.mark("cold_station")
 
 
 ## Keeps the car drawn round the station art: carpet, sill and trunk sides
@@ -79,19 +158,32 @@ func _gauge_for(station: String) -> Control:
 	return null
 
 
+func _on_wrong_pick(_id: String) -> void:
+	_mistakes += 1
+	_jolt(5.0, 0.2, 40)
+
+
 func _on_gauge_completed(accuracy: float) -> void:
+	var run := _run
 	var price := GameData.price_for(_item.id, Economy.current_venue_tier)
-	var tips := maxi(1, roundi(price * accuracy))
+	var penalty := maxf(0.5, 1.0 - mistake_penalty * _mistakes)
+	var tips := maxi(1, roundi(price * accuracy * penalty))
 	Economy.add_tips(tips)
-	var headline := tr("RESULT_SUCCESS") if accuracy >= 1.0 else tr("RESULT_OK")
+	var headline := tr("RESULT_SUCCESS") if accuracy >= 1.0 and _mistakes == 0 else tr("RESULT_OK")
 	result_label.text = "%s\n%s" % [headline, tr("RESULT_TIPS").format({"amount": GameData.ar_digits(tips)})]
-	_celebrate(tips, accuracy >= 1.0)
-	_finish({"success": true, "item_id": _item.id, "accuracy": accuracy, "tips": tips})
+	_celebrate(tips, accuracy >= 1.0 and _mistakes == 0)
+	if Tutorial.pending("first_tips"):
+		await get_tree().create_timer(0.8).timeout
+		await Tutorial.play([{"text": tr("TUT_FIRST_TIPS")}])
+		Tutorial.mark("first_tips")
+		if run != _run:
+			return
+	_finish({"success": true, "item_id": _item.id, "accuracy": accuracy, "tips": tips, "mistakes": _mistakes})
 
 
 func _on_gauge_failed() -> void:
 	result_label.text = tr("RESULT_FAIL")
-	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "tips": 0})
+	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "tips": 0, "mistakes": _mistakes})
 
 
 ## Payday feedback at the glass: a burst of gold sparks and the tip floating
@@ -132,7 +224,7 @@ func _celebrate(tips: int, perfect: bool) -> void:
 		Input.vibrate_handheld(35)
 
 
-## Something went wrong on the stove or blender: shake the car and buzz.
+## Something went wrong: shake the car and buzz.
 func _jolt(strength: float, duration: float, vibrate_ms: int) -> void:
 	var car := backdrop.get_parent() as Control
 	var home := car.position

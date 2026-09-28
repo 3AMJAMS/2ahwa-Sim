@@ -334,19 +334,67 @@ func _draw_cylinder() -> void:
 		var a := PI * i / 12.0
 		body.append(Vector2(cx + 100.0 * cos(a), shoulder - 26.0 * sin(a)))
 	draw_colored_polygon(body, COLOR_CYLINDER)
-	_clip_fill(body, [Vector2(cx + 38, 400), Vector2(cx + 110, 400), Vector2(cx + 110, foot), Vector2(cx + 38, foot)],
-		Color(0, 0, 0, 0.22))
-	_clip_fill(body, [Vector2(cx - 74, 400), Vector2(cx - 56, 400), Vector2(cx - 56, foot), Vector2(cx - 74, foot)],
-		Color(1, 1, 1, 0.22))
+	# Rounded shading: bands darkening toward the right, a soft sheen on the left.
+	for band in [[20.0, 0.08], [48.0, 0.1], [76.0, 0.12]]:
+		_clip_fill(body, [Vector2(cx + band[0], 400), Vector2(cx + 110, 400), Vector2(cx + 110, foot), Vector2(cx + band[0], foot)],
+			Color(0, 0, 0, band[1]))
+	_clip_fill(body, [Vector2(cx - 80, 400), Vector2(cx - 52, 400), Vector2(cx - 52, foot), Vector2(cx - 80, foot)],
+		Color(1, 1, 1, 0.12))
+	_clip_fill(body, [Vector2(cx - 74, 400), Vector2(cx - 60, 400), Vector2(cx - 60, foot), Vector2(cx - 74, foot)],
+		Color(1, 1, 1, 0.2))
+	# Welded seam round the middle, and the curve of the shoulder.
+	_arc(Vector2(cx, 522), Vector2(100, 9), 0.0, PI, Color(0, 0, 0, 0.25), 2.5)
+	_arc(Vector2(cx, 520), Vector2(100, 9), 0.0, PI, Color(1, 1, 1, 0.12), 1.5)
+	_arc(Vector2(cx, shoulder + 6), Vector2(96, 10), 0.0, PI, Color(0, 0, 0, 0.18), 2.0)
+	# Painted band, chipped here and there, and a few knocks in the paint.
 	draw_rect(Rect2(cx - 100, 540, 200, 16), Color(0.95, 0.9, 0.8, 0.85))
-	# Brass valve with its knob, then the burner cup.
+	draw_rect(Rect2(cx - 100, 540, 200, 3), Color(1, 1, 1, 0.35))
+	for chip in [Vector3(cx - 40, 548, 5), Vector3(cx + 22, 544, 4), Vector3(cx + 70, 552, 6)]:
+		_fill_ellipse(Vector2(chip.x, chip.y), Vector2(chip.z, chip.z * 0.6), COLOR_CYLINDER.darkened(0.15))
+	for dent in [Vector3(cx - 30, 505, 9), Vector3(cx + 46, 568, 7), Vector3(cx - 62, 580, 6)]:
+		_fill_ellipse(Vector2(dent.x, dent.y), Vector2(dent.z, dent.z * 0.7), Color(0, 0, 0, 0.12))
+		_arc(Vector2(dent.x, dent.y - 1), Vector2(dent.z, dent.z * 0.7), PI, TAU, Color(1, 1, 1, 0.15), 1.5)
+	# Foot ring with its drain slots, rust at the rim.
+	for k in 5:
+		var x := cx - 64.0 + k * 32.0
+		draw_rect(Rect2(x - 7, foot - 11, 14, 6), Color("141317"))
+	draw_rect(Rect2(cx - 86, foot - 16, 172, 3), COLOR_IRON.lightened(0.2))
+	for k in 7:
+		_fill_ellipse(Vector2(cx - 84 + k * 28 + (k % 2) * 6, foot - 18), Vector2(6, 2.5), Color("6a3a1e", 0.5))
+	# Shroud collar round the valve.
+	var collar := PackedVector2Array([Vector2(cx - 44, 474), Vector2(cx + 44, 474), Vector2(cx + 38, 456), Vector2(cx - 38, 456)])
+	draw_colored_polygon(collar, COLOR_CYLINDER.darkened(0.1))
+	draw_line(Vector2(cx - 38, 456), Vector2(cx + 38, 456), COLOR_CYLINDER.lightened(0.2), 2.0)
+	for side in [-1.0, 1.0]:
+		draw_colored_polygon(PackedVector2Array([Vector2(cx + side * 30, 462), Vector2(cx + side * 38, 462),
+			Vector2(cx + side * 37, 470), Vector2(cx + side * 29, 470)]), Color("1d1c21"))
+	# Brass valve with its knob, the regulator and its rubber hose.
 	draw_rect(Rect2(cx - 20, 446, 40, 24), COLOR_BRASS)
 	draw_rect(Rect2(cx - 20, 446, 12, 24), COLOR_BRASS.lightened(0.25))
+	for k in 4:
+		draw_line(Vector2(cx - 18, 450 + k * 5), Vector2(cx + 18, 450 + k * 5), COLOR_BRASS.darkened(0.25), 1.2)
 	draw_rect(Rect2(cx + 20, 452, 14, 10), COLOR_BRASS.darkened(0.2))
 	draw_circle(Vector2(cx + 40, 457), 10, Color("1d1c21"))
+	for k in 6:
+		var a := TAU * k / 6.0
+		draw_circle(Vector2(cx + 40, 457) + Vector2(cos(a), sin(a)) * 9.0, 2.2, Color("1d1c21"))
+	draw_circle(Vector2(cx + 38, 454), 3, Color(1, 1, 1, 0.25))
+	var hose := PackedVector2Array()
+	for i in 12:
+		var t := i / 11.0
+		hose.append(Vector2(cx - 22, 462).bezier_interpolate(Vector2(cx - 80, 470), Vector2(cx - 90, 430), Vector2(cx - 36, 440), t))
+	draw_polyline(hose, Color("1a1a1e"), 7.0, true)
+	draw_polyline(hose, Color(1, 1, 1, 0.08), 2.0, true)
+	draw_circle(Vector2(cx - 36, 440), 5, COLOR_BRASS.darkened(0.1))
+	# Burner cup and cap with its ring of gas ports.
 	draw_colored_polygon(PackedVector2Array([Vector2(cx - 52, RING_Y), Vector2(cx + 52, RING_Y),
 		Vector2(cx + 30, 450), Vector2(cx - 30, 450)]), COLOR_IRON)
+	draw_colored_polygon(PackedVector2Array([Vector2(cx + 20, RING_Y), Vector2(cx + 52, RING_Y),
+		Vector2(cx + 30, 450), Vector2(cx + 14, 450)]), Color(0, 0, 0, 0.25))
 	_fill_ellipse(Vector2(cx, RING_Y), Vector2(52, 6), COLOR_IRON.lightened(0.15))
+	for k in 14:
+		var a := PI * (k + 0.5) / 14.0
+		draw_circle(Vector2(cx + cos(a) * 46.0, RING_Y + sin(a) * 4.5), 1.6, Color("0e0d11"))
 	# Pot support: two side prongs (the front one goes in front of the flame).
 	for side in [-1.0, 1.0]:
 		draw_polyline(PackedVector2Array([Vector2(cx + side * 46, 442), Vector2(cx + side * 94, 428),
@@ -462,8 +510,23 @@ func _draw_pot() -> void:
 		shine.append(Vector2(-p.x * 0.52, p.y))
 	_clip_fill(body, shade, Color(0, 0, 0, 0.22))
 	_clip_fill(body, shine, Color(1, 1, 1, 0.3))
+	# Hand-hammered dimples, each a dark hollow with a bright lower lip.
+	for i in 30:
+		var c := Vector2(float((i * 47) % 150) - 75.0, -14.0 - float((i * 31) % 118))
+		if not Geometry2D.is_point_in_polygon(c, body):
+			continue
+		var r := 5.0 + float(i % 3)
+		_fill_ellipse(c, Vector2(r, r * 0.7), Color(0, 0, 0, 0.08))
+		_arc(c + Vector2(0, 1), Vector2(r, r * 0.7), 0.2, PI - 0.2, Color(1, 1, 1, 0.22), 1.2)
 	_arc(Vector2(0, -105), Vector2(67, 8), 0.0, PI, Color(0, 0, 0, 0.18), 2.0)
+	_arc(Vector2(0, -108), Vector2(66, 8), 0.0, PI, Color(1, 1, 1, 0.15), 1.5)
 	_arc(Vector2(0, -12), Vector2(87, 10), 0.0, PI, Color(0, 0, 0, 0.18), 2.0)
+	# Engraved band round the belly.
+	for y in [-62.0, -54.0]:
+		_arc(Vector2(0, y), Vector2(84 - (y + 62.0) * 0.1, 9), 0.0, PI, Color(0, 0, 0, 0.14), 1.5)
+	for k in 9:
+		var x := -64.0 + k * 16.0
+		draw_line(Vector2(x, -58 + absf(x) * 0.02), Vector2(x + 6, -58 + absf(x) * 0.02), Color(0, 0, 0, 0.12), 1.5)
 	if flame > 0.0:
 		# Firelight on the base, fading up the belly.
 		var band := PackedVector2Array([Vector2(-100, 4), Vector2(100, 4), Vector2(100, -48), Vector2(-100, -48)])
@@ -542,6 +605,13 @@ func _draw_glass_front() -> void:
 	_arc(Vector2(b.x, top), Vector2(GLASS_HW.y, 8), 0.0, PI, Color(1, 1, 1, 0.55), 2.5)
 	draw_colored_polygon(PackedVector2Array([Vector2(b.x - 34, b.y - 16), Vector2(b.x - 26, b.y - 16),
 		Vector2(b.x - 38, top + 14), Vector2(b.x - 46, top + 14)]), Color(1, 1, 1, 0.2))
+	# Pressed facets round the lower half of the tea glass.
+	var facet_top := b.y - GLASS_H * 0.45
+	for k in 7:
+		var u := -0.75 + k * 0.25
+		draw_line(Vector2(b.x + u * GLASS_HW.x, b.y - GLASS_FOOT), Vector2(b.x + u * _glass_hw(facet_top), facet_top),
+			Color(1, 1, 1, 0.14), 2.0, true)
+	_arc(Vector2(b.x, facet_top), Vector2(_glass_hw(facet_top), 6), 0.0, PI, Color(1, 1, 1, 0.18), 1.5)
 	# Teaspoon leaning out of the glass.
 	draw_line(Vector2(b.x - 20, top + 12), Vector2(b.x - 66, top - 44), COLOR_METAL, 5.0, true)
 	_fill_ellipse(Vector2(b.x - 68, top - 47), Vector2(5, 6), COLOR_METAL_LIGHT)
@@ -652,3 +722,8 @@ func _stream_end() -> Vector2:
 	return Vector2(GLASS_BASE.x + 8.0, _glass_surface_y())
 
 #endregion
+
+
+## The pot on the burner and the gas cylinder under it.
+func _focus_scene_rect() -> Rect2:
+	return Rect2(470, 225, 260, 385)

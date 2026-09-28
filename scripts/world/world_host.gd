@@ -91,6 +91,15 @@ func _process(delta: float) -> void:
 	fifi.trunk_glow = (0.3 + 0.7 * (sin(_pulse_t * 3.0) * 0.5 + 0.5)) if interactive else 0.0
 
 
+## Screen rect round the trunk's tap area, for the tutorial's spotlight.
+func trunk_screen_rect() -> Rect2:
+	var xf := trunk_shape.get_global_transform()
+	var r := Rect2(xf * trunk_shape.polygon[0], Vector2.ZERO)
+	for p in trunk_shape.polygon:
+		r = r.expand(xf * p)
+	return r
+
+
 func set_interactive(value: bool) -> void:
 	interactive = value
 	hint_label.visible = value

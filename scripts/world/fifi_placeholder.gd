@@ -242,6 +242,15 @@ func _draw_side_details() -> void:
 	_poly_on(_on_side, [Vector2(28, 69), Vector2(40, 69), Vector2(40, 72.5), Vector2(28, 72.5)], COLOR_CHROME, N_SIDE)
 	# Side repeater on the front wing.
 	_poly_on(_on_side, _ellipse(Vector2(-132, 58), Vector2(5, 2.5), 10), COLOR_TAIL_AMBER, N_SIDE)
+	# Fuel filler flap on the rear quarter, keyhole under the door handle,
+	# chrome strip along the door, and the rain gutter over the glass.
+	_poly_on(_on_side, _ellipse(Vector2(120, 58), Vector2(7, 6), 14), COLOR_PAINT.darkened(0.1), N_SIDE)
+	_poly_on(_on_side, _ellipse(Vector2(120, 58), Vector2(3, 2.5), 10), COLOR_CHROME, N_SIDE)
+	_poly_on(_on_side, _ellipse(Vector2(34, 64), Vector2(1.6, 1.6), 8), COLOR_CHROME.darkened(0.3), N_SIDE)
+	_line_on(_on_side, Vector2(-54, 45), Vector2(40, 45), COLOR_CHROME, 2.0, N_SIDE)
+	_line_on(_on_side, Vector2(-54, 43.5), Vector2(40, 43.5), COLOR_SEAM, 1.0)
+	for x in [-100.0, 70.0]:
+		_poly_on(_on_side, [Vector2(x, 22), Vector2(x + 4, 22), Vector2(x + 4, 25), Vector2(x, 25)], COLOR_RUBBER, N_SIDE)
 	# Wheel wells with a painted lip.
 	for xw in WHEEL_XS:
 		_poly_on(_on_side, _arch(xw, ARCH_R), COLOR_WELL, N_SIDE)
@@ -285,6 +294,11 @@ func _draw_rear_details() -> void:
 		_poly_on(_on_rear, _rect_yz(s * 42.0, s * 69.0, 44.0, 63.0), COLOR_CHROME, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 44.0, s * 59.0, 46.0, 61.0), COLOR_TAIL_RED, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 60.0, s * 67.0, 46.0, 61.0), COLOR_TAIL_AMBER, N_REAR)
+	# Chrome "127" script badge and the reversing lamp by the plate.
+	for k in 3:
+		_poly_on(_on_rear, [Vector2(24 + k * 5, 49), Vector2(27.5 + k * 5, 49), Vector2(27.5 + k * 5, 53), Vector2(24 + k * 5, 53)],
+			COLOR_CHROME, N_REAR)
+	_poly_on(_on_rear, [Vector2(-34, 34), Vector2(-26, 34), Vector2(-26, 40), Vector2(-34, 40)], Color("f4f0de"), N_REAR)
 	# Exhaust tip under the bumper.
 	var tip := PackedVector2Array()
 	for i in 12:
@@ -299,6 +313,11 @@ func _draw_bumpers() -> void:
 	for y in [-38.0, 38.0]:
 		_draw_box(Vector3(HX + 5, y - 3, 22), Vector3(HX + 8, y + 3, 36), COLOR_RUBBER)
 	_draw_box(Vector3(-HX - 6, HY, 24), Vector3(-HX + 20, HY + 3, 32), COLOR_CHROME)
+	# Rubber mud flap behind the rear wheel.
+	_draw_box(Vector3(WHEEL_XS[1] + 34, HY - 10, 6), Vector3(WHEEL_XS[1] + 37, HY - 1, 26), COLOR_RUBBER)
+	# Whip aerial on the front wing.
+	draw_line(iso(-126, HY - 6, 80), iso(-144, HY - 12, 165), Color("2a2a30"), 1.5, true)
+	draw_circle(iso(-126, HY - 6, 80), 2.5, COLOR_CHROME)
 
 
 func _draw_glasshouse() -> void:
