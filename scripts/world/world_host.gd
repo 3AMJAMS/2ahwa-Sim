@@ -52,6 +52,9 @@ var _lamp_lights: Array[PointLight2D] = []
 var _lamp_moths: Array[CPUParticles2D] = []
 var _lamp_dust: Array[CPUParticles2D] = []
 var _traffic := Traffic.new()
+var _m: MeshCanvas
+var _street_mesh: ArrayMesh
+var _lamp_mesh: ArrayMesh
 var _furniture := SidewalkFurniture.new()
 
 @onready var fifi: Node2D = $FIFISprite
@@ -149,11 +152,12 @@ func _on_trunk_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) 
 
 
 func _draw() -> void:
+	_m = MeshCanvas.new()
 	var amb := DayClock.ambient()
 	var dark := DayClock.darkness()
 	var rise := Vector2(0, -PAVEMENT_RISE)
 	# Asphalt: one long band with a few darker patches and dashed lane lines.
-	draw_colored_polygon(_band(FAR_KERB_ROW + 1, KERB_ROW - 1, Vector2.ZERO), COLOR_ROAD * amb)
+	_m.colored_polygon(_band(FAR_KERB_ROW + 1, KERB_ROW - 1, Vector2.ZERO), COLOR_ROAD * amb)
 	# Resurfaced patches: a few overlapping blobs each, so they read as repairs, not holes.
 	for patch in [Vector3(-6, -3, 1.4), Vector3(4, -9, 1.0), Vector3(12, -2, 1.8), Vector3(-2, -6.5, 0.8)]:
 		for k in 3:
@@ -164,21 +168,31 @@ func _draw() -> void:
 		for u in range(-EXTENT, EXTENT, 3):
 			dashes.append(_point(u, v))
 			dashes.append(_point(u + 1.3, v))
-	draw_multiline(dashes, Color(COLOR_LANE, 0.75) * amb, 3.0)
+	_m.multiline(dashes, Color(COLOR_LANE, 0.75) * amb, 3.0)
 	# A manhole cover in the lane beside FIFI.
 	_ground_ellipse(_point(-5.5, -0.5), Vector2(34, 17), Color("3c3d43") * amb)
 	_ground_ellipse(_point(-5.5, -0.5), Vector2(26, 13), Color("45464d") * amb)
 	# Far pavement and kerb (its road-facing side faces us), then the near ones.
-	draw_colored_polygon(_band(-EXTENT, FAR_KERB_ROW - 1, rise), COLOR_STONE_A * amb)
+	_m.colored_polygon(_band(-EXTENT, FAR_KERB_ROW - 1, rise), COLOR_STONE_A * amb)
 	_draw_seams(-EXTENT, FAR_KERB_ROW - 1, rise, COLOR_GROUT * amb, 2.0)
 	_draw_kerb(FAR_KERB_ROW, true, amb)
 	_draw_kerb(KERB_ROW, false, amb)
-	draw_colored_polygon(_band(KERB_ROW + 1, EXTENT, rise), COLOR_STONE_B * amb)
+	_m.colored_polygon(_band(KERB_ROW + 1, EXTENT, rise), COLOR_STONE_B * amb)
 	_draw_seams(KERB_ROW + 1, EXTENT, rise, COLOR_GROUT * amb, 2.0)
+	# The street and the lamp posts are baked into two meshes (one draw call
+	# each), with the textured light pools and glows drawn between and after.
+	_street_mesh = _m.commit()
+	draw_mesh(_street_mesh, null)
 	for light in STREETLIGHTS:
 		_draw_light_pool(light[0], light[1], dark)
+	_m = MeshCanvas.new()
 	for light in STREETLIGHTS:
 		_draw_streetlight(light[0], light[1], amb, dark)
+	_lamp_mesh = _m.commit()
+	_m = null
+	draw_mesh(_lamp_mesh, null)
+	for light in STREETLIGHTS:
+		_draw_lamp_glow(light[0], light[1], amb, dark)
 
 
 ## Kerb row j, painted in alternating black and white blocks along the street;
@@ -188,13 +202,13 @@ func _draw_kerb(j: int, face: bool, amb: Color) -> void:
 	var near := j + 0.5 if face else j - 0.5
 	for u in range(-EXTENT, EXTENT):
 		var col := (COLOR_KERB_DARK if posmod(u, 2) == 0 else COLOR_KERB_LIGHT) * amb
-		draw_colored_polygon(PackedVector2Array([_point(u - 0.5, j - 0.5) + rise, _point(u + 0.5, j - 0.5) + rise,
+		_m.colored_polygon(PackedVector2Array([_point(u - 0.5, j - 0.5) + rise, _point(u + 0.5, j - 0.5) + rise,
 			_point(u + 0.5, j + 0.5) + rise, _point(u - 0.5, j + 0.5) + rise]), col)
 		if face:
-			draw_colored_polygon(PackedVector2Array([_point(u - 0.5, near) + rise, _point(u + 0.5, near) + rise,
+			_m.colored_polygon(PackedVector2Array([_point(u - 0.5, near) + rise, _point(u + 0.5, near) + rise,
 				_point(u + 0.5, near), _point(u - 0.5, near)]), col.darkened(0.3))
 	var e := float(EXTENT)
-	draw_line(_point(-e, near) + rise, _point(e, near) + rise, Color(1, 1, 1, 0.12) * amb, 2.0)
+	_m.line(_point(-e, near) + rise, _point(e, near) + rise, Color(1, 1, 1, 0.12) * amb, 2.0)
 
 
 ## Rows j0..j1 as one strip running EXTENT tiles each way along the street.
@@ -213,7 +227,7 @@ func _draw_seams(j0: int, j1: int, offset: Vector2, color: Color, width: float) 
 	for j in range(j0, j1 + 2):
 		lines.append(_point(-EXTENT, j - 0.5) + offset)
 		lines.append(_point(EXTENT, j - 0.5) + offset)
-	draw_multiline(lines, color, width)
+	_m.multiline(lines, color, width)
 
 
 ## Screen position of a point in tile coordinates (tile centres at integers).
@@ -255,23 +269,23 @@ func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> vo
 	var dir: Vector2 = g.dir
 	# Foundation block and the pole, lit from the left.
 	_ground_ellipse(base + Vector2(0, 2), Vector2(16, 8), Color(0, 0, 0, 0.25))
-	draw_rect(Rect2(base + Vector2(-10, -10), Vector2(20, 10)), Color("a8a49c") * amb)
-	draw_rect(Rect2(base + Vector2(-10, -10), Vector2(20, 3)), Color("c4c0b8") * amb)
+	_m.rect(Rect2(base + Vector2(-10, -10), Vector2(20, 10)), Color("a8a49c") * amb)
+	_m.rect(Rect2(base + Vector2(-10, -10), Vector2(20, 3)), Color("c4c0b8") * amb)
 	var hb := 5.5
 	var ht := 3.0
 	var y0 := base.y - 10.0
-	draw_colored_polygon(PackedVector2Array([Vector2(base.x - hb, y0), Vector2(base.x, y0), Vector2(top.x, top.y),
+	_m.colored_polygon(PackedVector2Array([Vector2(base.x - hb, y0), Vector2(base.x, y0), Vector2(top.x, top.y),
 		Vector2(top.x - ht, top.y)]), COLOR_POLE.lightened(0.15) * amb)
-	draw_colored_polygon(PackedVector2Array([Vector2(base.x, y0), Vector2(base.x + hb, y0), Vector2(top.x + ht, top.y),
+	_m.colored_polygon(PackedVector2Array([Vector2(base.x, y0), Vector2(base.x + hb, y0), Vector2(top.x + ht, top.y),
 		Vector2(top.x, top.y)]), COLOR_POLE.darkened(0.2) * amb)
 	# Specular streak down the lit side, and collars where the sections join.
-	draw_line(Vector2(base.x - hb * 0.45, y0), Vector2(top.x - ht * 0.45, top.y), COLOR_POLE_SHINE * amb, 1.2)
+	_m.line(Vector2(base.x - hb * 0.45, y0), Vector2(top.x - ht * 0.45, top.y), COLOR_POLE_SHINE * amb, 1.2)
 	for ya in [y0 - 4.0, y0 - 100.0]:
 		var w := lerpf(hb, ht, (y0 - ya) / (y0 - top.y)) + 1.0
-		draw_rect(Rect2(base.x - w, ya - 4.0, w * 2.0, 4.0), COLOR_POLE.darkened(0.12) * amb)
-		draw_line(Vector2(base.x - w, ya - 4.0), Vector2(base.x + w, ya - 4.0), COLOR_POLE_SHINE * amb, 1.0)
+		_m.rect(Rect2(base.x - w, ya - 4.0, w * 2.0, 4.0), COLOR_POLE.darkened(0.12) * amb)
+		_m.line(Vector2(base.x - w, ya - 4.0), Vector2(base.x + w, ya - 4.0), COLOR_POLE_SHINE * amb, 1.0)
 	# Access hatch low on the pole.
-	draw_rect(Rect2(base.x - 2.5, y0 - 70, 5, 12), COLOR_POLE.darkened(0.3) * amb)
+	_m.rect(Rect2(base.x - 2.5, y0 - 70, 5, 12), COLOR_POLE.darkened(0.3) * amb)
 	# Swan-neck arm: up off the pole top, curving out over the road.
 	var arm := PackedVector2Array()
 	var c1 := top + Vector2(0, -34)
@@ -279,9 +293,9 @@ func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> vo
 	for k in 13:
 		var t := k / 12.0
 		arm.append(top.lerp(c1, t).lerp(c1.lerp(c2, t), t).lerp(c1.lerp(c2, t).lerp(c2.lerp(head, t), t), t))
-	draw_polyline(arm, COLOR_POLE.darkened(0.1) * amb, 4.5, true)
-	draw_polyline(arm, COLOR_POLE.lightened(0.25) * amb, 1.5, true)
-	draw_circle(top + Vector2(0, -3), 4.0, COLOR_POLE * amb)
+	_m.polyline(arm, COLOR_POLE.darkened(0.1) * amb, 4.5, true)
+	_m.polyline(arm, COLOR_POLE.lightened(0.25) * amb, 1.5, true)
+	_m.circle(top + Vector2(0, -3), 4.0, COLOR_POLE * amb)
 	# Cobra head: a long rounded shell along the arm, glowing lens underneath.
 	var side := Vector2(-dir.y, dir.x)
 	if side.y < 0.0:
@@ -290,8 +304,16 @@ func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> vo
 	for k in 14:
 		var a := TAU * k / 14.0
 		shell.append(head + dir * (cos(a) * 20.0 + 6.0) + side * sin(a) * 7.0 + Vector2(0, -2))
-	draw_colored_polygon(shell, COLOR_HEAD * amb)
-	draw_line(head + dir * -8.0 + Vector2(0, -6), head + dir * 20.0 + Vector2(0, -6), COLOR_HEAD.lightened(0.35) * amb, 2.0)
+	_m.colored_polygon(shell, COLOR_HEAD * amb)
+	_m.line(head + dir * -8.0 + Vector2(0, -6), head + dir * 20.0 + Vector2(0, -6), COLOR_HEAD.lightened(0.35) * amb, 2.0)
+
+
+## The lantern's lens and its bloom after dusk: drawn after the baked meshes,
+## unbaked so the lens keeps its brighter-than-white glow colour.
+func _draw_lamp_glow(at: Vector2, reach: float, amb: Color, dark: float) -> void:
+	var g := _lamp_geometry(at, reach)
+	var head: Vector2 = g.head
+	var dir: Vector2 = g.dir
 	var lens := PackedVector2Array([head + dir * -8.0 + Vector2(0, 2), head + dir * 20.0 + Vector2(0, 2),
 		head + dir * 16.0 + Vector2(0, 6), head + dir * -4.0 + Vector2(0, 6)])
 	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(StationArt.hdr(COLOR_SODIUM.lightened(0.5), 3.0), dark))
@@ -381,4 +403,4 @@ func _ground_ellipse(c: Vector2, r: Vector2, color: Color) -> void:
 	for k in 20:
 		var a := TAU * k / 20.0
 		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
-	draw_colored_polygon(pts, color)
+	_m.colored_polygon(pts, color)

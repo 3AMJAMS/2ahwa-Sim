@@ -53,10 +53,17 @@ func _process(delta: float) -> void:
 			if gap < safe:
 				# Ease down toward the leader's speed, and below it when too close.
 				target = minf(target, leader.cur_speed * clampf(gap / safe, 0.0, 1.0))
+			# Stuck behind something slow? Pull out into the other lane going
+			# the same way, if it's clear alongside.
+			if leader.speed < car.speed * 0.85 and not car.changing_lane:
+				var other := _free_neighbour_lane(car, cars)
+				if other != car.lane_v:
+					car.change_lane(other)
 		var rate := ACCEL if target > car.cur_speed else BRAKE
 		car.cur_speed = move_toward(car.cur_speed, target, rate * delta)
 		if car.kind == StreetVehicle.Kind.TUKTUK or car.kind == StreetVehicle.Kind.SCOOTER:
 			car.bob = sin(_t * 17.0 + car.lane_v * 3.1 + car.speed) * 1.3
+		car.step_lane(delta)
 		car.u += car.dir * car.cur_speed * delta
 		if car.u * car.dir > START_U + car.length_tiles():
 			car.queue_free()
@@ -74,13 +81,30 @@ func _leader(car: StreetVehicle, cars: Array[StreetVehicle]) -> StreetVehicle:
 	var best: StreetVehicle = null
 	var best_d := INF
 	for other in cars:
-		if other == car or other.lane_v != car.lane_v:
+		if other == car or (other.target_lane != car.target_lane and other.lane_v != car.target_lane):
 			continue
 		var d := (other.u - car.u) * car.dir
 		if d > 0.0 and d < best_d:
 			best_d = d
 			best = other
 	return best
+
+
+## Another lane running the same way with room alongside `car`, else its own.
+func _free_neighbour_lane(car: StreetVehicle, cars: Array[StreetVehicle]) -> float:
+	for lane in LANES:
+		var v: float = lane[0]
+		if lane[1] != car.dir or v == car.lane_v or absf(v - car.lane_v) > 4.0:
+			continue
+		var clear := true
+		for other in cars:
+			if other != car and (other.lane_v == v or other.target_lane == v) \
+					and absf(other.u - car.u) < (car.length_tiles() + other.length_tiles()) * 0.5 + 4.0:
+				clear = false
+				break
+		if clear:
+			return v
+	return car.lane_v
 
 
 ## Clear road between a vehicle's nose and the leader's tail, in tiles.
@@ -92,7 +116,7 @@ func _entry_clear(lane: int, cars: Array[StreetVehicle]) -> bool:
 	var v: float = LANES[lane][0]
 	var d: float = LANES[lane][1]
 	for car in cars:
-		if car.lane_v == v and (car.u * d) < -START_U + car.length_tiles() + 6.0:
+		if (car.lane_v == v or car.target_lane == v) and (car.u * d) < -START_U + car.length_tiles() + 6.0:
 			return false
 	return true
 
@@ -113,18 +137,19 @@ func _spawn(lane_index: int) -> void:
 	else:
 		car.kind = StreetVehicle.Kind.PICKUP
 	car.lane_v = lane[0]
+	car.target_lane = lane[0]
 	car.dir = lane[1]
 	match car.kind:
 		StreetVehicle.Kind.TUKTUK:
-			car.speed = _rng.randf_range(2.2, 3.0)
+			car.speed = _rng.randf_range(3.6, 4.4)
 		StreetVehicle.Kind.SCOOTER:
-			car.speed = _rng.randf_range(4.5, 6.0)
+			car.speed = _rng.randf_range(6.0, 7.5)
 		StreetVehicle.Kind.MICROBUS:
-			car.speed = _rng.randf_range(4.8, 6.5)
+			car.speed = _rng.randf_range(6.5, 8.5)
 		StreetVehicle.Kind.PICKUP:
-			car.speed = _rng.randf_range(3.2, 4.2)
+			car.speed = _rng.randf_range(5.0, 6.0)
 		_:
-			car.speed = _rng.randf_range(3.8, 5.5)
+			car.speed = _rng.randf_range(5.5, 7.5)
 	car.u = -car.dir * START_U
 	add_child(car)
 	car.set_light(_ambient, _darkness)

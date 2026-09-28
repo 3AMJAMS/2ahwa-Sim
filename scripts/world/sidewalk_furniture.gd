@@ -29,8 +29,18 @@ var ambient := Color.WHITE:
 		queue_redraw()
 
 
+var _m: MeshCanvas
+var _mesh: ArrayMesh
+
+
+## Baked into one mesh, one draw call.
 func _draw() -> void:
+	_m = MeshCanvas.new()
 	_lawn_chair(Vector3(52, 150, Z_GROUND))
+	_mesh = _m.commit()
+	_m = null
+	if _mesh:
+		draw_mesh(_mesh, null)
 
 
 static func iso(p: Vector3) -> Vector2:
@@ -68,8 +78,8 @@ func _x_frame(p: Callable, b: float) -> void:
 	_tube(leg_a[0], leg_a[1], COLOR_ALU)
 	_tube(leg_b[0], leg_b[1], COLOR_ALU)
 	for foot in [leg_a[0], leg_b[0]]:
-		draw_circle(iso(foot), 2.6, COLOR_PAD * Color(ambient, 1.0))
-	draw_circle(iso(p.call(1, b, 12.5)), 1.8, _shade(COLOR_ALU.darkened(0.3), Vector3(0, 1, 0)))
+		_m.circle(iso(foot), 2.6, COLOR_PAD * Color(ambient, 1.0))
+	_m.circle(iso(p.call(1, b, 12.5)), 1.8, _shade(COLOR_ALU.darkened(0.3), Vector3(0, 1, 0)))
 	_tube(p.call(16, b, 44), p.call(16, b, 28), COLOR_ALU)
 	_tube(p.call(-20, b, 50), p.call(16, b, 44), COLOR_ALU.darkened(0.08), 3.6)
 	# Plastic pad along the armrest.
@@ -107,8 +117,8 @@ func _webbing(q: Array, bands: int, cross: int, n: Vector3) -> void:
 func _frame(q: Array) -> void:
 	var pts := _project(q)
 	pts.append(pts[0])
-	draw_polyline(pts, _shade(COLOR_ALU.darkened(0.2), Vector3(0, 0.6, 1)), 3.2, true)
-	draw_polyline(pts, _shade(COLOR_ALU.lightened(0.2), Vector3(0, 0.6, 1)), 1.2, true)
+	_m.polyline(pts, _shade(COLOR_ALU.darkened(0.2), Vector3(0, 0.6, 1)), 3.2, true)
+	_m.polyline(pts, _shade(COLOR_ALU.lightened(0.2), Vector3(0, 0.6, 1)), 1.2, true)
 
 
 ## An Egyptian tea glass on a small saucer: tea two-thirds up, a spoon in it.
@@ -117,18 +127,18 @@ func _tea_glass(at: Vector3) -> void:
 	for i in 14:
 		var a := TAU * i / 14.0
 		saucer.append(iso(at + Vector3(cos(a) * 6.5, sin(a) * 6.5, 1)))
-	draw_colored_polygon(saucer, _shade(Color("eeeae2"), Vector3(0, 0, 1)))
+	_m.colored_polygon(saucer, _shade(Color("eeeae2"), Vector3(0, 0, 1)))
 	var top := iso(at + Vector3(0, 0, 12))
 	var base := iso(at + Vector3(0, 0, 1))
 	var w := 3.6 * SCALE
-	draw_colored_polygon(PackedVector2Array([base + Vector2(-w * 0.85, 0), base + Vector2(w * 0.85, 0),
+	_m.colored_polygon(PackedVector2Array([base + Vector2(-w * 0.85, 0), base + Vector2(w * 0.85, 0),
 		top + Vector2(w, 0), top + Vector2(-w, 0)]), Color(0.85, 0.92, 1.0, 0.35))
 	var tea := base.lerp(top, 0.7)
-	draw_colored_polygon(PackedVector2Array([base + Vector2(-w * 0.8, 0), base + Vector2(w * 0.8, 0),
+	_m.colored_polygon(PackedVector2Array([base + Vector2(-w * 0.8, 0), base + Vector2(w * 0.8, 0),
 		tea + Vector2(w * 0.95, 0), tea + Vector2(-w * 0.95, 0)]), COLOR_TEA * ambient)
-	draw_line(tea + Vector2(1, 0), top + Vector2(3, -5), Color(0.8, 0.82, 0.86) * ambient, 1.2)
-	draw_line(top + Vector2(-w, 0), top + Vector2(w, 0), Color(1, 1, 1, 0.5), 1.0)
-	draw_line(base.lerp(top, 0.2) + Vector2(-w * 0.5, 0), base.lerp(top, 0.9) + Vector2(-w * 0.6, 0), Color(1, 1, 1, 0.3), 1.0)
+	_m.line(tea + Vector2(1, 0), top + Vector2(3, -5), Color(0.8, 0.82, 0.86) * ambient, 1.2)
+	_m.line(top + Vector2(-w, 0), top + Vector2(w, 0), Color(1, 1, 1, 0.5), 1.0)
+	_m.line(base.lerp(top, 0.2) + Vector2(-w * 0.5, 0), base.lerp(top, 0.9) + Vector2(-w * 0.6, 0), Color(1, 1, 1, 0.3), 1.0)
 
 
 ## A small leatherette transistor radio with a chrome grille and aerial.
@@ -142,12 +152,12 @@ func _radio(at: Vector3) -> void:
 	for i in 12:
 		var a := TAU * i / 12.0
 		grille.append(iso(Vector3(at.x - 3 + cos(a) * 4, fy, at.z + 6 + sin(a) * 4)))
-	draw_colored_polygon(grille, _shade(Color("b7bcc4"), Vector3(0, 1, 0)))
+	_m.colored_polygon(grille, _shade(Color("b7bcc4"), Vector3(0, 1, 0)))
 	for k in 3:
 		_line(Vector3(at.x - 6, fy, at.z + 4 + k * 2), Vector3(at.x, fy, at.z + 4 + k * 2), Color(0, 0, 0, 0.35), 1.0)
 	_face([Vector3(at.x + 2, fy, at.z + 8), Vector3(at.x + 8, fy, at.z + 8), Vector3(at.x + 8, fy, at.z + 10),
 		Vector3(at.x + 2, fy, at.z + 10)], Color("e8d8a0"), Vector3(0, 1, 0))
-	draw_circle(iso(Vector3(at.x + 5, fy, at.z + 4)), 2.2, _shade(CHROME_KNOB, Vector3(0, 1, 0)))
+	_m.circle(iso(Vector3(at.x + 5, fy, at.z + 4)), 2.2, _shade(CHROME_KNOB, Vector3(0, 1, 0)))
 	# Carry strap and telescopic aerial.
 	_line(Vector3(lo.x + 2, at.y, hi.z), Vector3(at.x, at.y, hi.z + 6), Color("3a2a20"), 1.5)
 	_line(Vector3(at.x, at.y, hi.z + 6), Vector3(hi.x - 2, at.y, hi.z), Color("3a2a20"), 1.5)
@@ -166,18 +176,18 @@ func _box(lo: Vector3, hi: Vector3, color: Color) -> void:
 
 
 func _tube(a: Vector3, b: Vector3, color: Color, width := 3.0) -> void:
-	draw_line(iso(a), iso(b), _shade(color.darkened(0.2), Vector3(0, 0.6, 0.8)), width, true)
-	draw_line(iso(a) + Vector2(-0.4, -0.4), iso(b) + Vector2(-0.4, -0.4), _shade(color.lightened(0.25), Vector3(0, 0.6, 0.8)),
+	_m.line(iso(a), iso(b), _shade(color.darkened(0.2), Vector3(0, 0.6, 0.8)), width, true)
+	_m.line(iso(a) + Vector2(-0.4, -0.4), iso(b) + Vector2(-0.4, -0.4), _shade(color.lightened(0.25), Vector3(0, 0.6, 0.8)),
 		width * 0.35, true)
 
 
 ## A line in an unshaded colour, tinted by the time of day.
 func _line(a: Vector3, b: Vector3, color: Color, width: float) -> void:
-	draw_line(iso(a), iso(b), color * Color(ambient, 1.0), width, true)
+	_m.line(iso(a), iso(b), color * Color(ambient, 1.0), width, true)
 
 
 func _face(q: Array, color: Color, n: Vector3) -> void:
-	draw_colored_polygon(_project(q), _shade(color, n))
+	_m.colored_polygon(_project(q), _shade(color, n))
 
 
 func _shadow(at: Vector3, r: Vector2, alpha: float) -> void:
@@ -185,7 +195,7 @@ func _shadow(at: Vector3, r: Vector2, alpha: float) -> void:
 	for i in 18:
 		var a := TAU * i / 18.0
 		pts.append(iso(at + Vector3(cos(a) * r.x, sin(a) * r.y, 0)))
-	draw_colored_polygon(pts, Color(0, 0, 0, alpha))
+	_m.colored_polygon(pts, Color(0, 0, 0, alpha))
 
 
 static func _project(points: Array) -> PackedVector2Array:

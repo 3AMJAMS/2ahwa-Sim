@@ -101,6 +101,7 @@ var trunk_glow := 0.0:
 var ambient := Color.WHITE:
 	set(value):
 		ambient = value
+		_mesh = null
 		queue_redraw()
 ## 0 by day, 1 at night: how strongly the LED strips glow.
 var darkness := 1.0:
@@ -114,6 +115,8 @@ var darkness := 1.0:
 var _glow: Node2D
 var _led_groups: Array[Node2D] = []
 var _t := 0.0
+var _m: MeshCanvas
+var _mesh: ArrayMesh
 ## The LED strips' coloured spill onto the road and pavement round the trunk.
 var _led_light: PointLight2D
 
@@ -177,6 +180,18 @@ func get_trunk_polygon() -> PackedVector2Array:
 
 
 func _draw() -> void:
+	if _mesh == null:
+		_m = MeshCanvas.new()
+		_build()
+		_mesh = _m.commit()
+		_m = null
+	if _mesh:
+		draw_mesh(_mesh, null)
+
+
+## The whole car is baked into one mesh (one draw call), rebuilt only when
+## the light changes.
+func _build() -> void:
 	_draw_ground_shadow()
 	_draw_box(Vector3(-HX - 6, -HY - 3, 24), Vector3(-HX, HY + 3, 32), COLOR_CHROME)
 	_draw_lower_body()
@@ -201,10 +216,10 @@ func _process(delta: float) -> void:
 
 
 func _draw_ground_shadow() -> void:
-	draw_colored_polygon(_project([
+	_m.colored_polygon(_project([
 		Vector3(-HX - 16, -84, 0), Vector3(HX + 20, -84, 0), Vector3(HX + 20, 88, 0), Vector3(-HX - 16, 88, 0)]),
 		Color(0, 0, 0, 0.16))
-	draw_colored_polygon(_project([
+	_m.colored_polygon(_project([
 		Vector3(-HX - 6, -76, 0), Vector3(HX + 10, -76, 0), Vector3(HX + 10, 78, 0), Vector3(-HX - 6, 78, 0)]),
 		Color(0, 0, 0, 0.22))
 	for xw in WHEEL_XS:
@@ -212,7 +227,7 @@ func _draw_ground_shadow() -> void:
 		for i in 16:
 			var a := TAU * i / 16.0
 			contact.append(iso(xw + 30.0 * cos(a), HY - 8.0 + 12.0 * sin(a), 0.0))
-		draw_colored_polygon(contact, Color(0, 0, 0, 0.3))
+		_m.colored_polygon(contact, Color(0, 0, 0, 0.3))
 
 
 func _draw_lower_body() -> void:
@@ -258,7 +273,7 @@ func _draw_side_details() -> void:
 		for i in 13:
 			var a := PI * i / 12.0
 			lip.append(iso(xw + (ARCH_R + 1.5) * cos(a), HY, WHEEL_R + (ARCH_R + 1.5) * sin(a)))
-		draw_polyline(lip, _shade(COLOR_PAINT.lightened(0.2), N_SIDE), 2.5, true)
+		_m.polyline(lip, _shade(COLOR_PAINT.lightened(0.2), N_SIDE), 2.5, true)
 
 
 func _draw_wheel(xw: float) -> void:
@@ -271,15 +286,15 @@ func _draw_wheel(xw: float) -> void:
 	well.append(iso(xw + ARCH_R, HY, -30.0))
 	var tyre := _hull(_ring(xw, y_out, WHEEL_R) + _ring(xw, y_out - 18.0, WHEEL_R))
 	for piece in Geometry2D.intersect_polygons(tyre, _hull(well)):
-		draw_colored_polygon(piece, COLOR_TIRE)
-	draw_colored_polygon(_ring(xw, y_out, WHEEL_R), _shade(Color("26262e"), N_SIDE))
-	draw_colored_polygon(_ring(xw, y_out + 0.5, 16.0), _shade(COLOR_RIM, N_SIDE))
-	draw_colored_polygon(_ring(xw, y_out + 1.0, 11.0), _shade(COLOR_RIM.darkened(0.3), N_SIDE))
+		_m.colored_polygon(piece, COLOR_TIRE)
+	_m.colored_polygon(_ring(xw, y_out, WHEEL_R), _shade(Color("26262e"), N_SIDE))
+	_m.colored_polygon(_ring(xw, y_out + 0.5, 16.0), _shade(COLOR_RIM, N_SIDE))
+	_m.colored_polygon(_ring(xw, y_out + 1.0, 11.0), _shade(COLOR_RIM.darkened(0.3), N_SIDE))
 	for k in 4:
 		var a := PI * 0.25 + k * PI * 0.5
 		var c := Vector2(xw + 13.5 * cos(a), WHEEL_R + 13.5 * sin(a))
-		draw_colored_polygon(_ring(c.x, y_out + 1.0, 2.2, c.y, 8), COLOR_WELL)
-	draw_colored_polygon(_ring(xw, y_out + 1.5, 5.5), _shade(COLOR_CHROME, N_SIDE))
+		_m.colored_polygon(_ring(c.x, y_out + 1.0, 2.2, c.y, 8), COLOR_WELL)
+	_m.colored_polygon(_ring(xw, y_out + 1.5, 5.5), _shade(COLOR_CHROME, N_SIDE))
 
 
 func _draw_rear_details() -> void:
@@ -304,7 +319,7 @@ func _draw_rear_details() -> void:
 	for i in 12:
 		var a := TAU * i / 12.0
 		tip.append(iso(HX + 4.0, -42.0 + 4.5 * cos(a), 15.0 + 3.5 * sin(a)))
-	draw_colored_polygon(tip, Color("3a3a42"))
+	_m.colored_polygon(tip, Color("3a3a42"))
 
 
 func _draw_bumpers() -> void:
@@ -316,8 +331,8 @@ func _draw_bumpers() -> void:
 	# Rubber mud flap behind the rear wheel.
 	_draw_box(Vector3(WHEEL_XS[1] + 34, HY - 10, 6), Vector3(WHEEL_XS[1] + 37, HY - 1, 26), COLOR_RUBBER)
 	# Whip aerial on the front wing.
-	draw_line(iso(-126, HY - 6, 80), iso(-144, HY - 12, 165), Color("2a2a30"), 1.5, true)
-	draw_circle(iso(-126, HY - 6, 80), 2.5, COLOR_CHROME)
+	_m.line(iso(-126, HY - 6, 80), iso(-144, HY - 12, 165), Color("2a2a30"), 1.5, true)
+	_m.circle(iso(-126, HY - 6, 80), 2.5, COLOR_CHROME)
 
 
 func _draw_glasshouse() -> void:
@@ -348,24 +363,24 @@ func _draw_glasshouse() -> void:
 	_glint_on(_on_glass_side, quarter_glass, [Vector2(72, 80), Vector2(80, 80), Vector2(62, 132), Vector2(54, 132)])
 	# The windscreen faces away from this camera, so the cabin's front edge
 	# sits straight against the bonnet: outline it, and park the wipers.
-	draw_polyline(_project([fw_n, fr_n, fr_f]), Color(0, 0, 0, 0.35), 2.5, true)
+	_m.polyline(_project([fw_n, fr_n, fr_f]), Color(0, 0, 0, 0.35), 2.5, true)
 	for y in [-46.0, 2.0]:
-		draw_line(iso(GH_FRONT.x - 3, y, Z_BELT), iso(GH_FRONT.x - 3, y + 38, Z_BELT), COLOR_RUBBER, 2.0, true)
+		_m.line(iso(GH_FRONT.x - 3, y, Z_BELT), iso(GH_FRONT.x - 3, y + 38, Z_BELT), COLOR_RUBBER, 2.0, true)
 	_line_on(_on_glass_side, Vector2(GH_FRONT.x, 80.5), Vector2(GH_REAR.x, 80.5), COLOR_CHROME, 2.0, N_SIDE)
 	_line_on(_on_glass_side, Vector2(GH_FRONT.y + 2, Z_ROOF - 0.5), Vector2(GH_REAR.y - 2, Z_ROOF - 0.5), Color(COLOR_CHROME, 0.7), 2.0, N_TOP)
 
 
 func _draw_mirror() -> void:
 	var head := Vector3(-54, HY + 9, 88)
-	draw_line(iso(-48, HY, Z_BELT + 1), iso3(head), _shade(COLOR_CHROME, N_SIDE), 3.0, true)
+	_m.line(iso(-48, HY, Z_BELT + 1), iso3(head), _shade(COLOR_CHROME, N_SIDE), 3.0, true)
 	var rim := PackedVector2Array()
 	var glass := PackedVector2Array()
 	for i in 14:
 		var a := TAU * i / 14.0
 		rim.append(iso(head.x, head.y + 6.5 * cos(a), head.z + 5.0 * sin(a)))
 		glass.append(iso(head.x + 0.5, head.y + 5.0 * cos(a), head.z + 3.6 * sin(a)))
-	draw_colored_polygon(rim, _shade(COLOR_CHROME, N_REAR))
-	draw_colored_polygon(glass, _shade(COLOR_GLASS.lightened(0.25), N_REAR))
+	_m.colored_polygon(rim, _shade(COLOR_CHROME, N_REAR))
+	_m.colored_polygon(glass, _shade(COLOR_GLASS.lightened(0.25), N_REAR))
 
 
 ## Drawn at full strength once; WorldHost's pulse fades it via modulate.
@@ -380,7 +395,7 @@ func _draw_trunk_glow() -> void:
 ## floor, then the stand's kit. Everything is clipped to the opening.
 func _draw_trunk_interior() -> void:
 	var clip := _hull(_project(OPENING))
-	draw_colored_polygon(clip, COLOR_CABIN * ambient)
+	_m.colored_polygon(clip, COLOR_CABIN * ambient)
 	_clipped(clip, _project([Vector3(60, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
 		Vector3(150, -48, 131), Vector3(60, -48, 131)]), _shade(COLOR_TRIM, N_SIDE))
 	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(72, 48, Z_FLOOR),
@@ -414,7 +429,7 @@ func _draw_trunk_interior() -> void:
 	_cylinder(clip, g + Vector3(0, 0, 26), 8, 9, 12, COLOR_STEEL, Color("2a211d"))
 	for piece in Geometry2D.intersect_polygons(clip, PackedVector2Array([iso3(g + Vector3(0, 7, 33)),
 			iso3(g + Vector3(0, 24, 36)), iso3(g + Vector3(0, 24, 39)), iso3(g + Vector3(0, 7, 36))])):
-		draw_colored_polygon(piece, Color("5a3620"))
+		_m.colored_polygon(piece, Color("5a3620"))
 
 
 ## The raised hatch: glass over a short painted tailgate, with its gas struts.
@@ -435,13 +450,13 @@ func _draw_open_hatch() -> void:
 		n = -n
 	var inward := -n.normalized() * 4.0
 	# Near edge and bottom edge show the panel's thickness.
-	draw_colored_polygon(_project([hinge_n, glass_n, tail_n, tail_n + inward, glass_n + inward, hinge_n + inward]),
+	_m.colored_polygon(_project([hinge_n, glass_n, tail_n, tail_n + inward, glass_n + inward, hinge_n + inward]),
 		_shade(COLOR_PAINT.darkened(0.25), N_SIDE))
-	draw_colored_polygon(_project([tail_f, tail_n, tail_n + inward, tail_f + inward]),
+	_m.colored_polygon(_project([tail_f, tail_n, tail_n + inward, tail_f + inward]),
 		_shade(COLOR_PAINT.darkened(0.35), N_REAR))
-	draw_colored_polygon(_project([hinge_f, glass_f, glass_n, hinge_n]), _shade(skin, n))
-	draw_colored_polygon(_project([glass_f, tail_f, tail_n, glass_n]), _shade(skin, n))
-	draw_polyline(_project([hinge_n, glass_n, tail_n, tail_f]), _shade(COLOR_PAINT, N_SIDE), 2.5, true)
+	_m.colored_polygon(_project([hinge_f, glass_f, glass_n, hinge_n]), _shade(skin, n))
+	_m.colored_polygon(_project([glass_f, tail_f, tail_n, glass_n]), _shade(skin, n))
+	_m.polyline(_project([hinge_n, glass_n, tail_n, tail_f]), _shade(COLOR_PAINT, N_SIDE), 2.5, true)
 	var pane := [hinge_f.lerp(glass_f, 0.12).lerp(hinge_n.lerp(glass_n, 0.12), 0.06),
 		hinge_f.lerp(glass_f, 0.9).lerp(hinge_n.lerp(glass_n, 0.9), 0.06),
 		hinge_n.lerp(glass_n, 0.9).lerp(hinge_f.lerp(glass_f, 0.9), 0.06),
@@ -451,31 +466,31 @@ func _draw_open_hatch() -> void:
 	# hinge, with the heater element lines, the wiper and two light streaks.
 	var low := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.25), n)
 	var high := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.7), n)
-	draw_polygon(pane_2d, PackedColorArray([low, high, high, low]))
+	_m.polygon(pane_2d, PackedColorArray([low, high, high, low]))
 	var heater := PackedVector2Array()
 	for k in range(1, 7):
 		var t := k / 7.0
 		heater.append(pane_2d[0].lerp(pane_2d[1], t).lerp(pane_2d[3].lerp(pane_2d[2], t), 0.04))
 		heater.append(pane_2d[3].lerp(pane_2d[2], t).lerp(pane_2d[0].lerp(pane_2d[1], t), 0.04))
-	draw_multiline(heater, Color(0.55, 0.3, 0.2, 0.45), 1.0)
+	_m.multiline(heater, Color(0.55, 0.3, 0.2, 0.45), 1.0)
 	for band in [[0.2, 0.3], [0.42, 0.47]]:
 		var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], band[0]), pane_2d[0].lerp(pane_2d[3], band[1]),
 			pane_2d[1].lerp(pane_2d[2], band[1] + 0.15), pane_2d[1].lerp(pane_2d[2], band[0] + 0.15)])
 		for piece in Geometry2D.intersect_polygons(pane_2d, glint):
-			draw_colored_polygon(piece, COLOR_GLINT)
+			_m.colored_polygon(piece, COLOR_GLINT)
 	var pivot := pane_2d[0].lerp(pane_2d[3], 0.5).lerp(pane_2d[1].lerp(pane_2d[2], 0.5), 0.08)
-	draw_line(pivot, pivot.lerp(pane_2d[1].lerp(pane_2d[2], 0.2), 0.8), COLOR_RUBBER, 2.0, true)
+	_m.line(pivot, pivot.lerp(pane_2d[1].lerp(pane_2d[2], 0.2), 0.8), COLOR_RUBBER, 2.0, true)
 	var seal := pane_2d.duplicate()
 	seal.append(pane_2d[0])
-	draw_polyline(seal, COLOR_RUBBER, 2.0, true)
+	_m.polyline(seal, COLOR_RUBBER, 2.0, true)
 	# Lock on the tailgate's lip.
 	var lock := tail_f.lerp(tail_n, 0.5).lerp(glass_f.lerp(glass_n, 0.5), 0.2)
-	draw_line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)
+	_m.line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)
 	for side in [-1.0, 1.0]:
 		var foot := Vector3(142, side * 50.0, 78)
 		var top := Vector3(hinge_n.x, side * 50.0, hinge_n.z).lerp(Vector3(glass_n.x, side * 50.0, glass_n.z), 0.55) + inward
-		draw_line(iso3(foot), iso3(foot.lerp(top, 0.55)), Color("2a2a30"), 3.0, true)
-		draw_line(iso3(foot.lerp(top, 0.5)), iso3(top), COLOR_CHROME, 1.8, true)
+		_m.line(iso3(foot), iso3(foot.lerp(top, 0.55)), Color("2a2a30"), 3.0, true)
+		_m.line(iso3(foot.lerp(top, 0.5)), iso3(top), COLOR_CHROME, 1.8, true)
 
 
 ## LED strip round the trunk opening and along the raised hatch's edge, in
@@ -509,17 +524,17 @@ func _led_run(path: Array, start: int, group: int) -> int:
 func _draw_ice_box() -> void:
 	var lo := Vector3(146, HY + 60, Z_PAVEMENT)
 	var hi := Vector3(176, HY + 82, Z_PAVEMENT + 20)
-	draw_colored_polygon(_project([lo + Vector3(-2, -2, 0), Vector3(hi.x + 6, lo.y - 2, lo.z),
+	_m.colored_polygon(_project([lo + Vector3(-2, -2, 0), Vector3(hi.x + 6, lo.y - 2, lo.z),
 		Vector3(hi.x + 6, hi.y + 4, lo.z), Vector3(lo.x - 2, hi.y + 4, lo.z)]), Color(0, 0, 0, 0.25))
 	_draw_box(lo, hi, COLOR_ICEBOX)
 	_draw_box(Vector3(lo.x - 1, lo.y - 1, hi.z - 5), Vector3(hi.x + 1, hi.y + 1, hi.z + 1), COLOR_ICEBOX_LID)
-	draw_line(iso(lo.x + 8, hi.y + 1.5, hi.z - 9), iso(hi.x - 8, hi.y + 1.5, hi.z - 9), _shade(COLOR_ICEBOX_LID, N_SIDE), 2.5)
+	_m.line(iso(lo.x + 8, hi.y + 1.5, hi.z - 9), iso(hi.x - 8, hi.y + 1.5, hi.z - 9), _shade(COLOR_ICEBOX_LID, N_SIDE), 2.5)
 	# A couple of mangoes and lemons on the lid.
 	for f in [[Vector3(156, HY + 68, hi.z + 3), 4.2, Color("f2a324")], [Vector3(163, HY + 74, hi.z + 3), 4.0, Color("e8c33a")],
 			[Vector3(168, HY + 67, hi.z + 2.5), 3.0, Color("f4e04d")]]:
 		var at := iso3(f[0])
-		draw_circle(at, f[1] * SCALE, f[2] * ambient)
-		draw_circle(at + Vector2(-1.2, -1.2) * SCALE, f[1] * 0.35 * SCALE, Color(1, 1, 1, 0.35))
+		_m.circle(at, f[1] * SCALE, f[2] * ambient)
+		_m.circle(at + Vector2(-1.2, -1.2) * SCALE, f[1] * 0.35 * SCALE, Color(1, 1, 1, 0.35))
 
 
 ## Corners of the open hatch: hinge (near, far), glass foot (far), tailgate
@@ -560,16 +575,16 @@ func _flat_ring(c: Vector3, r: float, segments := 18) -> PackedVector2Array:
 
 func _clipped(clip: PackedVector2Array, poly: PackedVector2Array, color: Color) -> void:
 	for piece in Geometry2D.intersect_polygons(clip, poly):
-		draw_colored_polygon(piece, color)
+		_m.colored_polygon(piece, color)
 
 
 ## Visible faces of an axis-aligned box: top, rear (+x) and near side (+y).
 func _draw_box(lo: Vector3, hi: Vector3, color: Color) -> void:
-	draw_colored_polygon(_project([Vector3(lo.x, lo.y, hi.z), Vector3(hi.x, lo.y, hi.z),
+	_m.colored_polygon(_project([Vector3(lo.x, lo.y, hi.z), Vector3(hi.x, lo.y, hi.z),
 		Vector3(hi.x, hi.y, hi.z), Vector3(lo.x, hi.y, hi.z)]), _shade(color, N_TOP))
-	draw_colored_polygon(_project([Vector3(hi.x, lo.y, lo.z), Vector3(hi.x, hi.y, lo.z),
+	_m.colored_polygon(_project([Vector3(hi.x, lo.y, lo.z), Vector3(hi.x, hi.y, lo.z),
 		Vector3(hi.x, hi.y, hi.z), Vector3(hi.x, lo.y, hi.z)]), _shade(color, N_REAR))
-	draw_colored_polygon(_project([Vector3(lo.x, hi.y, lo.z), Vector3(hi.x, hi.y, lo.z),
+	_m.colored_polygon(_project([Vector3(lo.x, hi.y, lo.z), Vector3(hi.x, hi.y, lo.z),
 		Vector3(hi.x, hi.y, hi.z), Vector3(lo.x, hi.y, hi.z)]), _shade(color, N_SIDE))
 
 
@@ -585,7 +600,7 @@ func _solid_face(points: Array, base: Color, inside: Vector3) -> void:
 		n = -n
 	if n.normalized().dot(VIEW_DIR.normalized()) <= 0.02:
 		return
-	draw_colored_polygon(_project(points), _shade(base, n))
+	_m.colored_polygon(_project(points), _shade(base, n))
 
 
 # Face mappings from 2D face coordinates to world space.
@@ -603,22 +618,22 @@ func _on_glass_side(p: Vector2) -> Vector3:
 
 
 func _poly_on(mapper: Callable, local, color: Color, normal: Vector3) -> void:
-	draw_colored_polygon(_map(mapper, local), _shade(color, normal))
+	_m.colored_polygon(_map(mapper, local), _shade(color, normal))
 
 
 func _line_on(mapper: Callable, a: Vector2, b: Vector2, color: Color, width: float, normal := Vector3.ZERO) -> void:
 	var c := color if normal == Vector3.ZERO else _shade(color, normal)
-	draw_line(iso3(mapper.call(a)), iso3(mapper.call(b)), c, width, true)
+	_m.line(iso3(mapper.call(a)), iso3(mapper.call(b)), c, width, true)
 
 
 func _polyline_on(mapper: Callable, local, color: Color, width: float) -> void:
-	draw_polyline(_map(mapper, local), color, width, true)
+	_m.polyline(_map(mapper, local), color, width, true)
 
 
 ## A warm reflection of the string lights, clipped to a pane of glass.
 func _glint_on(mapper: Callable, pane: PackedVector2Array, band: Array) -> void:
 	for piece in Geometry2D.intersect_polygons(pane, PackedVector2Array(band)):
-		draw_colored_polygon(_map(mapper, piece), COLOR_GLINT)
+		_m.colored_polygon(_map(mapper, piece), COLOR_GLINT)
 
 
 func _map(mapper: Callable, local) -> PackedVector2Array:
