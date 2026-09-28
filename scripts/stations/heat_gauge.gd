@@ -7,6 +7,8 @@ extends Control
 
 signal gauge_completed(accuracy: float)
 signal gauge_failed()
+## The pot just started foaming over (the failure lands after the animation).
+signal boiled_over
 
 enum State { IDLE, HEATING, DONE }
 
@@ -124,6 +126,7 @@ func _boil_over() -> void:
 	set_process(false)
 	_refresh()
 	status_label.text = tr("PREP_BURNT")
+	boiled_over.emit()
 	var run := _run_id
 	await stove.boil_over()
 	if run == _run_id:

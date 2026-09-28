@@ -14,12 +14,19 @@ An Egyptian-Arabic ahwa/bartending-style game. You play as **سيد (Sayed)**, s
 Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH), and launch platform locked.
 
 Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → fade to the flat prep station →
-make the order (شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع or عصير مانجا in the blender) →
-tips paid → fade back to the street. The first order is always شاي كشري, then orders rotate at random.
+pick the ingredients from the tray → pick the tool (the كنكة on the fire or the blender) → make the order
+(شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع or عصير مانجا in the blender) → tips paid →
+fade back to the street. The first order is always شاي كشري, then orders rotate at random.
+First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
 
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 - **Tap FIFI's glowing trunk** (or press Space/Enter on desktop) to start an order.
+- **Pick what goes in it** from the tray at the bottom — شاي, بن, كركديه, مانجا, تلج (كركديه ساقع needs two:
+  كركديه and تلج) — then **pick the tool**: الكنكة for hot drinks, الخلاط for cold ones. Each wrong pick shakes
+  the car and takes 20% off the tip (down to half).
+- **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
+  explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
 - **Hot orders — tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
@@ -37,6 +44,7 @@ The project uses Godot's built-in effects, so run it with the **Mobile** (or For
 HDR 2D + glow (`rendering/viewport/hdr_2d`, `WorldEnvironment` in `scenes/main.tscn`), `PointLight2D` streetlights,
 `CPUParticles2D` moths/dust, and shaders in `shaders/` (heat haze over the stove, screen vignette).
 Anything that should glow is drawn with a colour brighter than white (`StationArt.hdr()`).
+Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you set up the Android export preset.
 
 ### Project layout
 | Path | What |
@@ -48,11 +56,15 @@ Anything that should glow is drawn with a colour brighter than white (`StationAr
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
 | `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
+| `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |
+| `scripts/world/sidewalk_furniture.gd` | Sayed's folding lawn chair, his tea and his radio on the pavement (customer seating comes later as an upgrade) |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
-| `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
+| `scripts/stations/prep_station.gd` | Runs an order: ingredients → tool → gauge, pays tips (docked for wrong picks), tutorial hooks |
+| `scripts/stations/prep_picker.gd`, `pick_card.gd`, `prep_icons.gd` | The pick tray, its cards, and their procedural icons (ingredients and tools) |
+| `scripts/autoload/tutorial.gd`, `scripts/ui/` | Sayed's tutorial: plays each walkthrough once (`tutorials_seen` in the save); coach overlay with spotlight shader, speech bubble, portrait and pointing hand |
 | `scripts/world/` | Isometric street (four-lane road, painted kerbs, pavements, Cairo streetlights) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
-| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy`, `DayClock` (time of day, sky and lighting) |
-| `data/*.json` | Menu (incl. each drink's colours under `look`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
+| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy`, `DayClock` (time of day, sky and lighting), `Tutorial` |
+| `data/*.json` | Menu (each drink's `ingredients` and its colours under `look`), pickable ingredients/tools (`prep_items.json`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |
 | `assets/fonts/` | Cairo (OFL) — Arabic + Latin subsets |
 

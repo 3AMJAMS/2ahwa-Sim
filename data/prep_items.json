@@ -1,0 +1,13 @@
+{
+  "ingredients": [
+    { "id": "tea", "name_key": "ING_TEA" },
+    { "id": "coffee", "name_key": "ING_COFFEE" },
+    { "id": "karkade", "name_key": "ING_KARKADE" },
+    { "id": "mango", "name_key": "ING_MANGO" },
+    { "id": "ice", "name_key": "ING_ICE" }
+  ],
+  "tools": [
+    { "id": "stove", "name_key": "TOOL_STOVE", "station": "heat" },
+    { "id": "blender", "name_key": "TOOL_BLENDER", "station": "blend" }
+  ]
+}

@@ -7,6 +7,8 @@ extends Control
 ## the drink. BlenderView draws it; the two slim bars are the readout.
 
 signal gauge_completed(accuracy: float)
+## The motor's thermal cut-out just tripped.
+signal motor_tripped
 
 enum State { IDLE, BLENDING, TRIPPED, DONE }
 
@@ -155,6 +157,7 @@ func _trip() -> void:
 	blender.running = false
 	blender.trip()
 	_refresh()
+	motor_tripped.emit()
 
 
 func _finish() -> void:

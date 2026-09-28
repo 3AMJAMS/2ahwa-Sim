@@ -58,6 +58,18 @@ func scene_to_global(p: Vector2) -> Vector2:
 	return get_global_transform() * (_scene_xf() * p)
 
 
+## Where the appliance itself sits in scene space; subclasses narrow it.
+func _focus_scene_rect() -> Rect2:
+	return Rect2(Vector2.ZERO, SCENE_SIZE)
+
+
+## Screen rect round the appliance, for the tutorial's spotlight.
+func focus_rect() -> Rect2:
+	var r := _focus_scene_rect()
+	var a := scene_to_global(r.position)
+	return Rect2(a, scene_to_global(r.end) - a)
+
+
 ## An emissive colour: brighter than white, so the HDR glow blooms off it.
 static func hdr(c: Color, k: float) -> Color:
 	return Color(c.r * k, c.g * k, c.b * k, c.a)

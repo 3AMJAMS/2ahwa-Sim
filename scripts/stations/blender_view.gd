@@ -319,6 +319,32 @@ func _draw_base() -> void:
 		draw_line(Vector2(cx - 104 + i * 1.5, y), Vector2(cx - 84 + i * 1.5, y), vent, 4.0)
 	if glow > 0.0:
 		_soft_blob(Vector2(cx - 94, top + 58), Vector2(46, 46), Color(COLOR_VENT_HOT, 0.45 * glow))
+	# Rubber feet, the chrome trim along the foot and the cord out the back.
+	for x in [-92.0, 92.0]:
+		draw_rect(Rect2(cx + x - 14, foot - 4, 28, 6), Color("141317"))
+	draw_line(Vector2(cx - 112, foot - 22), Vector2(cx + 112, foot - 22), COLOR_CHROME.darkened(0.1), 3.0)
+	draw_line(Vector2(cx - 112, foot - 24), Vector2(cx + 112, foot - 24), Color(1, 1, 1, 0.35), 1.0)
+	var cord := PackedVector2Array()
+	for i in 10:
+		var t := i / 9.0
+		cord.append(Vector2(cx + 104, foot - 30).bezier_interpolate(Vector2(cx + 150, foot - 34), Vector2(cx + 150, foot - 4),
+			Vector2(cx + 190, foot - 2), t))
+	draw_polyline(cord, Color("1d1c21"), 5.0, true)
+	# Screws in the panel corners and a plain maker's plate above it.
+	for p in [Vector2(-66, 504), Vector2(66, 504), Vector2(-66, 562), Vector2(66, 562)]:
+		draw_circle(Vector2(cx, 0) + p, 2.6, COLOR_CHROME.darkened(0.3))
+		draw_line(Vector2(cx, 0) + p + Vector2(-1.8, 0), Vector2(cx, 0) + p + Vector2(1.8, 0), Color("141317"), 1.0)
+	draw_rect(Rect2(cx - 30, top + 22, 60, 12), COLOR_CHROME.darkened(0.05))
+	draw_rect(Rect2(cx - 30, top + 22, 60, 3), Color(1, 1, 1, 0.4))
+	# Speed dial on the right cheek, with its pointer.
+	var dial := Vector2(cx + 84, top + 64)
+	_fill_ellipse(dial, Vector2(13, 15), COLOR_PANEL)
+	_fill_ellipse(dial + Vector2(-1, -1), Vector2(10, 12), Color("45434b"))
+	for k in 8:
+		var a := TAU * k / 8.0
+		draw_circle(dial + Vector2(cos(a) * 11.5, sin(a) * 13.5), 1.6, COLOR_PANEL)
+	var turn := -2.2 + (1.2 if running else 0.0) + (1.4 if holding else 0.0)
+	draw_line(dial, dial + Vector2(cos(turn) * 8, sin(turn) * 9), COLOR_BODY, 2.5, true)
 
 
 func _jar_xf() -> Transform2D:
@@ -359,6 +385,14 @@ func _draw_jar(scene_xf: Transform2D) -> void:
 		var y := -60.0 - k * 48.0
 		var x := _jar_hw(y, JAR_OUT) - 4.0
 		draw_line(Vector2(x, y), Vector2(x - 16, y), Color(1, 1, 1, 0.4), 2.0)
+		# Half-marks between them.
+		draw_line(Vector2(_jar_hw(y - 24.0, JAR_OUT) - 4.0, y - 24.0), Vector2(_jar_hw(y - 24.0, JAR_OUT) - 12.0, y - 24.0),
+			Color(1, 1, 1, 0.28), 1.5)
+	# Moulded ribs down the jar that break up the light.
+	for k in 5:
+		var u := -0.6 + k * 0.3
+		draw_line(Vector2(u * JAR_OUT.x, -8), Vector2(u * JAR_OUT.y, -JAR_H + 16), Color(1, 1, 1, 0.07), 5.0, true)
+		draw_line(Vector2(u * JAR_OUT.x + 3, -8), Vector2(u * JAR_OUT.y + 3, -JAR_H + 16), Color(0, 0, 0, 0.05), 2.0, true)
 	_arc(Vector2(0, -JAR_H), Vector2(JAR_OUT.y, 12), 0.0, PI, Color(1, 1, 1, 0.6), 2.5)
 	_draw_lid()
 
@@ -576,3 +610,8 @@ func _stream_end() -> Vector2:
 	return Vector2(GLASS_BASE.x + 8.0, _glass_surface_y())
 
 #endregion
+
+
+## The blender, jug to base.
+func _focus_scene_rect() -> Rect2:
+	return Rect2(515, 165, 200, 445)

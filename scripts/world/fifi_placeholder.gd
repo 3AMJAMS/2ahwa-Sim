@@ -73,7 +73,10 @@ const COLOR_BLENDER := Color("e8e0cc")
 ## Day-1 jars at the back of the trunk: tea, sugar, dried hibiscus, coffee.
 const JAR_COLORS := [Color("3b2412"), Color("f1ede4"), Color("7a1428"), Color("4a2b1b")]
 const COLOR_WOOD := Color("9a6a3e")
-const LED_COLORS := [Color("ff4a4a"), Color("b45cff"), Color("ffcf3a")]
+## LED strip colours in short repeating bands; each colour breathes in turn.
+const LED_COLORS := [Color("ff3b3b"), Color("ff8a1f"), Color("ffd23a"), Color("3bff6a"),
+	Color("2fe0ff"), Color("3b6bff"), Color("b45cff"), Color("ff4fb8")]
+const LED_BAND := 3
 ## Height of the pavement kerb the ice box stands on (WorldHost draws it).
 const Z_PAVEMENT := 8.0
 const COLOR_ICEBOX := Color("2f6fb3")
@@ -84,7 +87,7 @@ const N_REAR := Vector3(1, 0, 0)
 const N_TOP := Vector3(0, 0, 1)
 const N_GLASS_SIDE := Vector3(0, 1, 0.19)
 const VIEW_DIR := Vector3(1, 1, 1)
-## Warm key from the string-light canopy above, cool night fill from the viewer's side.
+## Warm key from the streetlights above, cool night fill from the viewer's side.
 const KEY_DIR := Vector3(-0.3, -0.25, 1.0)
 const FILL_DIR := Vector3(0.35, 1.0, 0.45)
 
@@ -92,8 +95,8 @@ const FILL_DIR := Vector3(0.35, 1.0, 0.45)
 var trunk_glow := 0.0:
 	set(value):
 		trunk_glow = value
-		if _lights:
-			_lights.queue_redraw()
+		if _glow:
+			_glow.modulate.a = value
 ## Time-of-day tint for everything lit by the sun/streetlights (DayClock).
 var ambient := Color.WHITE:
 	set(value):
@@ -106,17 +109,25 @@ var darkness := 1.0:
 		if _led_light:
 			_led_light.energy = 0.9 * value
 
-## LEDs and the tap glow animate every frame, so they live on their own
-## layer and the car body only redraws when the light changes.
-var _lights: Node2D
+## The tap glow and each LED colour are drawn once on their own layers and
+## animated only through modulate, so nothing redraws per frame.
+var _glow: Node2D
+var _led_groups: Array[Node2D] = []
+var _t := 0.0
 ## The LED strips' coloured spill onto the road and pavement round the trunk.
 var _led_light: PointLight2D
 
 
 func _ready() -> void:
-	_lights = Node2D.new()
-	add_child(_lights)
-	_lights.draw.connect(_draw_lights)
+	_glow = Node2D.new()
+	add_child(_glow)
+	_glow.draw.connect(_draw_trunk_glow)
+	_glow.modulate.a = trunk_glow
+	for g in LED_COLORS.size():
+		var layer := Node2D.new()
+		add_child(layer)
+		layer.draw.connect(_draw_leds.bind(g))
+		_led_groups.append(layer)
 	_led_light = PointLight2D.new()
 	_led_light.texture = _spill_texture()
 	_led_light.texture_scale = 1.4
@@ -181,9 +192,12 @@ func _draw() -> void:
 	_draw_ice_box()
 
 
-func _draw_lights() -> void:
-	_draw_trunk_glow()
-	_draw_leds()
+func _process(delta: float) -> void:
+	_t += delta
+	var lit := lerpf(0.45, 1.0, darkness)
+	for g in _led_groups.size():
+		var breath := 0.5 + 0.5 * sin(_t * 1.4 - g * TAU / _led_groups.size())
+		_led_groups[g].modulate = Color(1, 1, 1, (0.25 + 0.75 * breath * breath) * lit)
 
 
 func _draw_ground_shadow() -> void:
@@ -228,6 +242,15 @@ func _draw_side_details() -> void:
 	_poly_on(_on_side, [Vector2(28, 69), Vector2(40, 69), Vector2(40, 72.5), Vector2(28, 72.5)], COLOR_CHROME, N_SIDE)
 	# Side repeater on the front wing.
 	_poly_on(_on_side, _ellipse(Vector2(-132, 58), Vector2(5, 2.5), 10), COLOR_TAIL_AMBER, N_SIDE)
+	# Fuel filler flap on the rear quarter, keyhole under the door handle,
+	# chrome strip along the door, and the rain gutter over the glass.
+	_poly_on(_on_side, _ellipse(Vector2(120, 58), Vector2(7, 6), 14), COLOR_PAINT.darkened(0.1), N_SIDE)
+	_poly_on(_on_side, _ellipse(Vector2(120, 58), Vector2(3, 2.5), 10), COLOR_CHROME, N_SIDE)
+	_poly_on(_on_side, _ellipse(Vector2(34, 64), Vector2(1.6, 1.6), 8), COLOR_CHROME.darkened(0.3), N_SIDE)
+	_line_on(_on_side, Vector2(-54, 45), Vector2(40, 45), COLOR_CHROME, 2.0, N_SIDE)
+	_line_on(_on_side, Vector2(-54, 43.5), Vector2(40, 43.5), COLOR_SEAM, 1.0)
+	for x in [-100.0, 70.0]:
+		_poly_on(_on_side, [Vector2(x, 22), Vector2(x + 4, 22), Vector2(x + 4, 25), Vector2(x, 25)], COLOR_RUBBER, N_SIDE)
 	# Wheel wells with a painted lip.
 	for xw in WHEEL_XS:
 		_poly_on(_on_side, _arch(xw, ARCH_R), COLOR_WELL, N_SIDE)
@@ -271,6 +294,11 @@ func _draw_rear_details() -> void:
 		_poly_on(_on_rear, _rect_yz(s * 42.0, s * 69.0, 44.0, 63.0), COLOR_CHROME, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 44.0, s * 59.0, 46.0, 61.0), COLOR_TAIL_RED, N_REAR)
 		_poly_on(_on_rear, _rect_yz(s * 60.0, s * 67.0, 46.0, 61.0), COLOR_TAIL_AMBER, N_REAR)
+	# Chrome "127" script badge and the reversing lamp by the plate.
+	for k in 3:
+		_poly_on(_on_rear, [Vector2(24 + k * 5, 49), Vector2(27.5 + k * 5, 49), Vector2(27.5 + k * 5, 53), Vector2(24 + k * 5, 53)],
+			COLOR_CHROME, N_REAR)
+	_poly_on(_on_rear, [Vector2(-34, 34), Vector2(-26, 34), Vector2(-26, 40), Vector2(-34, 40)], Color("f4f0de"), N_REAR)
 	# Exhaust tip under the bumper.
 	var tip := PackedVector2Array()
 	for i in 12:
@@ -285,6 +313,11 @@ func _draw_bumpers() -> void:
 	for y in [-38.0, 38.0]:
 		_draw_box(Vector3(HX + 5, y - 3, 22), Vector3(HX + 8, y + 3, 36), COLOR_RUBBER)
 	_draw_box(Vector3(-HX - 6, HY, 24), Vector3(-HX + 20, HY + 3, 32), COLOR_CHROME)
+	# Rubber mud flap behind the rear wheel.
+	_draw_box(Vector3(WHEEL_XS[1] + 34, HY - 10, 6), Vector3(WHEEL_XS[1] + 37, HY - 1, 26), COLOR_RUBBER)
+	# Whip aerial on the front wing.
+	draw_line(iso(-126, HY - 6, 80), iso(-144, HY - 12, 165), Color("2a2a30"), 1.5, true)
+	draw_circle(iso(-126, HY - 6, 80), 2.5, COLOR_CHROME)
 
 
 func _draw_glasshouse() -> void:
@@ -335,14 +368,12 @@ func _draw_mirror() -> void:
 	draw_colored_polygon(glass, _shade(COLOR_GLASS.lightened(0.25), N_REAR))
 
 
+## Drawn at full strength once; WorldHost's pulse fades it via modulate.
 func _draw_trunk_glow() -> void:
-	if trunk_glow <= 0.0:
-		return
 	var outline := _hull(_project(OPENING))
-	_lights.draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14 * trunk_glow))
+	_glow.draw_colored_polygon(outline, Color(COLOR_TRUNK_GLOW, 0.14))
 	outline.append(outline[0])
-	_lights.draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 0.4 + 0.6 * trunk_glow),
-		2.0 + trunk_glow * 3.0, true)
+	_glow.draw_polyline(outline, Color(COLOR_TRUNK_GLOW.lerp(Color.WHITE, 0.3), 1.0), 4.0, true)
 
 
 ## Looking in through the open hatch: cabin shadow, far trim, seat back and
@@ -448,27 +479,28 @@ func _draw_open_hatch() -> void:
 
 
 ## LED strip round the trunk opening and along the raised hatch's edge, in
-## repeating red/purple/yellow bands that slowly chase.
-func _draw_leds() -> void:
-	var chase := int(Time.get_ticks_msec() / 125.0)
+## short bands of every colour; layer `group` draws only its colour's LEDs.
+func _draw_leds(group: int) -> void:
 	var loop: Array = OPENING.duplicate()
 	loop.append(OPENING[0])
-	var i := _led_run(loop, 0, chase)
+	var i := _led_run(loop, 0, group)
 	var o := _hatch_outline()
-	_led_run([o[0], o[5], o[4], o[3], o[2], o[1]], i, chase)
+	_led_run([o[0], o[5], o[4], o[3], o[2], o[1]], i, group)
 
 
-func _led_run(path: Array, start: int, chase: int) -> int:
+func _led_run(path: Array, start: int, group: int) -> int:
+	var layer := _led_groups[group]
+	var c: Color = LED_COLORS[group]
 	var k := start
 	for seg in path.size() - 1:
 		var a: Vector3 = path[seg]
 		var b: Vector3 = path[seg + 1]
 		var n := maxi(1, int(a.distance_to(b) / 6.0))
 		for j in n:
-			var p := iso3(a.lerp(b, j / float(n)))
-			var c: Color = LED_COLORS[posmod(int(floor((k - chase) / 5.0)), LED_COLORS.size())]
-			_lights.draw_circle(p, 6.0, Color(c, lerpf(0.12, 0.28, darkness)))
-			_lights.draw_circle(p, 2.3, StationArt.hdr(c.lerp(Color.WHITE, 0.5), lerpf(1.0, 2.6, darkness)))
+			if posmod(floori(k / float(LED_BAND)), LED_COLORS.size()) == group:
+				var p := iso3(a.lerp(b, j / float(n)))
+				layer.draw_circle(p, 6.0, Color(c, 0.25))
+				layer.draw_circle(p, 2.3, StationArt.hdr(c.lerp(Color.WHITE, 0.5), 2.2))
 			k += 1
 	return k
 
