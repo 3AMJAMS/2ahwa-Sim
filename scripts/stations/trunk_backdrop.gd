@@ -2,8 +2,9 @@ class_name TrunkBackdrop
 extends Control
 ## Full-screen backdrop for the prep station: standing behind FIFI with the
 ## hatch up. Raised hatch across the top, painted pillars down the sides,
-## the trunk (headliner, rear seat back, side trim, carpet) in between, and
-## the rear panel with lamps, plate and bumper below the sill.
+## the trunk (headliner, rear seat back, side trim, carpet) with a wooden rack
+## of supplies across it, and the rear panel with lamps, plate and bumper
+## below the sill. LED strips chase round the opening and the hatch lip.
 ## PrepStation feeds it where the station art's trunk floor sits on screen,
 ## so the carpet and the sill line up with whatever the gauge is drawing.
 
@@ -20,8 +21,12 @@ const TAIL_RED := Color("c3372c")
 const TAIL_AMBER := Color("e8962e")
 const PLATE := Color("ece8dc")
 const PLATE_BAND := Color("4b87c6")
-## Day-1 jars at the back of the trunk: tea, sugar, dried hibiscus, coffee.
+## Day-1 jars on the rack: tea, sugar, dried hibiscus, coffee.
 const JAR_COLORS := [Color("3b2412"), Color("f1ede4"), Color("7a1428"), Color("4a2b1b")]
+const WOOD := Color("9a6a3e")
+## LED strip colours, repeating in bands that chase round the opening.
+const LED_COLORS := [Color("ff4a4a"), Color("b45cff"), Color("ffcf3a")]
+const LED_SPACING := 13.0
 const HATCH_H := 100.0
 const ROOF_TOP := 112.0
 const ROOF_BOTTOM := 140.0
@@ -35,11 +40,18 @@ var inner := Vector2(60, 1020)
 var art_scale := 1.0
 
 var _font: Font = preload("res://assets/ui/main_theme.tres").default_font
+var _t := 0.0
 var _soft := StationArt._make_soft_texture()
 
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
+
+
+func _process(delta: float) -> void:
+	if is_visible_in_tree():
+		_t += delta
+		queue_redraw()
 
 
 func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale: float) -> void:
@@ -61,6 +73,7 @@ func _draw() -> void:
 	_draw_interior(w)
 	_draw_pillars(w)
 	_draw_rear_panel(w, h)
+	_draw_leds(w)
 
 
 ## Underside of the lifted hatch: trim frame round the glass, painted lip, latch.
@@ -118,10 +131,84 @@ func _draw_interior(w: float) -> void:
 		var y := lerpf(back, floor_y, d)
 		var x := lerpf(lerpf(bl, l, d), lerpf(br, r, d), t)
 		draw_circle(Vector2(x, y), 1.5, Color(1, 1, 1, 0.05))
-	var jw := 30.0 * art_scale
+	_draw_rack(l, r, bl, br, back, seat_top)
+
+
+## Wooden rack across the trunk, stocked with the stand's supplies.
+func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top: float) -> void:
+	var s := art_scale
+	var y := maxf(floor_y - 620.0 * s, seat_top + 170.0)
+	var x0 := lerpf(l, bl, 0.5)
+	var x1 := lerpf(r, br, 0.5)
+	var post_foot := lerpf(floor_y, back, 0.5)
+	for x in [x0 + 10.0 * s, x1 - 26.0 * s]:
+		draw_rect(Rect2(x, y, 16.0 * s, post_foot - y), WOOD.darkened(0.35))
+	draw_rect(Rect2(x0, y - 12.0 * s, x1 - x0, 12.0 * s), WOOD.lightened(0.12))
+	if s <= 0.05:
+		return
+	# Supplies, left to right, standing on the plank.
+	var base := y - 10.0 * s
+	var x := x0 + 40.0 * s
+	# A tall stack of paper cups.
+	for k in 9:
+		var cy := base - k * 11.0 * s
+		draw_colored_polygon(PackedVector2Array([Vector2(x, cy), Vector2(x + 30 * s, cy),
+			Vector2(x + 34 * s, cy - 14 * s), Vector2(x - 4 * s, cy - 14 * s)]), Color("f3efe6").darkened(0.04 * (k % 2)))
+	x += 58.0 * s
+	# Upturned tea glasses.
+	for k in 3:
+		var gx := x + k * 30.0 * s
+		draw_colored_polygon(PackedVector2Array([Vector2(gx - 2 * s, base), Vector2(gx + 26 * s, base),
+			Vector2(gx + 22 * s, base - 40 * s), Vector2(gx + 2 * s, base - 40 * s)]), Color(0.8, 0.92, 1.0, 0.3))
+		draw_line(Vector2(gx + 5 * s, base - 4 * s), Vector2(gx + 7 * s, base - 36 * s), Color(1, 1, 1, 0.45), 2.0)
+	x += 110.0 * s
+	var jw := 30.0 * s
 	for i in JAR_COLORS.size():
-		var x := br - 20.0 * art_scale - (JAR_COLORS.size() - i) * (jw + 8.0 * art_scale)
-		_draw_jar(Vector2(x, back + 6.0 * art_scale), jw, 46.0 * art_scale, JAR_COLORS[i])
+		_draw_jar(Vector2(x, base), jw, 46.0 * s, JAR_COLORS[i])
+		x += jw + 10.0 * s
+	x += 14.0 * s
+	# Plain boxes of tea and coffee grounds.
+	for box in [[Color("b8322a"), "شاي"], [Color("3b6fb3"), "بن"]]:
+		var rect := Rect2(x, base - 74 * s, 62 * s, 74 * s)
+		draw_rect(rect, box[0])
+		draw_rect(Rect2(x, base - 50 * s, 62 * s, 22 * s), Color(1, 1, 1, 0.85))
+		draw_string(_font, Vector2(x, base - 32 * s), box[1], HORIZONTAL_ALIGNMENT_CENTER, 62 * s, int(20 * s), box[0])
+		draw_rect(Rect2(x + 50 * s, base - 74 * s, 12 * s, 74 * s), Color(0, 0, 0, 0.18))
+		x += 72.0 * s
+	# A water bottle at the end.
+	draw_rect(Rect2(x + 4 * s, base - 80 * s, 28 * s, 80 * s), Color(0.7, 0.85, 1.0, 0.45))
+	draw_rect(Rect2(x + 4 * s, base - 50 * s, 28 * s, 20 * s), Color("4b87c6"))
+	draw_rect(Rect2(x + 11 * s, base - 92 * s, 14 * s, 12 * s), Color("2f6fb3"))
+	# The plank's front edge and its grain.
+	draw_rect(Rect2(x0, y, x1 - x0, 22.0 * s), WOOD)
+	for k in 3:
+		var gy := y + (5.0 + k * 6.0) * s
+		draw_line(Vector2(x0 + 6, gy), Vector2(x1 - 6, gy + sin(k * 2.0) * 2.0), Color(0, 0, 0, 0.12), 1.5)
+	draw_rect(Rect2(x0, y + 22.0 * s, x1 - x0, 5.0 * s), Color(0, 0, 0, 0.3))
+
+
+## LED strips round the hatch lip, the roof edge, both pillars and the sill,
+## in repeating red/purple/yellow bands that slowly chase.
+func _draw_leds(w: float) -> void:
+	var l := inner.x - 3.0
+	var r := inner.y + 3.0
+	var i := _led_run(Vector2(0, HATCH_H - 3), Vector2(w, HATCH_H - 3), 0)
+	i = _led_run(Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
+	i = _led_run(Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
+	i = _led_run(Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
+	_led_run(Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
+
+
+func _led_run(a: Vector2, b: Vector2, start: int) -> int:
+	var n := maxi(1, int(a.distance_to(b) / LED_SPACING))
+	var chase := int(_t * 8.0)
+	for k in n:
+		var p := a.lerp(b, k / float(n))
+		var c: Color = LED_COLORS[posmod(int(floor((start + k - chase) / 7.0)), LED_COLORS.size())]
+		_soft_blob(p, Vector2(26, 26), Color(c, 0.45))
+		draw_circle(p, 5.0, c)
+		draw_circle(p, 2.6, c.lerp(Color.WHITE, 0.7))
+	return start + n
 
 
 func _draw_jar(base: Vector2, jw: float, jh: float, fill: Color) -> void:

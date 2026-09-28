@@ -14,7 +14,7 @@ An Egyptian-Arabic ahwa/bartending-style game. You play as **سيد (Sayed)**, s
 Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH), and launch platform locked.
 
 Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → fade to the flat prep station →
-make the order (شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع in the blender) →
+make the order (شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع or عصير مانجا in the blender) →
 tips paid → fade back to the street. The first order is always شاي كشري, then orders rotate at random.
 
 ## Running Phase 1
@@ -37,10 +37,10 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 | `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
-| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior, rear panel, lamps, plate, bumper |
+| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Shows the order, routes it to a gauge, pays tips |
-| `scripts/world/` | Isometric street + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk; swap for art later) |
+| `scripts/world/` | Isometric street (asphalt, kerb, pavement) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
 | `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy` |
 | `data/*.json` | Menu (incl. each drink's colours under `look`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |

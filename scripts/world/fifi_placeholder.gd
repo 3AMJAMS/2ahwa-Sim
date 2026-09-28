@@ -2,7 +2,8 @@
 extends Node2D
 ## Placeholder isometric FIFI: a Fiat 127-styled three-door hatchback built
 ## from primitives (2:1 dimetric, seen from the rear-left three-quarter),
-## parked with its hatch up so Sayed's Day-1 kit shows in the trunk.
+## parked at the kerb with its hatch up so Sayed's Day-1 kit shows in the
+## trunk, LED strips round the opening, and the fruit ice box on the pavement.
 ## Swap for a Sprite2D once the real art lands; keep get_trunk_polygon() so
 ## the tap area still lines up.
 
@@ -69,6 +70,12 @@ const COLOR_STEEL := Color("b3b9c2")
 const COLOR_BLENDER := Color("e8e0cc")
 ## Day-1 jars at the back of the trunk: tea, sugar, dried hibiscus, coffee.
 const JAR_COLORS := [Color("3b2412"), Color("f1ede4"), Color("7a1428"), Color("4a2b1b")]
+const COLOR_WOOD := Color("9a6a3e")
+const LED_COLORS := [Color("ff4a4a"), Color("b45cff"), Color("ffcf3a")]
+## Height of the pavement kerb the ice box stands on (WorldHost draws it).
+const Z_PAVEMENT := 8.0
+const COLOR_ICEBOX := Color("2f6fb3")
+const COLOR_ICEBOX_LID := Color("eef1f4")
 
 const N_SIDE := Vector3(0, 1, 0)
 const N_REAR := Vector3(1, 0, 0)
@@ -124,6 +131,8 @@ func _draw() -> void:
 	_draw_open_hatch()
 	_draw_mirror()
 	_draw_trunk_glow()
+	_draw_leds()
+	_draw_ice_box()
 
 
 func _draw_ground_shadow() -> void:
@@ -298,9 +307,16 @@ func _draw_trunk_interior() -> void:
 		Vector3(80, 48, 104), Vector3(80, -48, 104)]), _shade(COLOR_SEAT.lightened(0.1), N_TOP))
 	_clipped(clip, _project([Vector3(72, -48, Z_FLOOR), Vector3(150, -48, Z_FLOOR),
 		Vector3(150, 48, Z_FLOOR), Vector3(72, 48, Z_FLOOR)]), _shade(COLOR_CARPET, N_TOP))
-	# Jars lined up against the seat back.
+	# Wooden rack across the trunk with the jars lined up on it.
+	for y in [-44.0, 40.0]:
+		_clipped(clip, _project([Vector3(88, y, Z_FLOOR), Vector3(92, y, Z_FLOOR), Vector3(92, y, 62),
+			Vector3(88, y, 62)]), _shade(COLOR_WOOD.darkened(0.3), N_REAR))
+	_clipped(clip, _project([Vector3(80, -48, 64), Vector3(98, -48, 64), Vector3(98, 48, 64), Vector3(80, 48, 64)]),
+		_shade(COLOR_WOOD, N_TOP))
+	_clipped(clip, _project([Vector3(98, -48, 60), Vector3(98, 48, 60), Vector3(98, 48, 64), Vector3(98, -48, 64)]),
+		_shade(COLOR_WOOD, N_REAR))
 	for i in JAR_COLORS.size():
-		var c := Vector3(84, -36 + i * 13, Z_FLOOR)
+		var c := Vector3(88, -36 + i * 13, 64.0)
 		_cylinder(clip, c, 4.5, 4.5, 11, Color(JAR_COLORS[i], 0.95), Color(JAR_COLORS[i]).lightened(0.15))
 		_cylinder(clip, c + Vector3(0, 0, 11), 4.8, 4.8, 2.5, Color("c9a24a"), Color("e0bf6a"))
 	# Blender: squat base, glass jar with a splash of karkade, black lid.
@@ -362,6 +378,49 @@ func _draw_open_hatch() -> void:
 		var top := Vector3(hinge_n.x, side * 50.0, hinge_n.z).lerp(Vector3(glass_n.x, side * 50.0, glass_n.z), 0.55) + inward
 		draw_line(iso3(foot), iso3(foot.lerp(top, 0.55)), Color("2a2a30"), 3.0, true)
 		draw_line(iso3(foot.lerp(top, 0.5)), iso3(top), COLOR_CHROME, 1.8, true)
+
+
+## LED strip round the trunk opening and along the raised hatch's edge, in
+## repeating red/purple/yellow bands that slowly chase.
+func _draw_leds() -> void:
+	var chase := int(Time.get_ticks_msec() / 125.0)
+	var loop: Array = OPENING.duplicate()
+	loop.append(OPENING[0])
+	var i := _led_run(loop, 0, chase)
+	var o := _hatch_outline()
+	_led_run([o[0], o[5], o[4], o[3], o[2], o[1]], i, chase)
+
+
+func _led_run(path: Array, start: int, chase: int) -> int:
+	var k := start
+	for seg in path.size() - 1:
+		var a: Vector3 = path[seg]
+		var b: Vector3 = path[seg + 1]
+		var n := maxi(1, int(a.distance_to(b) / 6.0))
+		for j in n:
+			var p := iso3(a.lerp(b, j / float(n)))
+			var c: Color = LED_COLORS[posmod(int(floor((k - chase) / 5.0)), LED_COLORS.size())]
+			draw_circle(p, 6.0, Color(c, 0.25))
+			draw_circle(p, 2.3, c.lerp(Color.WHITE, 0.5))
+			k += 1
+	return k
+
+
+## Sayed's ice box of fruit, set down on the pavement beside the trunk.
+func _draw_ice_box() -> void:
+	var lo := Vector3(146, HY + 60, Z_PAVEMENT)
+	var hi := Vector3(176, HY + 82, Z_PAVEMENT + 20)
+	draw_colored_polygon(_project([lo + Vector3(-2, -2, 0), Vector3(hi.x + 6, lo.y - 2, lo.z),
+		Vector3(hi.x + 6, hi.y + 4, lo.z), Vector3(lo.x - 2, hi.y + 4, lo.z)]), Color(0, 0, 0, 0.25))
+	_draw_box(lo, hi, COLOR_ICEBOX)
+	_draw_box(Vector3(lo.x - 1, lo.y - 1, hi.z - 5), Vector3(hi.x + 1, hi.y + 1, hi.z + 1), COLOR_ICEBOX_LID)
+	draw_line(iso(lo.x + 8, hi.y + 1.5, hi.z - 9), iso(hi.x - 8, hi.y + 1.5, hi.z - 9), _shade(COLOR_ICEBOX_LID, N_SIDE), 2.5)
+	# A couple of mangoes and lemons on the lid.
+	for f in [[Vector3(156, HY + 68, hi.z + 3), 4.2, Color("f2a324")], [Vector3(163, HY + 74, hi.z + 3), 4.0, Color("e8c33a")],
+			[Vector3(168, HY + 67, hi.z + 2.5), 3.0, Color("f4e04d")]]:
+		var at := iso3(f[0])
+		draw_circle(at, f[1] * SCALE, f[2])
+		draw_circle(at + Vector2(-1.2, -1.2) * SCALE, f[1] * 0.35 * SCALE, Color(1, 1, 1, 0.35))
 
 
 ## Corners of the open hatch: hinge (near, far), glass foot (far), tailgate

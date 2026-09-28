@@ -1,15 +1,24 @@
 extends Node2D
 ## Isometric street view with FIFI. Emits trunk_tapped when the player taps
-## the trunk. Placeholder street + string lights are drawn procedurally.
+## the trunk. Placeholder street (asphalt, kerb, pavement slabs on FIFI's
+## passenger side) + string lights are drawn procedurally.
 
 signal trunk_tapped
 
 const TILE_W := 128.0
 const TILE_H := 64.0
 const GRID_RADIUS := 7
-const COLOR_STONE_A := Color("3b3d52")
-const COLOR_STONE_B := Color("34364a")
-const COLOR_GROUT := Color("26283a")
+const COLOR_ROAD_A := Color("2f3040")
+const COLOR_ROAD_B := Color("2c2d3c")
+const COLOR_ROAD_SEAM := Color("262735")
+const COLOR_KERB := Color("6d6a72")
+const COLOR_STONE_A := Color("54505e")
+const COLOR_STONE_B := Color("4c4857")
+const COLOR_GROUT := Color("35323f")
+## Grid rows (along FIFI's side) given over to the kerb, then the pavement.
+const KERB_ROW := 3
+## How far the kerb and pavement stand above the road, in screen pixels.
+const PAVEMENT_RISE := 10.4
 const COLOR_BULB := Color("ffc861")
 const COLOR_WIRE := Color("0e1022")
 
@@ -66,16 +75,34 @@ func _on_trunk_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) 
 
 
 func _draw() -> void:
-	# Pavement: 2:1 diamond tiles centred on the stand.
-	for i in range(-GRID_RADIUS, GRID_RADIUS + 1):
-		for j in range(-GRID_RADIUS, GRID_RADIUS + 1):
-			var c := Vector2((i - j) * TILE_W * 0.5, (i + j) * TILE_H * 0.5)
-			var diamond := PackedVector2Array([
-				c + Vector2(0, -TILE_H * 0.5), c + Vector2(TILE_W * 0.5, 0),
-				c + Vector2(0, TILE_H * 0.5), c + Vector2(-TILE_W * 0.5, 0)])
+	# 2:1 diamond tiles centred on the stand: asphalt where FIFI is parked,
+	# then a kerb and raised pavement slabs along her passenger side.
+	var rise := Vector2(0, -PAVEMENT_RISE)
+	for j in range(-GRID_RADIUS, GRID_RADIUS + 1):
+		for i in range(-GRID_RADIUS, GRID_RADIUS + 1):
+			var diamond := _tile(i, j)
+			if j < KERB_ROW:
+				draw_colored_polygon(diamond, COLOR_ROAD_A if (i + j) % 2 == 0 else COLOR_ROAD_B)
+				diamond.append(diamond[0])
+				draw_polyline(diamond, COLOR_ROAD_SEAM, 1.0)
+				continue
+			for k in diamond.size():
+				diamond[k] += rise
+			if j == KERB_ROW:
+				draw_colored_polygon(diamond, COLOR_KERB)
+				draw_line(diamond[0], diamond[1], COLOR_KERB.lightened(0.2), 2.0)
+				draw_line(diamond[1], diamond[2], Color(0, 0, 0, 0.3), 2.0)
+				continue
 			draw_colored_polygon(diamond, COLOR_STONE_A if (i + j) % 2 == 0 else COLOR_STONE_B)
 			diamond.append(diamond[0])
 			draw_polyline(diamond, COLOR_GROUT, 2.0)
+	# Front faces of the raised strip where it ends at the grid's edges.
+	for j in range(KERB_ROW, GRID_RADIUS + 1):
+		var d := _tile(GRID_RADIUS, j)
+		draw_colored_polygon(PackedVector2Array([d[1] + rise, d[2] + rise, d[2], d[1]]), COLOR_KERB.darkened(0.35))
+	for i in range(-GRID_RADIUS, GRID_RADIUS + 1):
+		var d := _tile(i, GRID_RADIUS)
+		draw_colored_polygon(PackedVector2Array([d[2] + rise, d[3] + rise, d[3], d[2]]), COLOR_KERB.darkened(0.2))
 	# String-light canopy: one sagging wire with warm bulbs.
 	var a := Vector2(-520, -430)
 	var b := Vector2(520, -330)
@@ -87,3 +114,10 @@ func _draw() -> void:
 	for k in range(1, 24, 2):
 		draw_circle(points[k] + Vector2(0, 10), 16, Color(COLOR_BULB, 0.18))
 		draw_circle(points[k] + Vector2(0, 10), 7, COLOR_BULB)
+
+
+## Tile (i, j) as a diamond: top, right, bottom, left.
+func _tile(i: int, j: int) -> PackedVector2Array:
+	var c := Vector2((i - j) * TILE_W * 0.5, (i + j) * TILE_H * 0.5)
+	return PackedVector2Array([c + Vector2(0, -TILE_H * 0.5), c + Vector2(TILE_W * 0.5, 0),
+		c + Vector2(0, TILE_H * 0.5), c + Vector2(-TILE_W * 0.5, 0)])

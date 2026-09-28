@@ -59,9 +59,11 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 - Isometric street placeholder (pulled forward from Phase 2 to host the trunk tap)
 - Translation keys (`ar_EG.csv`), Cairo font, portrait `canvas_items` + `expand` stretch, local save, locked espresso slot with price
 - Blend gauge on screen: blender art with ice/hibiscus chunks blending down, vortex, motor heat lights + smoke, pour into a tall glass with ice and straw. Overheating trips the motor's thermal cut-out: it stops until it cools, costing time and tips but never the drink
-- Four orders rotating at random (no repeats back to back): شاي كشري, قهوة تركي (in a فنجان), كركديه سخن, كركديه ساقع
-- FIFI repainted yellow and parked with the hatch up, showing the Day-1 kit in the trunk (gas ring + كنكة, blender, jars of tea/sugar/hibiscus/coffee)
-- Prep station drawn as the back of FIFI: raised hatch, pillars, trunk interior, and the rear panel with lamps, plate and bumper below the sill
+- Five orders rotating at random (no repeats back to back): شاي كشري, قهوة تركي (in a فنجان), كركديه سخن, كركديه ساقع, عصير مانجا (fruit comes from Sayed's ice box)
+- FIFI repainted yellow and parked at the kerb with the hatch up, showing the Day-1 kit in the trunk (gas ring + كنكة, blender, and a wooden rack across the trunk holding jars of tea/sugar/hibiscus/coffee)
+- LED strips lining the trunk opening and the hatch edge, in chasing red/purple/yellow bands
+- Street now has asphalt, a kerb and pavement slabs on FIFI's passenger side, with the fruit ice box set down on the pavement beside the trunk
+- Prep station drawn as the back of FIFI: raised hatch, pillars, trunk interior with a wooden rack of supplies (paper cups, tea glasses, jars, tea/coffee boxes, water), LED strips round the opening, and the rear panel with lamps, plate and bumper below the sill
 
 **Remaining:**
 - Tutorial Stages 1–2 (`tutorials_seen` already in save data)
@@ -117,7 +119,7 @@ Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambi
 Take Order → Prepare (🔥 hot gauge / 🧊 cold blender) → Shisha (coal timer, حجر refill) → Serve. Scoring: speed×accuracy → tips → unlocks/progression.
 
 ## Day Bookend Sequence
-2–4 sec time-lapse: park → trunk open → shelves stocked (side/roof per upgrade) → power on → gameplay; reversed at close. Tap-to-skip + auto-skip. Day 1 deliberately bare.
+2–4 sec time-lapse: park → trunk open → ice box carried from FIFI's passenger seat to the pavement → shelves stocked (side/roof per upgrade) → power on (LED strips light up) → gameplay; reversed at close. Tap-to-skip + auto-skip. Day 1 deliberately bare.
 
 ---
 
@@ -147,7 +149,7 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 
 ## Hot & Cold Menu
 **Hot:** شاي (full ladder) · قهوة تركي (سادة→سرياقوسي) · سحلب · كركديه/ينسون (dual) · حلبة · قرفة · زنجبيل · كاكاو · الحلبسة
-**Cold:** كركديه بارد/ينسون بارد (dual) · مانجو (fixed venues only: needs a kitchen + fruit storage, doesn't fit FIFI/WAHSH) · تمر هندي · سوبيا (seasonal) · عرقسوس · قصب · خروب · قمر الدين (seasonal) · ليمون بالنعناع · بطيخ بالنعناع · جوافة/موز بلبن · آيس لاتيه/موكا/كولد برو (Modern unlock)
+**Cold:** كركديه بارد/ينسون بارد (dual) · مانجو (fruit kept in Sayed's ice box: rides in FIFI's passenger seat, set on the pavement each day) · تمر هندي · سوبيا (seasonal) · عرقسوس · قصب · خروب · قمر الدين (seasonal) · ليمون بالنعناع · بطيخ بالنعناع · جوافة/موز بلبن · آيس لاتيه/موكا/كولد برو (Modern unlock)
 
 ---
 
@@ -159,7 +161,7 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 |---|---|---|---|
 | Equipment | Basic burner+blender | Dual burner, upgraded blender | Bigger رملة, espresso machine |
 | Snacks | Small chip rack | Chip+noodle rack | Full snack cooler |
-| Décor | Fairy lights | Neon + LED strips lining the trunk (red, purple, yellow), stools | Marble tables, mashrabiya |
+| Décor | Fairy lights + LED strips lining the trunk (red, purple, yellow); later: stickers and signs on the hatch underside | Neon signs + less-local, more modern décor, stools | Marble tables, mashrabiya |
 | Shisha | None | Mini corner, unflavored | Full corner+staff, flavored T3+ |
 | Staff | Sayed only | Sayed only | نصبجي T3, تومباكشي T4, waiters T5 |
 
