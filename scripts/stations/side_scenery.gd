@@ -105,7 +105,7 @@ func _draw_buildings(horizon: float, amb: Color, dark: float) -> void:
 				var lit := rng.randf() < 0.45
 				var col := WINDOW_DAY * amb
 				if dark > 0.05:
-					col = col.lerp(WINDOW_LIT if lit else Color("1c1a28"), dark)
+					col = col.lerp(StationArt.hdr(WINDOW_LIT, 1.3) if lit else Color("1c1a28"), dark)
 				draw_rect(Rect2(wx, wy, 28, 34), col)
 			draw_rect(Rect2(x, wy + 42, bw, 5), (tint.darkened(0.3)) * amb)
 		if rng.randf() < 0.6:
@@ -159,11 +159,11 @@ func _draw_streetlight(base: Vector2, reach: float, k: float, horizon: float, am
 	draw_line(head + Vector2(reach * -24, -12) * k, head + Vector2(reach * 44, -12) * k, HEAD.lightened(0.35) * amb, 3.0 * k)
 	var lens := PackedVector2Array([head + Vector2(reach * -22, 4) * k, head + Vector2(reach * 46, 4) * k,
 		head + Vector2(reach * 38, 12) * k, head + Vector2(reach * -14, 12) * k])
-	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(SODIUM.lightened(0.5), dark))
+	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(StationArt.hdr(SODIUM.lightened(0.5), 3.0), dark))
 	if dark > 0.01:
 		var glow := head + Vector2(reach * 12, 10) * k
 		_soft_blob(glow, Vector2(130, 130) * k, Color(SODIUM, 0.45 * dark))
-		_soft_blob(glow, Vector2(44, 44) * k, Color(1.0, 0.92, 0.75, 0.7 * dark))
+		_soft_blob(glow, Vector2(44, 44) * k, StationArt.hdr(Color(1.0, 0.92, 0.75, 0.8 * dark), 2.2))
 
 
 func _draw_icebox(base: Vector2, amb: Color) -> void:

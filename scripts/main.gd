@@ -25,12 +25,14 @@ var _day_start_money := 0
 @onready var fade_label: Label = $FadeLayer/FadeRect/FadeLabel
 @onready var anim: AnimationPlayer = $AnimationPlayer
 @onready var go_home_button: Button = $Hud/GoHomeButton
+@onready var vignette: ColorRect = $VignetteLayer/Vignette
 
 
 func _ready() -> void:
 	world_host.trunk_tapped.connect(transition_to_prep)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
+	DayClock.minute_changed.connect(_relight)
 	_day_start_money = Economy.currency_egp
 	prep_layer.visible = false
 	fade_rect.modulate.a = 0.0
@@ -96,6 +98,11 @@ func go_home() -> void:
 	world_host.set_interactive(true)
 	go_home_button.visible = true
 	state = State.WORLD
+
+
+## The vignette closes in after dusk.
+func _relight() -> void:
+	(vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.22 + 0.28 * DayClock.darkness())
 
 
 func _on_prep_complete(_result: Dictionary) -> void:

@@ -44,6 +44,11 @@ var interactive := true
 
 var _pulse_t := 0.0
 var _soft := StationArt._make_soft_texture()
+## Per streetlight: the real 2D light on the road, and the moths and dust
+## in its beam. Switched on and scaled with DayClock's darkness.
+var _lamp_lights: Array[PointLight2D] = []
+var _lamp_moths: Array[CPUParticles2D] = []
+var _lamp_dust: Array[CPUParticles2D] = []
 
 @onready var fifi: Node2D = $FIFISprite
 @onready var trunk_area: Area2D = $TrunkArea
@@ -58,6 +63,11 @@ func _ready() -> void:
 	trunk_shape.polygon = fifi.get_trunk_polygon()
 	trunk_area.position = fifi.position
 	trunk_area.input_event.connect(_on_trunk_input_event)
+	# The labels are UI, not scenery: keep the streetlights off them.
+	hint_label.light_mask = 0
+	wallet_label.light_mask = 0
+	for lamp in STREETLIGHTS:
+		_build_lamp_effects(lamp[0], lamp[1])
 	get_viewport().size_changed.connect(_recenter)
 	Economy.currency_changed.connect(_update_wallet.unbind(1))
 	DayClock.minute_changed.connect(_relight)
@@ -80,8 +90,14 @@ func _recenter() -> void:
 
 
 func _relight() -> void:
+	var dark := DayClock.darkness()
 	fifi.ambient = DayClock.ambient()
-	fifi.darkness = DayClock.darkness()
+	fifi.darkness = dark
+	for light in _lamp_lights:
+		light.energy = 1.25 * dark
+		light.visible = dark > 0.01
+	for p in _lamp_moths + _lamp_dust:
+		p.emitting = dark > 0.4
 	_update_wallet()
 	queue_redraw()
 
@@ -191,8 +207,8 @@ func _draw_light_pool(at: Vector2, reach: float, dark: float) -> void:
 	var g := _lamp_geometry(at, reach)
 	var ground: Vector2 = g.ground
 	var head: Vector2 = g.head
-	draw_texture_rect(_soft, Rect2(ground - Vector2(170, 85), Vector2(340, 170)), false, Color(COLOR_SODIUM, 0.32 * dark))
-	draw_texture_rect(_soft, Rect2(ground - Vector2(90, 45), Vector2(180, 90)), false, Color(COLOR_SODIUM.lightened(0.3), 0.28 * dark))
+	# The light itself is a PointLight2D; this is just the haze where the beam lands.
+	draw_texture_rect(_soft, Rect2(ground - Vector2(150, 75), Vector2(300, 150)), false, Color(COLOR_SODIUM, 0.14 * dark))
 	var lens := head + Vector2(0, 6)
 	draw_polygon(PackedVector2Array([lens + Vector2(-10, 0), lens + Vector2(10, 0), ground + Vector2(110, 0), ground + Vector2(-110, 0)]),
 		PackedColorArray([Color(COLOR_SODIUM, 0.22 * dark), Color(COLOR_SODIUM, 0.22 * dark),
@@ -250,11 +266,85 @@ func _draw_streetlight(at: Vector2, reach: float, amb: Color, dark: float) -> vo
 	draw_line(head + dir * -8.0 + Vector2(0, -6), head + dir * 20.0 + Vector2(0, -6), COLOR_HEAD.lightened(0.35) * amb, 2.0)
 	var lens := PackedVector2Array([head + dir * -8.0 + Vector2(0, 2), head + dir * 20.0 + Vector2(0, 2),
 		head + dir * 16.0 + Vector2(0, 6), head + dir * -4.0 + Vector2(0, 6)])
-	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(COLOR_SODIUM.lightened(0.5), dark))
+	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(StationArt.hdr(COLOR_SODIUM.lightened(0.5), 3.0), dark))
 	if dark > 0.01:
 		var glow := head + dir * 6.0 + Vector2(0, 6)
 		draw_texture_rect(_soft, Rect2(glow - Vector2(60, 60), Vector2(120, 120)), false, Color(COLOR_SODIUM, 0.45 * dark))
-		draw_texture_rect(_soft, Rect2(glow - Vector2(22, 22), Vector2(44, 44)), false, Color(1.0, 0.92, 0.75, 0.7 * dark))
+		draw_texture_rect(_soft, Rect2(glow - Vector2(22, 22), Vector2(44, 44)), false,
+			StationArt.hdr(Color(1.0, 0.92, 0.75, 0.8 * dark), 2.2))
+
+
+## A streetlight's real light (squashed to lie flat on the road), a few moths
+## circling the lantern and dust drifting down its beam.
+func _build_lamp_effects(at: Vector2, reach: float) -> void:
+	var g := _lamp_geometry(at, reach)
+	var light := PointLight2D.new()
+	light.texture = _light_texture()
+	light.texture_scale = 2.4
+	light.scale = Vector2(1.0, 0.5)
+	light.position = g.ground
+	light.color = COLOR_SODIUM
+	light.energy = 0.0
+	add_child(light)
+	_lamp_lights.append(light)
+	var moths := CPUParticles2D.new()
+	moths.position = g.head + Vector2(0, 8)
+	moths.amount = 6
+	moths.lifetime = 1.8
+	moths.preprocess = 2.0
+	moths.texture = _soft
+	moths.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	moths.emission_sphere_radius = 16.0
+	moths.gravity = Vector2.ZERO
+	moths.spread = 180.0
+	moths.initial_velocity_min = 18.0
+	moths.initial_velocity_max = 40.0
+	moths.orbit_velocity_min = 0.6
+	moths.orbit_velocity_max = 1.3
+	moths.scale_amount_min = 0.05
+	moths.scale_amount_max = 0.08
+	moths.color = StationArt.hdr(Color(1.0, 0.93, 0.8, 0.9), 1.6)
+	moths.emitting = false
+	add_child(moths)
+	_lamp_moths.append(moths)
+	var dust := CPUParticles2D.new()
+	dust.position = g.head.lerp(g.ground, 0.55)
+	dust.amount = 14
+	dust.lifetime = 5.0
+	dust.preprocess = 5.0
+	dust.texture = _soft
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = Vector2(55, 70)
+	dust.gravity = Vector2(0, 3)
+	dust.direction = Vector2(1, 0)
+	dust.spread = 180.0
+	dust.initial_velocity_min = 2.0
+	dust.initial_velocity_max = 6.0
+	dust.scale_amount_min = 0.03
+	dust.scale_amount_max = 0.05
+	var fade := Gradient.new()
+	fade.set_color(0, Color(COLOR_SODIUM, 0.0))
+	fade.add_point(0.5, Color(COLOR_SODIUM.lightened(0.4), 0.6))
+	fade.set_color(fade.get_point_count() - 1, Color(COLOR_SODIUM, 0.0))
+	dust.color_ramp = fade
+	dust.emitting = false
+	add_child(dust)
+	_lamp_dust.append(dust)
+
+
+static func _light_texture() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color.WHITE)
+	gradient.add_point(0.45, Color(1, 1, 1, 0.45))
+	gradient.set_color(gradient.get_point_count() - 1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 256
+	tex.height = 256
+	return tex
 
 
 ## Flat ellipse lying on the ground (already squashed 2:1 for the view).

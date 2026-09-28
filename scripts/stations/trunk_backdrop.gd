@@ -1,7 +1,9 @@
 class_name TrunkBackdrop
 extends Control
 ## Full-screen backdrop for the prep station: standing behind FIFI with the
-## hatch up. Raised hatch across the top, painted pillars down the sides,
+## hatch up. The raised hatch fills the top in perspective, its rear
+## windscreen showing the sky (and a streetlight) through the glass; two work
+## bulbs hang under the roof; painted pillars run down the sides,
 ## the trunk (headliner, rear seat back, side trim, carpet) with a wooden rack
 ## of supplies across it, and the rear panel with lamps, plate and bumper
 ## below the sill. LED strips chase round the opening and the hatch lip.
@@ -28,9 +30,11 @@ const WOOD := Color("9a6a3e")
 ## LED strip colours, repeating in bands that chase round the opening.
 const LED_COLORS := [Color("ff4a4a"), Color("b45cff"), Color("ffcf3a")]
 const LED_SPACING := 13.0
-const HATCH_H := 100.0
-const ROOF_TOP := 112.0
-const ROOF_BOTTOM := 140.0
+const HATCH_H := 270.0
+const ROOF_TOP := 282.0
+const ROOF_BOTTOM := 312.0
+const SODIUM := Color("ffa94d")
+const BULB := Color("fff1d6")
 
 ## Screen y of the front edge of the trunk floor (top of the art's carpet band).
 var floor_y := 1400.0
@@ -54,6 +58,8 @@ func _ready() -> void:
 	_leds.set_anchors_preset(PRESET_FULL_RECT)
 	add_child(_leds)
 	_leds.draw.connect(_draw_leds)
+	# The sky through the rear windscreen follows the time of day.
+	DayClock.minute_changed.connect(queue_redraw)
 
 
 func _process(delta: float) -> void:
@@ -82,30 +88,80 @@ func _draw() -> void:
 	var w := size.x
 	var h := size.y
 	draw_rect(Rect2(Vector2.ZERO, size), NIGHT)
+	# Until the first layout pass the panel may be narrower than the opening.
+	if w < inner.y or inner.y <= inner.x:
+		return
 	_draw_hatch(w)
 	_draw_interior(w)
 	_draw_pillars(w)
 	_draw_rear_panel(w, h)
 
 
-## Underside of the lifted hatch: trim frame round the glass, painted lip, latch.
+## The raised hatch seen from below: nearer (higher on screen) is wider, so it
+## fans out from the roof's hinge line toward the top of the screen. Trim
+## frames the rear windscreen, through which the sky shows (stars and a
+## streetlight at night), with the heater lines and the wiper on the glass.
 func _draw_hatch(w: float) -> void:
-	draw_rect(Rect2(0, 0, w, HATCH_H), TRIM.darkened(0.2))
-	# Rear windscreen seen from below: sky toward the top, heater lines, wiper.
-	var pane := Rect2(110, 10, w - 220, HATCH_H - 34)
-	draw_polygon(PackedVector2Array([pane.position, Vector2(pane.end.x, pane.position.y), pane.end,
-		Vector2(pane.position.x, pane.end.y)]), PackedColorArray([GLASS_SKY, GLASS_SKY, GLASS, GLASS]))
-	for k in range(1, 6):
-		var y := pane.position.y + pane.size.y * k / 6.0
-		draw_line(Vector2(pane.position.x + 14, y), Vector2(pane.end.x - 14, y), Color(0.55, 0.3, 0.2, 0.4), 1.5)
-	draw_colored_polygon(PackedVector2Array([Vector2(w * 0.3, 10), Vector2(w * 0.36, 10),
-		Vector2(w * 0.3, HATCH_H - 24), Vector2(w * 0.24, HATCH_H - 24)]), Color(1.0, 0.86, 0.6, 0.12))
-	draw_line(Vector2(w * 0.5, pane.end.y - 2), Vector2(w * 0.5 + 220, pane.position.y + 10), SEAL, 4.0, true)
-	draw_rect(pane, SEAL, false, 3.0)
-	draw_rect(Rect2(0, HATCH_H - 14, w, 14), PAINT.darkened(0.2))
-	draw_rect(Rect2(w * 0.5 - 22, HATCH_H - 12, 44, 8), CHROME)
-	# Night sky shows between the hatch and the roof, lit by the streetlights.
-	_soft_blob(Vector2(w * 0.5, ROOF_TOP - 6), Vector2(w * 0.6, 40), Color(1.0, 0.78, 0.38, 0.12))
+	var l := inner.x
+	var r := inner.y
+	var sky := DayClock.sky()
+	var dark := DayClock.darkness()
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, ROOF_TOP), Vector2(0, ROOF_TOP)]),
+		PackedColorArray([sky.darkened(0.3), sky.darkened(0.3), sky, sky]))
+	var hatch := PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(r + 4, HATCH_H), Vector2(l - 4, HATCH_H)])
+	draw_colored_polygon(hatch, TRIM.darkened(0.25))
+	# Rear windscreen: what's behind it is sky, tinted by the glass.
+	var pane := PackedVector2Array([Vector2(70, 34), Vector2(w - 70, 34), Vector2(r - 44, HATCH_H - 28),
+		Vector2(l + 44, HATCH_H - 28)])
+	var top_col := sky.darkened(0.25).lerp(GLASS, 0.3)
+	var low_col := sky.lightened(0.08).lerp(GLASS_SKY, 0.3)
+	draw_polygon(pane, PackedColorArray([top_col, top_col, low_col, low_col]))
+	if dark > 0.05:
+		for k in 14:
+			var p := Vector2(110 + float((k * 173) % 860), 50 + float((k * 67) % 160))
+			if Geometry2D.is_point_in_polygon(p, pane):
+				draw_circle(p, 1.6, Color(1, 1, 1, 0.6 * dark))
+		# The streetlight overhead, seen through the glass.
+		var lamp := Vector2(w * 0.74, 96)
+		_soft_blob(lamp, Vector2(150, 110), Color(SODIUM, 0.35 * dark))
+		draw_line(lamp + Vector2(120, -60), lamp + Vector2(20, -6), Color("2a2a32"), 6.0, true)
+		draw_colored_polygon(PackedVector2Array([lamp + Vector2(-34, -8), lamp + Vector2(30, -8), lamp + Vector2(24, 6),
+			lamp + Vector2(-28, 6)]), Color("2a2a32"))
+		draw_line(lamp + Vector2(-26, 5), lamp + Vector2(22, 5), StationArt.hdr(SODIUM.lightened(0.4), 1.0 + 2.2 * dark), 5.0)
+	# Reflections and the heater element's lines, following the perspective.
+	for band in [[0.18, 0.26], [0.3, 0.33]]:
+		var streak := PackedVector2Array([pane[3].lerp(pane[2], band[0]), pane[3].lerp(pane[2], band[1]),
+			pane[0].lerp(pane[1], band[1] + 0.1), pane[0].lerp(pane[1], band[0] + 0.1)])
+		draw_colored_polygon(streak, Color(1, 1, 1, 0.07))
+	for k in range(1, 8):
+		var t := k / 8.0
+		var a := pane[0].lerp(pane[3], t)
+		var b := pane[1].lerp(pane[2], t)
+		draw_line(a.lerp(b, 0.04), b.lerp(a, 0.04), Color(0.6, 0.32, 0.2, 0.55), 1.5 + t)
+	var pivot := Vector2(w * 0.5, 52)
+	draw_line(pivot, pivot + Vector2(-260, 150), SEAL, 6.0, true)
+	draw_line(pivot + Vector2(-60, 35), pivot + Vector2(-300, 172), Color("2c2c30"), 4.0, true)
+	draw_circle(pivot, 9, SEAL)
+	var seal := pane.duplicate()
+	seal.append(pane[0])
+	draw_polyline(seal, SEAL, 5.0, true)
+	# Painted lip nearest us with the latch, and the trim's hinge edge.
+	draw_colored_polygon(PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(w + 40, 22), Vector2(-40, 22)]),
+		PAINT.darkened(0.25))
+	draw_rect(Rect2(w * 0.5 - 30, 8, 60, 12), CHROME)
+	draw_line(Vector2(l - 4, HATCH_H - 2), Vector2(r + 4, HATCH_H - 2), SEAL, 4.0)
+
+
+## Two bare work bulbs hanging from the roof edge into the trunk.
+func _draw_bulbs(l: float, r: float) -> void:
+	for x in [l + 120.0, r - 120.0]:
+		var hook := Vector2(x, ROOF_BOTTOM + 4)
+		var bulb := hook + Vector2(0, 74)
+		_soft_blob(bulb + Vector2(0, 60), Vector2(260, 220), Color(BULB, 0.1))
+		draw_line(hook, bulb + Vector2(0, -16), Color("1d1b20"), 3.0)
+		draw_rect(Rect2(bulb + Vector2(-7, -22), Vector2(14, 12)), Color("8a8579"))
+		_soft_blob(bulb, Vector2(70, 70), StationArt.hdr(Color(BULB, 0.55), 1.4))
+		draw_circle(bulb, 14, StationArt.hdr(BULB, 2.6))
 
 
 func _draw_interior(w: float) -> void:
@@ -152,12 +208,13 @@ func _draw_interior(w: float) -> void:
 		var x := lerpf(lerpf(bl, l, d), lerpf(br, r, d), t)
 		draw_circle(Vector2(x, y), 1.5, Color(1, 1, 1, 0.05))
 	_draw_rack(l, r, bl, br, back, seat_top)
+	_draw_bulbs(l, r)
 
 
 ## Wooden rack across the trunk, stocked with the stand's supplies.
 func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top: float) -> void:
 	var s := art_scale
-	var y := maxf(floor_y - 620.0 * s, seat_top + 170.0)
+	var y := maxf(floor_y - 480.0 * s, seat_top + 170.0)
 	var x0 := lerpf(l, bl, 0.5)
 	var x1 := lerpf(r, br, 0.5)
 	var post_foot := lerpf(floor_y, back, 0.5)
@@ -229,7 +286,7 @@ func _draw_pillars(w: float) -> void:
 	draw_rect(Rect2(8, ROOF_TOP + 10, 8, sill_y - ROOF_TOP - 20), Color(1, 1, 1, 0.18))
 	for side in [-1.0, 1.0]:
 		var foot := Vector2(l + 10 if side < 0 else r - 10, ROOF_BOTTOM + 380)
-		var head := Vector2(130 if side < 0 else w - 130, HATCH_H - 16)
+		var head := Vector2(l + 40 if side < 0 else r - 40, HATCH_H - 40)
 		draw_line(foot, foot.lerp(head, 0.55), Color("2a2a30"), 11.0, true)
 		draw_line(foot.lerp(head, 0.5), head, CHROME, 5.0, true)
 
@@ -291,9 +348,14 @@ func _draw_rear_panel(w: float, h: float) -> void:
 ## in repeating red/purple/yellow bands that slowly chase. Drawn on _leds.
 func _draw_leds() -> void:
 	var w := size.x
+	if w < inner.y or inner.y <= inner.x:
+		return
 	var l := inner.x - 3.0
 	var r := inner.y + 3.0
-	var i := _led_run(Vector2(0, HATCH_H - 3), Vector2(w, HATCH_H - 3), 0)
+	# Down one side of the raised hatch, along its hinge edge, back up the other.
+	var i := _led_run(Vector2(-40, 0), Vector2(l - 2, HATCH_H - 3), 0)
+	i = _led_run(Vector2(l - 2, HATCH_H - 3), Vector2(r + 2, HATCH_H - 3), i)
+	i = _led_run(Vector2(r + 2, HATCH_H - 3), Vector2(w + 40, 0), i)
 	i = _led_run(Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
 	i = _led_run(Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
 	i = _led_run(Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
@@ -313,12 +375,12 @@ func _led_run(a: Vector2, b: Vector2, start: int) -> int:
 		var p0 := a.lerp(b, k / float(n))
 		var p1 := a.lerp(b, k1 / float(n))
 		var c: Color = LED_COLORS[idx]
-		_leds.draw_line(p0, p1, Color(c, 0.22), 22.0)
-		_leds.draw_line(p0, p1, Color(c, 0.9), 6.0)
+		_leds.draw_line(p0, p1, Color(c, 0.16), 20.0)
+		_leds.draw_line(p0, p1, StationArt.hdr(c, 1.45), 6.0)
 		k = k1
 	for j in n:
 		var p := a.lerp(b, j / float(n))
-		_leds.draw_rect(Rect2(p - Vector2(2.5, 2.5), Vector2(5, 5)), Color(1, 1, 1, 0.75))
+		_leds.draw_rect(Rect2(p - Vector2(2.5, 2.5), Vector2(5, 5)), StationArt.hdr(Color(1, 1, 1, 0.8), 1.6))
 	return start + n
 
 

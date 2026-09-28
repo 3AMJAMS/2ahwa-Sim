@@ -301,12 +301,12 @@ func _draw_base() -> void:
 		var r := Rect2(cx - 62 + i * 21, 508, 16, 9)
 		if lit > i:
 			var c: Color = LED_COLORS[i]
-			draw_rect(r, Color(c, blink if i >= 4 or tripped else 1.0))
+			draw_rect(r, hdr(Color(c, blink if i >= 4 or tripped else 1.0), 1.8))
 			_soft_blob(r.get_center(), Vector2(16, 12), Color(c, 0.35 * blink))
 		else:
 			draw_rect(r, Color(1, 1, 1, 0.08))
-	var buttons := [Color("55535c"), Color("7be08a") if running else Color("55535c"),
-		Color("ffb347") if running and holding else Color("55535c")]
+	var buttons := [Color("55535c"), hdr(Color("7be08a"), 1.6) if running else Color("55535c"),
+		hdr(Color("ffb347"), 1.8) if running and holding else Color("55535c")]
 	for i in 3:
 		var at := Vector2(cx - 40 + i * 40, 546)
 		draw_circle(at, 12, buttons[i])

@@ -100,17 +100,45 @@ var ambient := Color.WHITE:
 		ambient = value
 		queue_redraw()
 ## 0 by day, 1 at night: how strongly the LED strips glow.
-var darkness := 1.0
+var darkness := 1.0:
+	set(value):
+		darkness = value
+		if _led_light:
+			_led_light.energy = 0.9 * value
 
 ## LEDs and the tap glow animate every frame, so they live on their own
 ## layer and the car body only redraws when the light changes.
 var _lights: Node2D
+## The LED strips' coloured spill onto the road and pavement round the trunk.
+var _led_light: PointLight2D
 
 
 func _ready() -> void:
 	_lights = Node2D.new()
 	add_child(_lights)
 	_lights.draw.connect(_draw_lights)
+	_led_light = PointLight2D.new()
+	_led_light.texture = _spill_texture()
+	_led_light.texture_scale = 1.4
+	_led_light.scale = Vector2(1.0, 0.5)
+	_led_light.position = iso(HX + 24, 0, 0)
+	_led_light.color = Color(1.0, 0.55, 0.85)
+	_led_light.energy = 0.9 * darkness
+	add_child(_led_light)
+
+
+static func _spill_texture() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1, 1, 1, 0.8))
+	gradient.set_color(1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 128
+	tex.height = 128
+	return tex
 
 
 ## World to screen: 2:1 dimetric, matching the 128×64 tile grid.
@@ -440,7 +468,7 @@ func _led_run(path: Array, start: int, chase: int) -> int:
 			var p := iso3(a.lerp(b, j / float(n)))
 			var c: Color = LED_COLORS[posmod(int(floor((k - chase) / 5.0)), LED_COLORS.size())]
 			_lights.draw_circle(p, 6.0, Color(c, lerpf(0.12, 0.28, darkness)))
-			_lights.draw_circle(p, 2.3, c.lerp(Color.WHITE, 0.5))
+			_lights.draw_circle(p, 2.3, StationArt.hdr(c.lerp(Color.WHITE, 0.5), lerpf(1.0, 2.6, darkness)))
 			k += 1
 	return k
 

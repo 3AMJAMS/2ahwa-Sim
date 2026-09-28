@@ -49,5 +49,6 @@ locale/test="ar_EG"
 [rendering]
 
 renderer/rendering_method="mobile"
+viewport/hdr_2d=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.055, 0.063, 0.157, 1)

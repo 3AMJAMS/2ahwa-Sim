@@ -32,6 +32,12 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   you see the day's takings, the day number goes up and the next day starts at 4 pm.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
 
+### Visual effects
+The project uses Godot's built-in effects, so run it with the **Mobile** (or Forward+) renderer to see them:
+HDR 2D + glow (`rendering/viewport/hdr_2d`, `WorldEnvironment` in `scenes/main.tscn`), `PointLight2D` streetlights,
+`CPUParticles2D` moths/dust, and shaders in `shaders/` (heat haze over the stove, screen vignette).
+Anything that should glow is drawn with a colour brighter than white (`StationArt.hdr()`).
+
 ### Project layout
 | Path | What |
 |---|---|
