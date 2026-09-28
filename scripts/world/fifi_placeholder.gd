@@ -50,6 +50,8 @@ const TAP_PADDING := 14.0
 const COLOR_PAINT := Color("e9b42c")
 const COLOR_GLASS := Color("1c2346")
 const COLOR_GLINT := Color(1.0, 0.86, 0.6, 0.16)
+## What the rear windscreen reflects when seen from below: the sky.
+const COLOR_SKY_GLASS := Color("7f9cc4")
 const COLOR_CHROME := Color("d4d9e1")
 const COLOR_RUBBER := Color("1b1b21")
 const COLOR_TIRE := Color("16161b")
@@ -386,11 +388,27 @@ func _draw_open_hatch() -> void:
 		hinge_n.lerp(glass_n, 0.9).lerp(hinge_f.lerp(glass_f, 0.9), 0.06),
 		hinge_n.lerp(glass_n, 0.12).lerp(hinge_f.lerp(glass_f, 0.12), 0.06)]
 	var pane_2d := _project(pane)
-	draw_colored_polygon(pane_2d, _shade(COLOR_GLASS, n))
-	var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], 0.25), pane_2d[0].lerp(pane_2d[3], 0.4),
-		pane_2d[1].lerp(pane_2d[2], 0.55), pane_2d[1].lerp(pane_2d[2], 0.4)])
-	for piece in Geometry2D.intersect_polygons(pane_2d, glint):
-		draw_colored_polygon(piece, COLOR_GLINT)
+	# Rear windscreen: sky reflected toward its raised top edge, darker by the
+	# hinge, with the heater element lines, the wiper and two light streaks.
+	var low := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.25), n)
+	var high := _shade(COLOR_GLASS.lerp(COLOR_SKY_GLASS, 0.7), n)
+	draw_polygon(pane_2d, PackedColorArray([low, high, high, low]))
+	var heater := PackedVector2Array()
+	for k in range(1, 7):
+		var t := k / 7.0
+		heater.append(pane_2d[0].lerp(pane_2d[1], t).lerp(pane_2d[3].lerp(pane_2d[2], t), 0.04))
+		heater.append(pane_2d[3].lerp(pane_2d[2], t).lerp(pane_2d[0].lerp(pane_2d[1], t), 0.04))
+	draw_multiline(heater, Color(0.55, 0.3, 0.2, 0.45), 1.0)
+	for band in [[0.2, 0.3], [0.42, 0.47]]:
+		var glint := PackedVector2Array([pane_2d[0].lerp(pane_2d[3], band[0]), pane_2d[0].lerp(pane_2d[3], band[1]),
+			pane_2d[1].lerp(pane_2d[2], band[1] + 0.15), pane_2d[1].lerp(pane_2d[2], band[0] + 0.15)])
+		for piece in Geometry2D.intersect_polygons(pane_2d, glint):
+			draw_colored_polygon(piece, COLOR_GLINT)
+	var pivot := pane_2d[0].lerp(pane_2d[3], 0.5).lerp(pane_2d[1].lerp(pane_2d[2], 0.5), 0.08)
+	draw_line(pivot, pivot.lerp(pane_2d[1].lerp(pane_2d[2], 0.2), 0.8), COLOR_RUBBER, 2.0, true)
+	var seal := pane_2d.duplicate()
+	seal.append(pane_2d[0])
+	draw_polyline(seal, COLOR_RUBBER, 2.0, true)
 	# Lock on the tailgate's lip.
 	var lock := tail_f.lerp(tail_n, 0.5).lerp(glass_f.lerp(glass_n, 0.5), 0.2)
 	draw_line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)

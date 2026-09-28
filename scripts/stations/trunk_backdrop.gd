@@ -17,6 +17,7 @@ const TRIM := Color("3f3943")
 const SEAT := Color("5b3d33")
 const CARPET := Color("463e46")
 const GLASS := Color("1c2346")
+const GLASS_SKY := Color("5f7aa6")
 const TAIL_RED := Color("c3372c")
 const TAIL_AMBER := Color("e8962e")
 const PLATE := Color("ece8dc")
@@ -90,12 +91,20 @@ func _draw() -> void:
 ## Underside of the lifted hatch: trim frame round the glass, painted lip, latch.
 func _draw_hatch(w: float) -> void:
 	draw_rect(Rect2(0, 0, w, HATCH_H), TRIM.darkened(0.2))
-	draw_rect(Rect2(110, 10, w - 220, HATCH_H - 34), GLASS)
+	# Rear windscreen seen from below: sky toward the top, heater lines, wiper.
+	var pane := Rect2(110, 10, w - 220, HATCH_H - 34)
+	draw_polygon(PackedVector2Array([pane.position, Vector2(pane.end.x, pane.position.y), pane.end,
+		Vector2(pane.position.x, pane.end.y)]), PackedColorArray([GLASS_SKY, GLASS_SKY, GLASS, GLASS]))
+	for k in range(1, 6):
+		var y := pane.position.y + pane.size.y * k / 6.0
+		draw_line(Vector2(pane.position.x + 14, y), Vector2(pane.end.x - 14, y), Color(0.55, 0.3, 0.2, 0.4), 1.5)
 	draw_colored_polygon(PackedVector2Array([Vector2(w * 0.3, 10), Vector2(w * 0.36, 10),
 		Vector2(w * 0.3, HATCH_H - 24), Vector2(w * 0.24, HATCH_H - 24)]), Color(1.0, 0.86, 0.6, 0.12))
+	draw_line(Vector2(w * 0.5, pane.end.y - 2), Vector2(w * 0.5 + 220, pane.position.y + 10), SEAL, 4.0, true)
+	draw_rect(pane, SEAL, false, 3.0)
 	draw_rect(Rect2(0, HATCH_H - 14, w, 14), PAINT.darkened(0.2))
 	draw_rect(Rect2(w * 0.5 - 22, HATCH_H - 12, 44, 8), CHROME)
-	# Night sky shows between the hatch and the roof, with the string lights' glow.
+	# Night sky shows between the hatch and the roof, lit by the streetlights.
 	_soft_blob(Vector2(w * 0.5, ROOF_TOP - 6), Vector2(w * 0.6, 40), Color(1.0, 0.78, 0.38, 0.12))
 
 

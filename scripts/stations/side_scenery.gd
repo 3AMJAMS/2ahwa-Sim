@@ -2,8 +2,9 @@ class_name SideScenery
 extends Control
 ## What you see around FIFI's rear when the screen is wider (or taller) than
 ## the fixed 9:16 prep panel: the street carrying on either side. Cairo
-## apartment blocks, the road with its lane dashes on the left, the pavement
-## with a streetlight and Sayed's ice box on the right, string lights above.
+## apartment blocks, the wide road with its lane dashes on the left, the
+## black-and-white kerb and pavement with Sayed's ice box on the right, and
+## Cairo sodium streetlights on both sides.
 ## Lit by DayClock; redraws only on resize or when the game minute ticks.
 
 ## Width / height of the prep panel it frames (matches the AspectRatioContainer).
@@ -14,10 +15,11 @@ const WINDOW_DAY := Color("8aa3c2")
 const ASPHALT := Color("55575f")
 const PAVEMENT := Color("8f8a86")
 const KERB := Color("b8b4ae")
-const POLE := Color("3a3a42")
-const LAMP := Color("ffb45a")
-const BULB := Color("ffc861")
-const WIRE := Color("0e1022")
+const POLE := Color("8d9199")
+const HEAD := Color("7c8088")
+const SODIUM := Color("ffa94d")
+const PAINT_DARK := Color("2c2c31")
+const PAINT_LIGHT := Color("e6e3dc")
 const ICEBOX := Color("2f6fb3")
 const ICEBOX_LID := Color("eef1f4")
 
@@ -63,7 +65,15 @@ func _draw() -> void:
 	for i in range(1, 14):
 		var y := horizon + 18 + pow(i / 13.0, 1.6) * (size.y - horizon - 18)
 		draw_line(Vector2(kerb_at.call(y), y), Vector2(size.x, y), Color(0, 0, 0, 0.12), 2.0)
-	draw_line(Vector2(kerb_at.call(horizon + 18), horizon + 18), Vector2(kerb_at.call(size.y), size.y), KERB * amb, 10.0)
+	# Kerb painted in alternating black and white blocks, longer as they near us.
+	var y := horizon + 18.0
+	var block := 0
+	while y < size.y:
+		var y2 := minf(y + 8.0 + (y - horizon) * 0.12, size.y)
+		draw_line(Vector2(kerb_at.call(y), y), Vector2(kerb_at.call(y2), y2),
+			(PAINT_DARK if block % 2 == 0 else PAINT_LIGHT) * amb, 4.0 + (y - horizon) * 0.02)
+		y = y2
+		block += 1
 	# Lane dashes on the road side.
 	for i in 10:
 		var y0 := horizon + 30 + pow(i / 10.0, 1.7) * (size.y - horizon)
@@ -71,8 +81,8 @@ func _draw() -> void:
 		var x0: float = cx - (y0 - horizon) * k * 1.7
 		var x1: float = cx - (y1 - horizon) * k * 1.7
 		draw_line(Vector2(x0, y0), Vector2(x1, y1), Color(0.9, 0.88, 0.8, 0.5) * amb, 4.0 + i)
-	_draw_string_lights(panel, horizon, dark)
-	_draw_streetlight(Vector2(panel.end.x + 260, bottom - 60), horizon, amb, dark)
+	_draw_streetlight(Vector2(panel.end.x + 260, bottom - 60), -1.0, 1.0, horizon, amb, dark)
+	_draw_streetlight(Vector2(panel.position.x - 520, horizon + 40), 1.0, 0.45, horizon, amb, dark)
 	_draw_icebox(Vector2(panel.end.x + 70, bottom - 40), amb)
 
 
@@ -105,33 +115,55 @@ func _draw_buildings(horizon: float, amb: Color, dark: float) -> void:
 		x += bw + rng.randf_range(4, 18)
 
 
-func _draw_string_lights(panel: Rect2, horizon: float, dark: float) -> void:
-	for side in [-1.0, 1.0]:
-		var a := Vector2(panel.position.x if side < 0 else panel.end.x, horizon - 330)
-		var b := Vector2(0 if side < 0 else size.x, horizon - 380)
-		var pts := PackedVector2Array()
-		for i in 17:
-			var t := i / 16.0
-			pts.append(a.lerp(b, t) + Vector2(0, sin(t * PI) * 60.0))
-		draw_polyline(pts, WIRE, 3.0, true)
-		for i in range(1, 16, 2):
-			var p := pts[i] + Vector2(0, 10)
-			_soft_blob(p, Vector2(26, 26), Color(BULB, 0.35 * dark))
-			draw_circle(p, 7, Color("6b6250").lerp(BULB, dark))
-
-
-func _draw_streetlight(base: Vector2, horizon: float, amb: Color, dark: float) -> void:
-	var top := Vector2(base.x, horizon - 420)
-	var head := top + Vector2(-150, 30)
-	if dark > 0.0:
-		_soft_blob(Vector2(head.x, base.y + 10), Vector2(260, 70), Color(LAMP, 0.3 * dark))
-	draw_rect(Rect2(base.x - 16, base.y - 20, 32, 20), POLE.lightened(0.2) * amb)
-	draw_line(base, top, POLE * amb, 12.0)
-	draw_polyline(PackedVector2Array([top, top + Vector2(-40, -20), head + Vector2(20, -12), head]), POLE * amb, 8.0, true)
-	draw_colored_polygon(PackedVector2Array([head + Vector2(-34, 0), head + Vector2(34, 0), head + Vector2(22, 14),
-		head + Vector2(-22, 14)]), (Color("5a5a64") * amb).lerp(LAMP.lightened(0.4), dark))
-	if dark > 0.0:
-		_soft_blob(head + Vector2(0, 14), Vector2(110, 110), Color(LAMP, 0.4 * dark))
+## A Cairo street lamp seen side-on: concrete foot, tapered galvanised pole
+## with black-and-white bands low down, a swan-neck arm reaching over the road
+## (reach -1 = to the left), a cobra-head lantern, and after dusk its sodium
+## cone and pool of light. `k` scales it for distance.
+func _draw_streetlight(base: Vector2, reach: float, k: float, horizon: float, amb: Color, dark: float) -> void:
+	var top := Vector2(base.x, horizon - 420.0 * k - (base.y - horizon) * 0.2)
+	var head := top + Vector2(reach * 170.0 * k, 26.0 * k)
+	if dark > 0.01:
+		var pool := Vector2(head.x, base.y + 8.0 * k)
+		draw_polygon(PackedVector2Array([head + Vector2(-18 * k, 10 * k), head + Vector2(18 * k, 10 * k),
+			pool + Vector2(170 * k, 0), pool + Vector2(-170 * k, 0)]),
+			PackedColorArray([Color(SODIUM, 0.22 * dark), Color(SODIUM, 0.22 * dark), Color(SODIUM, 0.0), Color(SODIUM, 0.0)]))
+		_soft_blob(pool, Vector2(280, 60) * k, Color(SODIUM, 0.35 * dark))
+	draw_rect(Rect2(base.x - 20 * k, base.y - 22 * k, 40 * k, 22 * k), Color("a8a49c") * amb)
+	var hb := 11.0 * k
+	var ht := 5.0 * k
+	var y0 := base.y - 22.0 * k
+	draw_colored_polygon(PackedVector2Array([Vector2(base.x - hb, y0), Vector2(base.x, y0), top, top - Vector2(ht, 0)]),
+		POLE.lightened(0.15) * amb)
+	draw_colored_polygon(PackedVector2Array([Vector2(base.x, y0), Vector2(base.x + hb, y0), top + Vector2(ht, 0), top]),
+		POLE.darkened(0.2) * amb)
+	for band in 6:
+		var ya := y0 - band * 22.0 * k
+		var w := lerpf(hb, ht, (y0 - ya) / maxf(y0 - top.y, 1.0)) + 0.5
+		draw_rect(Rect2(base.x - w, ya - 22.0 * k, w * 2.0, 22.0 * k), (PAINT_DARK if band % 2 == 0 else PAINT_LIGHT) * amb)
+	draw_rect(Rect2(base.x - 5 * k, y0 - 170 * k, 10 * k, 26 * k), POLE.darkened(0.35) * amb)
+	# Swan-neck arm curving up and out to the lantern.
+	var arm := PackedVector2Array()
+	var c1 := top + Vector2(0, -70 * k)
+	var c2 := head + Vector2(-reach * 40 * k, -24 * k)
+	for i in 17:
+		var t := i / 16.0
+		arm.append(top.lerp(c1, t).lerp(c1.lerp(c2, t), t).lerp(c1.lerp(c2, t).lerp(c2.lerp(head, t), t), t))
+	draw_polyline(arm, POLE.darkened(0.1) * amb, 9.0 * k, true)
+	draw_polyline(arm, POLE.lightened(0.25) * amb, 3.0 * k, true)
+	# Cobra head: long rounded shell, glowing lens underneath.
+	var shell := PackedVector2Array()
+	for i in 16:
+		var a := TAU * i / 16.0
+		shell.append(head + Vector2(reach * (cos(a) * 44.0 + 12.0), sin(a) * 13.0 - 4.0) * k)
+	draw_colored_polygon(shell, HEAD * amb)
+	draw_line(head + Vector2(reach * -24, -12) * k, head + Vector2(reach * 44, -12) * k, HEAD.lightened(0.35) * amb, 3.0 * k)
+	var lens := PackedVector2Array([head + Vector2(reach * -22, 4) * k, head + Vector2(reach * 46, 4) * k,
+		head + Vector2(reach * 38, 12) * k, head + Vector2(reach * -14, 12) * k])
+	draw_colored_polygon(lens, (Color("d8d4c8") * amb).lerp(SODIUM.lightened(0.5), dark))
+	if dark > 0.01:
+		var glow := head + Vector2(reach * 12, 10) * k
+		_soft_blob(glow, Vector2(130, 130) * k, Color(SODIUM, 0.45 * dark))
+		_soft_blob(glow, Vector2(44, 44) * k, Color(1.0, 0.92, 0.75, 0.7 * dark))
 
 
 func _draw_icebox(base: Vector2, amb: Color) -> void:

@@ -25,7 +25,7 @@ Design bible, FIFI+WAHSH locked, Egyptian Ammiya UI (translation-key architectur
 - **Isometric tile:** 128×64px (2:1 dimetric), authored at 2× for high-DPI
 - **Character proportions:** ~4 heads tall, slightly oversized head/hands (Moonlighter/Graveyard Keeper register)
 - **Palette:** deep indigo/navy night base; warm amber/gold practicals (string lights, neon, coal); warm-neutral stone/pavement; period-appropriate FIFI/WAHSH body colors. (The roadmap page's own sand/terracotta/teal/gold is UI chrome only — the game world reads as a lit night street.)
-- **Lighting:** single warm key light from the string-light canopy (~45° down-front), consistent across every tier; cool dim ambient night-sky fill for silhouette separation.
+- **Lighting:** warm key light from the sodium streetlights (~45° down-front), consistent across every tier; cool dim ambient night-sky fill for silhouette separation.
 
 ---
 
@@ -64,7 +64,8 @@ Hot boil-and-pour gauge (كنكة on FIFI's gas ring; رملة sand bath comes l
 - LED strips lining the trunk opening and the hatch edge, in chasing red/purple/yellow bands
 - Street now has asphalt, a kerb and pavement slabs on FIFI's passenger side, with the fruit ice box set down on the pavement beside the trunk
 - Day/night cycle: the clock starts at 4 pm and runs 1 game minute per real second through sunset and night (sky, ambient light, streetlights, string lights) and round the clock; the day only ends when the player taps "go home" (روّح), which shows the day's takings and starts the next day
-- Streetlights on both pavements, and the street drawn as long bands so it fills any screen
+- Street reworked: FIFI parked in the kerb lane of a wide four-lane road (dashed lane lines, manhole, resurfaced patches), black-and-white painted kerbs, pavements both sides, and Cairo sodium streetlights (tapered galvanised poles with painted bases, swan-neck arms, cobra-head lanterns, light cones and pools at night); string lights removed
+- Raised hatch's rear windscreen now reads as glass: sky reflection, the heater-element lines, wiper and light streaks
 - Prep station is a fixed 9:16 panel; wider/taller screens show the street around it (apartment blocks, road, pavement with streetlight and ice box). Its car backdrop is drawn once and only the LED strips animate, fixing the lag
 - Prep station drawn as the back of FIFI: raised hatch, pillars, trunk interior with a wooden rack of supplies (paper cups, tea glasses, jars, tea/coffee boxes, water), LED strips round the opening, and the rear panel with lamps, plate and bumper below the sill
 
@@ -164,7 +165,7 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 |---|---|---|---|
 | Equipment | Basic burner+blender | Dual burner, upgraded blender | Bigger رملة, espresso machine |
 | Snacks | Small chip rack | Chip+noodle rack | Full snack cooler |
-| Décor | Fairy lights + LED strips lining the trunk (red, purple, yellow); later: stickers and signs on the hatch underside | Neon signs + less-local, more modern décor, stools | Marble tables, mashrabiya |
+| Décor | LED strips lining the trunk (red, purple, yellow); later: stickers and signs on the hatch underside | Neon signs + less-local, more modern décor, stools | Marble tables, mashrabiya |
 | Shisha | None | Mini corner, unflavored | Full corner+staff, flavored T3+ |
 | Staff | Sayed only | Sayed only | نصبجي T3, تومباكشي T4, waiters T5 |
 
