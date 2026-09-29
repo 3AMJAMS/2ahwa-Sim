@@ -27,6 +27,12 @@ const COLOR_TRACK := Color("1b1e3a")
 
 var state := State.IDLE
 var heat := 0.0
+## The kanaka holds plain water (tea made in the glass): the prompts talk
+## about the water boiling rather than the foam rising.
+var water := false
+## The player pours it themselves (شاي على مية بيضا): a tap in time lifts the
+## kanaka over the glass and reports; PrepStation runs the pour.
+var manual_pour := false
 
 var _fill := StyleBoxFlat.new()
 ## Bumped on every start/reset so a pour that outlives its order is ignored.
@@ -63,7 +69,7 @@ func start(time_sec: float = prep_time_sec) -> void:
 	state = State.HEATING
 	_run_id += 1
 	set_process(true)
-	stove.reset()
+	stove.reset_pot()
 	stove.ignite()
 	_refresh()
 
@@ -115,7 +121,11 @@ func stop() -> void:
 		status_label.text = tr("PREP_TOO_HOT")
 		pour = KanakaStove.Pour.TOO_HOT
 	var run := _run_id
-	await stove.pour(pour)
+	if manual_pour:
+		stove._pour_kind = pour
+		await stove.lift_for_pour()
+	else:
+		await stove.pour(pour)
 	if run == _run_id:
 		gauge_completed.emit(accuracy)
 
@@ -154,9 +164,9 @@ func _refresh() -> void:
 	tap_label.modulate.a = 1.0 if heating and is_in_green(heat) else 0.0
 	if heating:
 		if heat < green_min:
-			status_label.text = tr("PREP_WAITING")
+			status_label.text = tr("PREP_WATER_WAITING" if water else "PREP_WAITING")
 		elif heat <= green_max:
-			status_label.text = tr("PREP_WOSH_RISING")
+			status_label.text = tr("PREP_WATER_BOILING" if water else "PREP_WOSH_RISING")
 		else:
 			status_label.text = tr("PREP_TOO_HOT")
 	elif state == State.IDLE:

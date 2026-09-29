@@ -17,12 +17,94 @@
       "base_price_egp": 8,
       "prep_time_sec": 12,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#9c3d16",
         "foam": "#dcb88a",
         "vessel": "glass",
-        "leaves": "#2e1b0e"
+        "pot": "water"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "tea_leaves",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "tea_fatla",
+      "name_key": "PREP_TEA_FATLA",
+      "name_ar": "شاي فتلة",
+      "station": "heat",
+      "ingredients": [
+        "teabag"
+      ],
+      "shout_keys": [
+        "SHOUT_FATLA_1",
+        "SHOUT_FATLA_2",
+        "SHOUT_FATLA_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 7,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "boil",
+        "pour",
+        "teabag",
+        "stir"
+      ],
+      "look": {
+        "liquid": "#a4441a",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water"
+      }
+    },
+    {
+      "id": "tea_white",
+      "name_key": "PREP_TEA_WHITE",
+      "name_ar": "شاي على مية بيضا",
+      "station": "heat",
+      "ingredients": [
+        "tea"
+      ],
+      "shout_keys": [
+        "SHOUT_WHITE_1",
+        "SHOUT_WHITE_2",
+        "SHOUT_WHITE_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 10,
+      "prep_time_sec": 12,
+      "difficulty": 3,
+      "sugar": {
+        "mazboot": 3,
+        "ziyada": 4
+      },
+      "steps": [
+        "tea_leaves",
+        "sugar",
+        "boil",
+        "pour_gentle",
+        "stir"
+      ],
+      "look": {
+        "liquid": "#8f3812",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water"
       }
     },
     {
@@ -42,12 +124,24 @@
       "base_price_egp": 10,
       "prep_time_sec": 10,
       "difficulty": 2,
-      "sugar_grade": null,
       "look": {
         "liquid": "#3a2014",
         "foam": "#a0724a",
         "vessel": "cup"
-      }
+      },
+      "sugar": {
+        "sada": 0,
+        "riha": 1,
+        "mazboot": 2,
+        "mano": 3,
+        "ziyada": 4
+      },
+      "sugar_unit": "half",
+      "steps": [
+        "sugar_pot",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "karkade_hot",
@@ -66,7 +160,6 @@
       "base_price_egp": 8,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#8e1330",
         "foam": "#c9566e",
@@ -93,7 +186,6 @@
       "base_price_egp": 12,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#a3183a",
         "foam": "#c9566e",
@@ -120,7 +212,6 @@
       "base_price_egp": 10,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#b5651d",
         "foam": "#d9a066",
@@ -147,7 +238,6 @@
       "base_price_egp": 15,
       "prep_time_sec": 11,
       "difficulty": 2,
-      "sugar_grade": null,
       "look": {
         "liquid": "#f2a324",
         "bits": "#f7c64f",

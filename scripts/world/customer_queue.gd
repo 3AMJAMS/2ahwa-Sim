@@ -27,6 +27,7 @@ const FIFI_REAR_U := 4.15
 const CAR_BEHIND := 0
 const CAR_BESIDE := 1
 const TUTORIAL_ORDER := "tea_koshari"
+const TUTORIAL_SUGAR := "mazboot"
 const CAR_KINDS := [StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.TAXI,
 	StreetVehicle.Kind.PICKUP, StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.MICROBUS]
 
@@ -79,10 +80,22 @@ func _process(delta: float) -> void:
 		_last_order = order
 
 
-func _shout_for(order: String) -> String:
+## The order in the customer's words, with their sugar grade worked in.
+func _shout_for(order: String, sugar: String) -> String:
 	var item := GameData.get_menu_item(order)
 	var shouts: Array = item.get("shout_keys", [])
-	return tr(shouts[_rng.randi() % shouts.size()]) if not shouts.is_empty() else tr(item.get("name_key", order))
+	var text: String = tr(shouts[_rng.randi() % shouts.size()]) if not shouts.is_empty() else tr(item.get("name_key", order))
+	if sugar.is_empty():
+		return text.replace(" {sugar}", "")
+	if not "{sugar}" in text:
+		return "%s %s" % [text, GameData.sugar_name(sugar)]
+	return text.format({"sugar": GameData.sugar_name(sugar)})
+
+
+func _sugar_for(order: String, tutorial: bool) -> String:
+	if tutorial:
+		return TUTORIAL_SUGAR
+	return GameData.pick_sugar(order, _rng)
 
 
 func _patience() -> float:
@@ -91,7 +104,9 @@ func _patience() -> float:
 
 func _spawn_walker(order: String, slot: int, tutorial: bool) -> void:
 	var c := Customer.new()
-	c.setup(order, _shout_for(order), _patience(), SLOTS[slot], ENTRY_U + slot * 1.3)
+	var sugar := _sugar_for(order, tutorial)
+	c.setup(order, _shout_for(order, sugar), _patience(), SLOTS[slot], ENTRY_U + slot * 1.3)
+	c.sugar = sugar
 	c.patient = tutorial
 	c.set_meta("slot", slot)
 	_register(c)
@@ -114,7 +129,9 @@ func _spawn_car(order: String, spot: int, tutorial: bool) -> bool:
 	if car == null:
 		return false
 	var c := Customer.new()
-	c.setup_car(order, _shout_for(order), _patience(), car)
+	var sugar := _sugar_for(order, tutorial)
+	c.setup_car(order, _shout_for(order, sugar), _patience(), car)
+	c.sugar = sugar
 	c.patient = tutorial
 	_car_spots[spot] = c
 	_register(c)

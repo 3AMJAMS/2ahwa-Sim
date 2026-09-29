@@ -1,14 +1,17 @@
 class_name TrunkBackdrop
 extends Control
-## Full-screen backdrop for the prep station: standing behind FIFI with the
-## hatch up. The raised hatch fills the top in perspective, its rear
-## windscreen showing the sky (and a streetlight) through the glass; two work
-## bulbs hang under the roof; painted pillars run down the sides,
-## the trunk (headliner, rear seat back, side trim, carpet) with a wooden rack
-## of supplies across it, and the rear panel with lamps, plate and bumper
-## below the sill. LED strips line the opening and the hatch, their colours
-## breathing in and out in a slow wave. The idle appliance (blender while
-## brewing, stove while blending) waits at the back of the trunk.
+## Full-screen backdrop for the prep station: standing behind FIFI at the
+## height of her raised hatch, looking down into the trunk (as in photos of
+## Cairo coffee cars). The body is widest at the bumper and tapers in toward
+## the roof; the street shows round it. The hatch hangs overhead, seen from
+## underneath, with its edge's thickness and its rear windscreen showing the
+## sky; the roof's rear edge and the pillars have depth, the trunk opening
+## narrows toward the top, and the walls show their thickness round it.
+## Inside: headliner, rear seat back, trim, carpet and a wooden rack of
+## supplies; below the sill the rear panel with the 127's lamp clusters
+## (standing proud of the body), the Egyptian plate and a thick chrome
+## bumper over the road. LED strips line the opening and the hatch, their
+## colours breathing in a slow wave. The idle appliance waits at the back.
 ## PrepStation feeds it where the station art's trunk floor sits on screen,
 ## so the carpet and the sill line up with whatever the gauge is drawing.
 
@@ -34,9 +37,16 @@ const LED_COLORS := [Color("ff3b3b"), Color("ff8a1f"), Color("ffd23a"), Color("3
 	Color("2fe0ff"), Color("3b6bff"), Color("b45cff"), Color("ff4fb8")]
 const LED_SPACING := 13.0
 const LED_BAND := 4
-const HATCH_H := 190.0
-const ROOF_TOP := 200.0
-const ROOF_BOTTOM := 226.0
+## Where the raised hatch meets the roof, and the bottom of the roof's rear
+## edge (the top of the trunk opening).
+const HINGE_Y := 150.0
+const ROOF_BOTTOM := 190.0
+## The body tapers in by this much each side from the bumper to the roof,
+## and the opening's top corners sit this much further in than its bottom.
+const ROOF_INSET := 66.0
+const OPEN_TOP_INSET := 50.0
+## Bumper and road below it, measured up from the bottom of the panel.
+const BUMPER_H := 176.0
 const SODIUM := Color("ffa94d")
 const BULB := Color("fff1d6")
 const ASPHALT := Color("4a4c54")
@@ -101,45 +111,158 @@ func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale:
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
-	draw_rect(Rect2(Vector2.ZERO, size), NIGHT)
 	# Until the first layout pass the panel may be narrower than the opening.
 	if w < inner.y or inner.y <= inner.x:
 		return
-	_draw_hatch(w)
+	_draw_ground(w, h)
+	_draw_body(w, h)
 	_draw_interior(w)
-	_draw_pillars(w)
+	_draw_opening_frame()
+	_draw_roof_edge(w)
+	_draw_hatch(w)
 	_draw_rear_panel(w, h)
 
 
-## The raised hatch seen from below: nearer (higher on screen) is wider, so it
-## fans out from the roof's hinge line toward the top of the screen. Trim
-## frames the rear windscreen, through which the sky shows (stars and a
-## streetlight at night), with the heater lines and the wiper on the glass.
+## x of the trunk opening's edge at height y (side -1 left, 1 right): the
+## art's edges at the sill, drawn in toward the roof.
+func _open_x(y: float, side: float) -> float:
+	var t := clampf((sill_y - y) / maxf(sill_y - ROOF_BOTTOM, 1.0), 0.0, 1.0)
+	return inner.x + OPEN_TOP_INSET * t if side < 0 else inner.y - OPEN_TOP_INSET * t
+
+
+## x of the body's outer edge at height y: full width down at the bumper,
+## curving in toward the roof (the tumblehome of the sides).
+func _body_x(y: float, side: float) -> float:
+	var bottom := size.y - BUMPER_H
+	var t := clampf((bottom - y) / maxf(bottom - HINGE_Y, 1.0), 0.0, 1.0)
+	var inset := ROOF_INSET * pow(t, 1.5)
+	return inset if side < 0 else size.x - inset
+
+
+## The opening's corners: top-left, top-right, bottom-right, bottom-left.
+func _opening() -> PackedVector2Array:
+	return PackedVector2Array([Vector2(_open_x(ROOF_BOTTOM, -1), ROOF_BOTTOM), Vector2(_open_x(ROOF_BOTTOM, 1), ROOF_BOTTOM),
+		Vector2(inner.y, sill_y), Vector2(inner.x, sill_y)])
+
+
+## The raised hatch's corners: its free edge (nearest, across the top of the
+## screen) and its hinge edge on the roof.
+func _hatch_quad(w: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(-24, -6), Vector2(w + 24, -6), Vector2(w - 94, HINGE_Y), Vector2(94, HINGE_Y)])
+
+
+## A point on the hatch's underside: u across (0 left), v from the free edge
+## (0) to the hinge (1).
+func _hq(q: PackedVector2Array, u: float, v: float) -> Vector2:
+	return q[0].lerp(q[1], u).lerp(q[3].lerp(q[2], u), v)
+
+
+func _hq_quad(q: PackedVector2Array, u0: float, u1: float, v0: float, v1: float) -> PackedVector2Array:
+	return PackedVector2Array([_hq(q, u0, v0), _hq(q, u1, v0), _hq(q, u1, v1), _hq(q, u0, v1)])
+
+
+## The painted body from the roof down to the bumper, wider at the bottom:
+## the rear faces of the pillars and the panel under the sill, with the
+## flanks turning away at each edge.
+func _draw_body(w: float, h: float) -> void:
+	var top := HINGE_Y - 6.0
+	var bottom := h - BUMPER_H + 30.0
+	var body := PackedVector2Array()
+	var n := 18
+	for i in n + 1:
+		var y := lerpf(top, bottom, i / float(n))
+		body.append(Vector2(_body_x(y, -1), y))
+	for i in n + 1:
+		var y := lerpf(bottom, top, i / float(n))
+		body.append(Vector2(_body_x(y, 1), y))
+	draw_colored_polygon(body, PAINT)
+	# The flanks: a sliver of each side, turning away (the right one in shade).
+	for side: float in [-1.0, 1.0]:
+		var flank := PackedVector2Array()
+		for i in n + 1:
+			var y := lerpf(top + 10.0, bottom, i / float(n))
+			flank.append(Vector2(_body_x(y, side), y))
+		for i in n + 1:
+			var y := lerpf(bottom, top + 10.0, i / float(n))
+			var k := 1.0 - (y - top) / (bottom - top)
+			flank.append(Vector2(_body_x(y, side) - side * (16.0 + 10.0 * k), y))
+		draw_colored_polygon(flank, PAINT.darkened(0.16 if side < 0 else 0.34))
+		# A soft highlight running down each pillar's curve.
+		var shine := PackedVector2Array()
+		for i in 9:
+			var y := lerpf(ROOF_BOTTOM + 20.0, sill_y - 20.0, i / 8.0)
+			shine.append(Vector2(_body_x(y, side) - side * 34.0, y))
+		draw_polyline(shine, Color(1, 1, 1, 0.22 if side < 0 else 0.1), 6.0, true)
+	# The right-hand pillar face in the shade, the left catching the light.
+	var shade := PackedVector2Array()
+	for i in 9:
+		var y := lerpf(ROOF_BOTTOM, sill_y, i / 8.0)
+		shade.append(Vector2(_open_x(y, 1), y))
+	for i in 9:
+		var y := lerpf(sill_y, ROOF_BOTTOM, i / 8.0)
+		shade.append(Vector2(_body_x(y, 1) - 16.0, y))
+	draw_colored_polygon(shade, Color(0, 0, 0, 0.12))
+
+
+## The walls' thickness round the opening: the painted inner flange, seen
+## because we look down into it, then the rubber seal.
+func _draw_opening_frame() -> void:
+	var o := _opening()
+	var inset := PackedVector2Array([o[0] + Vector2(22, 16), o[1] + Vector2(-22, 16), o[2] + Vector2(-24, -2), o[3] + Vector2(24, -2)])
+	for side: float in [-1.0, 1.0]:
+		var i0 := 0 if side < 0 else 1
+		var i1 := 3 if side < 0 else 2
+		draw_colored_polygon(PackedVector2Array([o[i0], o[i1], inset[i1], inset[i0]]),
+			PAINT.darkened(0.3 if side < 0 else 0.42))
+		draw_line(inset[i0], inset[i1], SEAL, 5.0, true)
+		draw_line(o[i0], o[i1], PAINT.lightened(0.18), 2.0, true)
+	draw_colored_polygon(PackedVector2Array([o[0], o[1], inset[1], inset[0]]), PAINT.darkened(0.48))
+	draw_line(inset[0], inset[1], SEAL, 5.0, true)
+
+
+## The roof's rear edge between the hatch hinge and the opening: the gutter
+## catching the light, the edge face in shade, the hinges.
+func _draw_roof_edge(w: float) -> void:
+	var o := _opening()
+	var edge := PackedVector2Array([Vector2(_body_x(HINGE_Y, -1), HINGE_Y - 6), Vector2(_body_x(HINGE_Y, 1), HINGE_Y - 6),
+		Vector2(_body_x(ROOF_BOTTOM, 1), ROOF_BOTTOM), o[1], o[0], Vector2(_body_x(ROOF_BOTTOM, -1), ROOF_BOTTOM)])
+	draw_colored_polygon(edge, PAINT.darkened(0.08))
+	draw_line(Vector2(_body_x(HINGE_Y, -1) + 6, HINGE_Y - 4), Vector2(_body_x(HINGE_Y, 1) - 6, HINGE_Y - 4), PAINT.lightened(0.3), 3.0)
+	draw_line(Vector2(o[0].x, HINGE_Y + 14), Vector2(o[1].x, HINGE_Y + 14), PAINT.darkened(0.3), 2.0)
+	for x in [w * 0.3, w * 0.7]:
+		draw_colored_polygon(PrepIcons._rrect(Rect2(x - 26, HINGE_Y - 4, 52, 22), 4), Color("2c2a30"))
+		draw_rect(Rect2(x - 26, HINGE_Y - 4, 52, 5), Color("4a4850"))
+		draw_circle(Vector2(x, HINGE_Y + 8), 5, Color("6a6e76"))
+
+
+## The raised hatch overhead, seen from underneath: its outer edge's
+## thickness across the top of the screen and down its sides, the painted
+## inner steel with a pressed rib, the rear windscreen (sky through the
+## glass, stars and a streetlight at night, heater lines, the wiper), the
+## stamped panel with the lock at the free edge, and the gas struts.
 func _draw_hatch(w: float) -> void:
-	var l := inner.x
-	var r := inner.y
-	var sky := DayClock.sky()
+	var q := _hatch_quad(w)
 	var dark := DayClock.darkness()
-	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, ROOF_TOP), Vector2(0, ROOF_TOP)]),
-		PackedColorArray([sky.darkened(0.3), sky.darkened(0.3), sky, sky]))
-	# The 127's hatch from inside: bare body-colour steel, no trim panel, in
-	# the trunk's shade, with a pressed rib running round the window frame.
+	var sky := DayClock.sky()
 	var inner_paint := PAINT.darkened(0.32)
-	var hatch := PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(r + 4, HATCH_H), Vector2(l - 4, HATCH_H)])
-	draw_colored_polygon(hatch, inner_paint)
-	var rib := PackedVector2Array([Vector2(40, 26), Vector2(w - 40, 26), Vector2(r - 26, HATCH_H - 16), Vector2(l + 26, HATCH_H - 16),
-		Vector2(40, 26)])
+	draw_colored_polygon(q, inner_paint)
+	# The skin's thickness: the free edge nearest us and the two side edges.
+	var lip := 18.0
+	draw_colored_polygon(PackedVector2Array([q[0], q[1], q[1] + Vector2(-6, lip), q[0] + Vector2(6, lip)]), PAINT.darkened(0.05))
+	draw_line(q[0] + Vector2(6, lip), q[1] + Vector2(-6, lip), PAINT.lightened(0.25), 2.0)
+	for side: float in [-1.0, 1.0]:
+		var a := q[0] if side < 0 else q[1]
+		var b := q[3] if side < 0 else q[2]
+		var into := Vector2(-side * 14.0, 0)
+		draw_colored_polygon(PackedVector2Array([a, b, b + into * 0.6, a + into]), PAINT.darkened(0.12 if side < 0 else 0.26))
+	var t := _hq_quad(q, 0.035, 0.965, 0.14, 0.96)
+	# Pressed rib round the window frame.
+	var rib := _hq_quad(q, 0.06, 0.94, 0.26, 0.9)
+	rib.append(rib[0])
 	draw_polyline(rib, inner_paint.darkened(0.25), 3.0, true)
 	draw_polyline(PointerHand._offset(rib, Vector2(0, 3)), inner_paint.lightened(0.18), 1.5, true)
-	# Hinge brackets up at the roof line.
-	for x in [l + 90.0, r - 90.0]:
-		draw_rect(Rect2(x - 22, HATCH_H - 22, 44, 20), Color("2c2a30"))
-		draw_rect(Rect2(x - 22, HATCH_H - 22, 44, 5), Color("45434b"))
-		for bx in [x - 12.0, x + 12.0]:
-			draw_circle(Vector2(bx, HATCH_H - 11), 3.0, Color("6a6e76"))
 	# Rear windscreen: what's behind it is sky, tinted by the glass.
-	var pane := PackedVector2Array([Vector2(70, 34), Vector2(w - 70, 34), Vector2(r - 44, HATCH_H - 28),
-		Vector2(l + 44, HATCH_H - 28)])
+	var pane := _hq_quad(q, 0.11, 0.89, 0.33, 0.84)
 	var top_col := sky.darkened(0.25).lerp(GLASS, 0.3)
 	var low_col := sky.lightened(0.08).lerp(GLASS_SKY, 0.3)
 	draw_polygon(pane, PackedColorArray([top_col, top_col, low_col, low_col]))
@@ -147,59 +270,59 @@ func _draw_hatch(w: float) -> void:
 	SkyArt.paint(self, pane_box, pane, _soft)
 	if dark > 0.05:
 		# The streetlight overhead, seen through the glass.
-		var lamp := Vector2(w * 0.8, 70)
-		_soft_blob(lamp, Vector2(150, 110), Color(SODIUM, 0.35 * dark))
-		draw_line(lamp + Vector2(120, -60), lamp + Vector2(20, -6), Color("2a2a32"), 6.0, true)
-		draw_colored_polygon(PackedVector2Array([lamp + Vector2(-34, -8), lamp + Vector2(30, -8), lamp + Vector2(24, 6),
-			lamp + Vector2(-28, 6)]), Color("2a2a32"))
-		draw_line(lamp + Vector2(-26, 5), lamp + Vector2(22, 5), StationArt.hdr(SODIUM.lightened(0.4), 1.0 + 2.2 * dark), 5.0)
-	# Reflections and the heater element's lines, following the perspective.
+		var lamp := _hq(q, 0.8, 0.5)
+		_soft_blob(lamp, Vector2(120, 70), Color(SODIUM, 0.35 * dark))
+		draw_line(lamp + Vector2(100, -30), lamp + Vector2(18, -4), Color("2a2a32"), 5.0, true)
+		draw_colored_polygon(PackedVector2Array([lamp + Vector2(-28, -6), lamp + Vector2(24, -6), lamp + Vector2(20, 4),
+			lamp + Vector2(-24, 4)]), Color("2a2a32"))
+		draw_line(lamp + Vector2(-22, 4), lamp + Vector2(18, 4), StationArt.hdr(SODIUM.lightened(0.4), 1.0 + 2.2 * dark), 4.0)
 	for band in [[0.18, 0.26], [0.3, 0.33]]:
 		var streak := PackedVector2Array([pane[3].lerp(pane[2], band[0]), pane[3].lerp(pane[2], band[1]),
 			pane[0].lerp(pane[1], band[1] + 0.1), pane[0].lerp(pane[1], band[0] + 0.1)])
 		draw_colored_polygon(streak, Color(1, 1, 1, 0.07))
-	for k in range(1, 8):
-		var t := k / 8.0
-		var a := pane[0].lerp(pane[3], t)
-		var b := pane[1].lerp(pane[2], t)
-		draw_line(a.lerp(b, 0.04), b.lerp(a, 0.04), Color(0.6, 0.32, 0.2, 0.55), 1.5 + t)
-	var pivot := Vector2(w * 0.22, 48)
-	draw_line(pivot, pivot + Vector2(-60, 100), SEAL, 6.0, true)
-	draw_line(pivot + Vector2(-14, 24), pivot + Vector2(-70, 118), Color("2c2c30"), 4.0, true)
-	draw_circle(pivot, 9, SEAL)
+	for k in range(1, 7):
+		var f := k / 7.0
+		var a := pane[0].lerp(pane[3], f)
+		var b := pane[1].lerp(pane[2], f)
+		draw_line(a.lerp(b, 0.04), b.lerp(a, 0.04), Color(0.6, 0.32, 0.2, 0.55), 1.0 + f)
+	var pivot := _hq(q, 0.22, 0.38)
+	draw_line(pivot, pivot + Vector2(-50, 60), SEAL, 5.0, true)
+	draw_line(pivot + Vector2(-12, 16), pivot + Vector2(-58, 70), Color("2c2c30"), 3.0, true)
+	draw_circle(pivot, 8, SEAL)
 	var seal := pane.duplicate()
 	seal.append(pane[0])
 	draw_polyline(seal, SEAL, 5.0, true)
-	# The stamped inner panel along the hatch's bottom edge (nearest us): a
-	# recessed strip with oval lightening holes showing the outer skin, the
-	# lock and its latch hook in the middle, rubber bump stops at the ends.
-	var lip := PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(w + 40, 30), Vector2(-40, 30)])
-	draw_colored_polygon(lip, inner_paint.lightened(0.05))
-	draw_colored_polygon(PrepIcons._rrect(Rect2(60, 5, w - 120, 18), 8), inner_paint.darkened(0.18))
-	for k in 4:
-		var cx := lerpf(140.0, w - 140.0, (k + (1.0 if k >= 2 else 0.0)) / 4.0)
-		if absf(cx - w * 0.5) < 120.0:
-			continue
-		draw_colored_polygon(PrepIcons._ellipse(Vector2(cx, 14), Vector2(46, 7), 0.0, 18), PAINT.darkened(0.1))
-		draw_arc(Vector2(cx, 14), 46, PI, TAU, 12, inner_paint.darkened(0.4), 1.5)
-	var lock := Vector2(w * 0.5, 15)
-	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(48, 12), Vector2(96, 24)), 5), Color("2c2a30"))
-	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(40, 8), Vector2(80, 16)), 4), Color("4a4850"))
-	draw_colored_polygon(PackedVector2Array([lock + Vector2(-9, 8), lock + Vector2(9, 8), lock + Vector2(6, 26),
-		lock + Vector2(-6, 26)]), CHROME.darkened(0.2))
-	draw_arc(lock + Vector2(0, 26), 7, 0.0, PI, 8, CHROME.darkened(0.2), 4.0)
-	for bx in [lock.x - 30.0, lock.x + 30.0]:
-		draw_circle(Vector2(bx, lock.y), 3.0, CHROME)
-	for x in [30.0, w - 30.0]:
-		draw_colored_polygon(PrepIcons._ellipse(Vector2(x, 20), Vector2(14, 8), 0.0, 12), SEAL)
-	draw_line(Vector2(-40, 30), Vector2(w + 40, 30), inner_paint.darkened(0.3), 2.0)
-	draw_line(Vector2(l - 4, HATCH_H - 2), Vector2(r + 4, HATCH_H - 2), SEAL, 4.0)
+	# Stamped inner panel along the free edge: recessed strip, oval lightening
+	# holes showing the skin, the lock with its latch hook, rubber bump stops.
+	var strip := _hq_quad(q, 0.07, 0.93, 0.15, 0.27)
+	draw_colored_polygon(strip, inner_paint.darkened(0.18))
+	for u in [0.17, 0.33, 0.67, 0.83]:
+		var c := _hq(q, u, 0.21)
+		draw_colored_polygon(PrepIcons._ellipse(c, Vector2(44, 6), 0.0, 18), PAINT.darkened(0.1))
+		draw_arc(c, 44, PI, TAU, 12, inner_paint.darkened(0.4), 1.5)
+	var lock := _hq(q, 0.5, 0.21)
+	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(46, 11), Vector2(92, 22)), 5), Color("2c2a30"))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(38, 7), Vector2(76, 14)), 4), Color("4a4850"))
+	draw_colored_polygon(PackedVector2Array([lock + Vector2(-8, 7), lock + Vector2(8, 7), lock + Vector2(5, 24),
+		lock + Vector2(-5, 24)]), CHROME.darkened(0.2))
+	draw_arc(lock + Vector2(0, 24), 6, 0.0, PI, 8, CHROME.darkened(0.2), 4.0)
+	for bx in [-28.0, 28.0]:
+		draw_circle(lock + Vector2(bx, 0), 3.0, CHROME)
+	for u in [0.04, 0.96]:
+		draw_colored_polygon(PrepIcons._ellipse(_hq(q, u, 0.2), Vector2(12, 7), 0.0, 12), SEAL)
+	# Gas struts from inside the pillars up to the hatch's sides.
+	for side: float in [-1.0, 1.0]:
+		var foot := Vector2(_open_x(ROOF_BOTTOM + 250.0, side) - side * 14.0, ROOF_BOTTOM + 250.0)
+		var head := _hq(q, 0.07 if side < 0 else 0.93, 0.62)
+		draw_line(foot, foot.lerp(head, 0.55), Color("2a2a30"), 10.0, true)
+		draw_line(foot.lerp(head, 0.5), head, CHROME, 5.0, true)
 
 
 ## Two bare work bulbs hanging from the roof edge into the trunk.
-func _draw_bulbs(l: float, r: float) -> void:
-	for x in [l + 70.0, r - 70.0]:
-		var hook := Vector2(x, ROOF_BOTTOM + 4)
+func _draw_bulbs() -> void:
+	var o := _opening()
+	for x in [o[0].x + 70.0, o[1].x - 70.0]:
+		var hook := Vector2(x, ROOF_BOTTOM + 14)
 		var bulb := hook + Vector2(0, 40)
 		_soft_blob(bulb + Vector2(0, 60), Vector2(260, 220), Color(BULB, 0.1))
 		draw_line(hook, bulb + Vector2(0, -16), Color("1d1b20"), 3.0)
@@ -208,18 +331,23 @@ func _draw_bulbs(l: float, r: float) -> void:
 		draw_circle(bulb, 14, StationArt.hdr(BULB, 2.6))
 
 
+## Looking down into the trunk: a sliver of headliner, the rear seat back,
+## the trim walls with their wheel-arch humps, and a deep carpeted floor.
 func _draw_interior(w: float) -> void:
-	var l := inner.x
-	var r := inner.y
-	var top := ROOF_BOTTOM + 6.0
-	var depth := 110.0 * art_scale
+	var o := _opening()
+	var top := ROOF_BOTTOM + 10.0
+	var depth := 150.0 * art_scale
 	var back := floor_y - depth
-	var bl := l + depth
-	var br := r - depth
-	var seat_top := top + 120.0
-	draw_rect(Rect2(l, top, r - l, floor_y - top), Color("221c21"))
-	draw_colored_polygon(PackedVector2Array([Vector2(l, top), Vector2(r, top), Vector2(br, seat_top - 30), Vector2(bl, seat_top - 30)]),
-		HEADLINER)
+	var tl := _open_x(top, -1)
+	var tr := _open_x(top, 1)
+	var fl := _open_x(floor_y, -1)
+	var fr := _open_x(floor_y, 1)
+	var bl := fl + depth * 0.9
+	var br := fr - depth * 0.9
+	var seat_top := top + 70.0
+	draw_colored_polygon(PackedVector2Array([o[0], o[1], Vector2(fr, floor_y), Vector2(fl, floor_y)]), Color("221c21"))
+	draw_colored_polygon(PackedVector2Array([Vector2(tl, top - 10), Vector2(tr, top - 10), Vector2(br, seat_top - 16),
+		Vector2(bl, seat_top - 16)]), HEADLINER)
 	# Rear seat back, split 60/40, with its stitched ribs.
 	var seat := Rect2(bl, seat_top, br - bl, back - seat_top)
 	draw_rect(seat, SEAT)
@@ -231,29 +359,32 @@ func _draw_interior(w: float) -> void:
 	draw_line(Vector2(split, seat_top), Vector2(split, back), Color(0, 0, 0, 0.4), 4.0)
 	_soft_blob(Vector2(w * 0.5, seat_top + 60), Vector2(w * 0.55, 260), Color(1.0, 0.78, 0.38, 0.08))
 	# Side trim walls, each with a carpeted wheel-arch hump at the floor.
-	for side in [-1.0, 1.0]:
-		var edge := l if side < 0 else r
+	for side: float in [-1.0, 1.0]:
+		var edge_top := tl if side < 0 else tr
+		var edge_floor := fl if side < 0 else fr
 		var deep := bl if side < 0 else br
-		var wall := PackedVector2Array([Vector2(edge, top), Vector2(deep, seat_top - 30), Vector2(deep, back), Vector2(edge, floor_y)])
+		var wall := PackedVector2Array([Vector2(edge_top, top - 10), Vector2(deep, seat_top - 16), Vector2(deep, back),
+			Vector2(edge_floor, floor_y)])
 		draw_colored_polygon(wall, TRIM.lightened(0.06) if side < 0 else TRIM.darkened(0.1))
 		var hump := PackedVector2Array()
 		for i in 13:
 			var a := PI + PI * i / 12.0
-			hump.append(Vector2(lerpf(edge, deep, 0.5) + cos(a) * depth * 0.55, lerpf(floor_y, back, 0.5) + sin(a) * 70.0 * art_scale))
+			hump.append(Vector2(lerpf(edge_floor, deep, 0.5) + cos(a) * depth * 0.55,
+				lerpf(floor_y, back, 0.45) + sin(a) * 80.0 * art_scale))
 		for piece in Geometry2D.intersect_polygons(wall, hump):
 			draw_colored_polygon(piece, CARPET.lightened(0.05))
-	# Floor running back to the seat, and the jars stood against it.
-	draw_colored_polygon(PackedVector2Array([Vector2(l, floor_y + 1), Vector2(r, floor_y + 1), Vector2(br, back), Vector2(bl, back)]),
+	# Floor running back to the seat: from up here there's a lot of it.
+	draw_colored_polygon(PackedVector2Array([Vector2(fl, floor_y + 1), Vector2(fr, floor_y + 1), Vector2(br, back), Vector2(bl, back)]),
 		CARPET)
-	for i in 60:
+	for i in 70:
 		var t := float((i * 37) % 100) / 100.0
 		var d := float((i * 61) % 100) / 100.0
 		var y := lerpf(back, floor_y, d)
-		var x := lerpf(lerpf(bl, l, d), lerpf(br, r, d), t)
+		var x := lerpf(lerpf(bl, fl, d), lerpf(br, fr, d), t)
 		draw_circle(Vector2(x, y), 1.5, Color(1, 1, 1, 0.05))
 	_draw_idle_appliance(Vector2(br - 110.0 * art_scale, back + 4.0), art_scale * 0.62)
-	_draw_rack(l, r, bl, br, back, seat_top)
-	_draw_bulbs(l, r)
+	_draw_rack(fl, fr, bl, br, back, seat_top)
+	_draw_bulbs()
 
 
 ## Wooden rack across the trunk, stocked with the stand's supplies.
@@ -454,41 +585,30 @@ func _leaf(c: Vector2, r: float, color: Color) -> void:
 	draw_line(c + Vector2(0, -r).rotated(0.6), c + Vector2(0, r).rotated(0.6), color.darkened(0.35), 1.2)
 
 
-## Roof edge over the opening and the painted pillars either side, with the
-## hatch's gas struts running down to them.
-func _draw_pillars(w: float) -> void:
-	var l := inner.x
-	var r := inner.y
-	draw_rect(Rect2(0, ROOF_TOP, w, ROOF_BOTTOM - ROOF_TOP), PAINT)
-	draw_rect(Rect2(0, ROOF_TOP, w, 5), PAINT.lightened(0.2))
-	draw_rect(Rect2(l, ROOF_BOTTOM, r - l, 6), SEAL)
-	draw_rect(Rect2(0, ROOF_TOP, l, sill_y - ROOF_TOP), PAINT)
-	draw_rect(Rect2(r, ROOF_TOP, w - r, sill_y - ROOF_TOP), PAINT.darkened(0.14))
-	draw_rect(Rect2(l - 6, ROOF_BOTTOM, 6, sill_y - ROOF_BOTTOM), SEAL)
-	draw_rect(Rect2(r, ROOF_BOTTOM, 6, sill_y - ROOF_BOTTOM), SEAL)
-	draw_rect(Rect2(8, ROOF_TOP + 10, 8, sill_y - ROOF_TOP - 20), Color(1, 1, 1, 0.18))
-	for side in [-1.0, 1.0]:
-		var foot := Vector2(l + 10 if side < 0 else r - 10, ROOF_BOTTOM + 260)
-		var head := Vector2(l + 40 if side < 0 else r - 40, HATCH_H - 40)
-		draw_line(foot, foot.lerp(head, 0.55), Color("2a2a30"), 11.0, true)
-		draw_line(foot.lerp(head, 0.5), head, CHROME, 5.0, true)
-
-
-## Below the sill: seal and chrome trim, the painted rear panel with the
-## 127's wide lamp clusters and the Egyptian plate, then the bumper and road.
+## Below the sill: seal and chrome trim, the rear panel with the 127's wide
+## lamp clusters standing proud of the body, the Egyptian plate, and the
+## thick chrome bumper with its rubber overriders, seen a little from above.
 func _draw_rear_panel(w: float, h: float) -> void:
-	var bumper_top := h - 170.0
-	draw_rect(Rect2(0, sill_y, w, bumper_top - sill_y), PAINT.darkened(0.06))
-	draw_rect(Rect2(0, sill_y, w, 7), SEAL)
-	draw_rect(Rect2(0, sill_y + 7, w, 6), CHROME)
-	draw_rect(Rect2(0, sill_y + 13, w, 5), PAINT.lightened(0.15))
+	var bumper_top := h - BUMPER_H
+	var sl := _body_x(sill_y, -1)
+	var sr := _body_x(sill_y, 1)
+	draw_rect(Rect2(sl, sill_y, sr - sl, 7), SEAL)
+	draw_rect(Rect2(sl, sill_y + 7, sr - sl, 6), CHROME)
+	draw_rect(Rect2(sl, sill_y + 13, sr - sl, 5), PAINT.lightened(0.15))
 	var panel := bumper_top - sill_y
 	var lamp_h := clampf(panel * 0.3, 40.0, 84.0)
-	var lamp_y := sill_y + 32.0
-	for side in [-1.0, 1.0]:
-		var outer := 18.0 if side < 0 else w - 18.0
+	var lamp_y := sill_y + 34.0
+	for side: float in [-1.0, 1.0]:
+		var outer := _body_x(lamp_y, side) - side * 22.0
 		var x0 := minf(outer, outer - side * 240.0)
-		draw_rect(Rect2(x0 - 6, lamp_y - 6, 252, lamp_h + 12), CHROME)
+		var housing := Rect2(x0 - 6, lamp_y - 6, 252, lamp_h + 12)
+		# The housing stands proud: its top face and inner end catch the light.
+		draw_colored_polygon(PackedVector2Array([housing.position + Vector2(8, -12), Vector2(housing.end.x - 8, housing.position.y - 12),
+			Vector2(housing.end.x, housing.position.y), housing.position]), CHROME.lightened(0.1))
+		var inner_end := housing.end.x if side < 0 else housing.position.x
+		draw_colored_polygon(PackedVector2Array([Vector2(inner_end, housing.position.y), Vector2(inner_end - side * 8.0, housing.position.y - 12),
+			Vector2(inner_end - side * 8.0, housing.end.y - 10), Vector2(inner_end, housing.end.y)]), CHROME.darkened(0.35))
+		draw_rect(housing, CHROME)
 		var amber := Rect2(outer - (0.0 if side < 0 else 70.0), lamp_y, 70, lamp_h)
 		var red := Rect2(outer + (70.0 if side < 0 else -240.0), lamp_y, 170, lamp_h)
 		draw_rect(amber, TAIL_AMBER)
@@ -496,18 +616,22 @@ func _draw_rear_panel(w: float, h: float) -> void:
 		for k in range(1, 4):
 			var y := lamp_y + lamp_h * k / 4.0
 			draw_line(Vector2(red.position.x, y), Vector2(red.end.x, y), Color(0, 0, 0, 0.15), 2.0)
-		draw_rect(Rect2(red.position.x, lamp_y + 4, red.size.x, 6), Color(1, 1, 1, 0.2))
+		# Lenses bulge: a bright band near the top, darker toward the bottom.
+		for lens in [amber, red]:
+			draw_rect(Rect2(lens.position.x + 4, lens.position.y + 4, lens.size.x - 8, 7), Color(1, 1, 1, 0.28))
+			draw_rect(Rect2(lens.position.x, lens.end.y - 10, lens.size.x, 10), Color(0, 0, 0, 0.18))
+		draw_line(Vector2(amber.end.x if side < 0 else amber.position.x, lamp_y), Vector2(amber.end.x if side < 0 else amber.position.x,
+			lamp_y + lamp_h), CHROME.darkened(0.2), 3.0)
 	# Egyptian plate: white, pale-blue band on top reading مصر / EGYPT.
 	var plate_w := 320.0
-	var plate_h := clampf(panel - lamp_h - 70.0, 70.0, 110.0)
-	var plate := Rect2(w * 0.5 - plate_w * 0.5, bumper_top - plate_h - 14.0, plate_w, plate_h)
+	var plate_h := clampf(panel - lamp_h - 76.0, 70.0, 110.0)
+	var plate := Rect2(w * 0.5 - plate_w * 0.5, bumper_top - plate_h - 22.0, plate_w, plate_h)
 	draw_rect(plate.grow(4), SEAL)
 	draw_rect(plate, PLATE)
 	var band := Rect2(plate.position, Vector2(plate_w, plate_h * 0.3))
 	draw_rect(band, PLATE_BAND)
 	draw_string(_font, Vector2(plate.position.x + 16, band.end.y - 6), "EGYPT", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	draw_string(_font, Vector2(plate.end.x - 16 - 60, band.end.y - 4), "مصر", HORIZONTAL_ALIGNMENT_RIGHT, 60, 24, Color.WHITE)
-	# Numbers on the left half, letters on the right, split by a rule.
 	var text_y := plate.end.y - plate_h * 0.14
 	var text_size := int(plate_h * 0.44)
 	draw_string(_font, Vector2(plate.position.x, text_y), "١٢٧", HORIZONTAL_ALIGNMENT_CENTER, plate_w * 0.5,
@@ -515,22 +639,40 @@ func _draw_rear_panel(w: float, h: float) -> void:
 	draw_string(_font, Vector2(plate.position.x + plate_w * 0.5, text_y), "ق  ه  و", HORIZONTAL_ALIGNMENT_CENTER,
 		plate_w * 0.5, text_size, Color("1d1f28"))
 	draw_line(Vector2(w * 0.5, band.end.y + 6), Vector2(w * 0.5, plate.end.y - 6), Color("1d1f28"), 2.0)
-	# Chrome bumper with rubber overriders, then the road in shadow.
-	draw_rect(Rect2(0, bumper_top, w, 48), CHROME.darkened(0.08))
-	draw_rect(Rect2(0, bumper_top + 4, w, 10), Color(1, 1, 1, 0.45))
-	draw_rect(Rect2(0, bumper_top + 40, w, 8), Color(0, 0, 0, 0.25))
-	for x in [w * 0.27, w * 0.73]:
-		draw_rect(Rect2(x - 16, bumper_top - 10, 32, 68), SEAL)
-	_draw_ground(w, h, bumper_top + 48)
+	for x in [plate.position.x + 18, plate.end.x - 18]:
+		draw_circle(Vector2(x, plate.position.y + plate_h * 0.62), 4, CHROME.darkened(0.2))
+	_draw_bumper(w, bumper_top)
 
 
-## Below the bumper, looking down: the asphalt of the slow lane (grainy, a
-## crack and an old oil stain), the car's shadow, the floor pan, rear axle
-## and exhaust in the dark under the body, and the rear tyres at the corners.
-func _draw_ground(w: float, h: float, top: float) -> void:
+## The chrome bumper, a thick bar: its top face (we look down on it), the
+## rounded front with a bright highlight, the dark underside, and wrapped
+## ends; black rubber overriders standing on it.
+func _draw_bumper(w: float, y: float) -> void:
+	var top_face := 16.0
+	var front := 46.0
+	var l := -8.0
+	var r := w + 8.0
+	draw_colored_polygon(PackedVector2Array([Vector2(l + 26, y - top_face), Vector2(r - 26, y - top_face), Vector2(r, y), Vector2(l, y)]),
+		CHROME.lightened(0.12))
+	draw_line(Vector2(l + 30, y - top_face + 2), Vector2(r - 30, y - top_face + 2), Color(1, 1, 1, 0.5), 2.0)
+	draw_polygon(PackedVector2Array([Vector2(l, y), Vector2(r, y), Vector2(r, y + front), Vector2(l, y + front)]),
+		PackedColorArray([CHROME, CHROME, CHROME.darkened(0.45), CHROME.darkened(0.45)]))
+	draw_rect(Rect2(l, y + 6, r - l, 9), Color(1, 1, 1, 0.55))
+	draw_rect(Rect2(l, y + front * 0.55, r - l, 3), Color(1, 1, 1, 0.18))
+	draw_rect(Rect2(l, y + front, r - l, 8), Color("2a2a30"))
+	for x in [w * 0.26, w * 0.74]:
+		draw_colored_polygon(PrepIcons._rrect(Rect2(x - 18, y - top_face - 18, 36, 20), 6), Color("3a383f"))
+		draw_colored_polygon(PrepIcons._rrect(Rect2(x - 18, y - 12, 36, front + 20), 6), SEAL)
+		draw_line(Vector2(x - 10, y - 6), Vector2(x - 10, y + front), Color(1, 1, 1, 0.08), 3.0)
+
+
+## Under and around the car, looking down: the asphalt of the slow lane
+## (grainy, a crack, an old oil stain) with the car's shadow on it.
+func _draw_ground(w: float, h: float) -> void:
 	var amb := DayClock.ambient()
 	var dark := DayClock.darkness()
 	var road := ASPHALT * amb
+	var top := h - BUMPER_H + 30.0
 	draw_rect(Rect2(0, top, w, h - top), road)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 127
@@ -543,54 +685,30 @@ func _draw_ground(w: float, h: float, top: float) -> void:
 		crack.append(Vector2(w * 0.58 + k * 34.0, h - 6.0 - k * 9.0 + (8.0 if k % 2 == 0 else -4.0)))
 	draw_polyline(crack, road.darkened(0.45), 2.0, true)
 	_soft_blob(Vector2(w * 0.72, h - 24), Vector2(80, 16), Color(0.05, 0.05, 0.08, 0.35))
-	# The sodium streetlight's pool on the road after dark.
 	if dark > 0.05:
 		_soft_blob(Vector2(w * 0.8, h), Vector2(w * 0.5, 70), Color(SODIUM, 0.18 * dark))
-	# The car's shadow and what's under it, dark between the wheels.
-	var under := h - top
-	draw_rect(Rect2(0, top, w, under * 0.4), Color(0.03, 0.03, 0.05, 0.6))
-	_soft_blob(Vector2(w * 0.5, top + under * 0.45), Vector2(w * 0.62, under * 0.25), Color(0, 0, 0, 0.55))
-	var axle_y := top + under * 0.2
-	draw_line(Vector2(150, axle_y), Vector2(w - 150, axle_y), Color("1b1a1f"), 7.0)
-	draw_line(Vector2(170, axle_y + 7), Vector2(w - 170, axle_y + 7), Color("26252b"), 3.0)
-	draw_rect(Rect2(w * 0.4, top + 2, w * 0.2, under * 0.14), Color("17161b"))
-	# Exhaust pipe under the left side, its tip poking out.
-	var pipe := Vector2(w * 0.3, top + under * 0.22)
-	draw_line(pipe + Vector2(40, -12), pipe, Color("2e2d33"), 9.0)
-	draw_colored_polygon(PrepIcons._ellipse(pipe, Vector2(12, 8), 0.0, 14), Color("4a4850"))
-	draw_colored_polygon(PrepIcons._ellipse(pipe, Vector2(7, 5), 0.0, 12), Color("0c0b0f"))
-	# Rear tyres at the corners, tread facing us, sitting on their shadows.
-	for x in [34.0, w - 154.0]:
-		var tyre := Rect2(x, top, 120, under * 0.62)
-		_soft_blob(Vector2(tyre.get_center().x, tyre.end.y), Vector2(90, 14), Color(0, 0, 0, 0.6))
-		draw_colored_polygon(PrepIcons._rrect(tyre, 18), Color("26252b") * amb)
-		draw_colored_polygon(PrepIcons._rrect(tyre.grow_individual(-10, -4, -10, -6), 12), Color("3a3940") * amb)
-		draw_line(Vector2(tyre.position.x + 14, tyre.end.y - 5), Vector2(tyre.end.x - 14, tyre.end.y - 5),
-			Color("5a5962") * amb, 2.0)
-		for k in 5:
-			var ty := tyre.position.y + 12 + k * (tyre.size.y - 20) / 5.0
-			draw_line(Vector2(tyre.position.x + 16, ty), Vector2(tyre.end.x - 16, ty + 4), Color("141317"), 3.0)
-		draw_line(Vector2(tyre.get_center().x, tyre.position.y + 6), Vector2(tyre.get_center().x, tyre.end.y - 6),
-			Color("141317"), 4.0)
+	# The car's shadow, darkest right under the bumper.
+	draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(w, top), Vector2(w, top + 90), Vector2(0, top + 90)]),
+		PackedColorArray([Color(0, 0, 0, 0.7), Color(0, 0, 0, 0.7), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0)]))
 
 
 ## LED strips down the raised hatch's sides and along its hinge edge, then
-## round the roof edge, both pillars and the sill. Layer `group` draws only
-## the LEDs of its colour; bands of LED_BAND LEDs cycle through the colours.
+## round the opening and along the sill. Layer `group` draws only the LEDs
+## of its colour; bands of LED_BAND LEDs cycle through the colours.
 func _draw_leds(group: int) -> void:
 	var w := size.x
 	if w < inner.y or inner.y <= inner.x:
 		return
 	var layer := _led_groups[group]
-	var l := inner.x - 3.0
-	var r := inner.y + 3.0
-	var i := _led_run(layer, group, Vector2(-40, 0), Vector2(l - 2, HATCH_H - 3), 0)
-	i = _led_run(layer, group, Vector2(l - 2, HATCH_H - 3), Vector2(r + 2, HATCH_H - 3), i)
-	i = _led_run(layer, group, Vector2(r + 2, HATCH_H - 3), Vector2(w + 40, 0), i)
-	i = _led_run(layer, group, Vector2(l, sill_y - 2), Vector2(l, ROOF_BOTTOM + 3), i)
-	i = _led_run(layer, group, Vector2(l, ROOF_BOTTOM + 3), Vector2(r, ROOF_BOTTOM + 3), i)
-	i = _led_run(layer, group, Vector2(r, ROOF_BOTTOM + 3), Vector2(r, sill_y - 2), i)
-	_led_run(layer, group, Vector2(r, sill_y + 3), Vector2(l, sill_y + 3), i)
+	var q := _hatch_quad(w)
+	var o := _opening()
+	var i := _led_run(layer, group, _hq(q, 0.02, 0.0), _hq(q, 0.02, 1.0) + Vector2(0, -3), 0)
+	i = _led_run(layer, group, _hq(q, 0.02, 1.0) + Vector2(0, -3), _hq(q, 0.98, 1.0) + Vector2(0, -3), i)
+	i = _led_run(layer, group, _hq(q, 0.98, 1.0) + Vector2(0, -3), _hq(q, 0.98, 0.0), i)
+	i = _led_run(layer, group, o[3] + Vector2(-2, -2), o[0] + Vector2(-2, 3), i)
+	i = _led_run(layer, group, o[0] + Vector2(-2, 3), o[1] + Vector2(2, 3), i)
+	i = _led_run(layer, group, o[1] + Vector2(2, 3), o[2] + Vector2(2, -2), i)
+	_led_run(layer, group, o[2] + Vector2(0, 3), o[3] + Vector2(0, 3), i)
 
 
 ## One straight run of strip; draws this group's bands as a soft wide stroke

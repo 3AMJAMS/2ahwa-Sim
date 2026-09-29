@@ -7,8 +7,9 @@ signal minute_changed
 
 ## Sayed opens up in the late afternoon.
 const START_HOUR := 16.0
-## Game minutes per real second: a full 24 hours takes 24 real minutes.
-const MINUTES_PER_SECOND := 1.0
+## Game minutes per real second: a full 24 hours takes an hour of play
+## (4 pm to sunset is about 10 minutes).
+const MINUTES_PER_SECOND := 0.4
 ## Lighting keyframes round the clock: hour, ambient tint, sky, darkness 0..1.
 const KEYS := [
 	[0.0, Color(0.62, 0.6, 0.76), Color("0e1022"), 1.0],

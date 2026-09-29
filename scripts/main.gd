@@ -257,7 +257,7 @@ func transition_to_prep(c: Customer) -> void:
 	await _fade("fade_out")
 	world_host.visible = false
 	prep_layer.visible = true
-	prep_station.load_order(c.item_id)
+	prep_station.load_order(c.item_id, c.sugar)
 	await _fade("fade_in")
 	state = State.PREP
 	prep_station.start_order()

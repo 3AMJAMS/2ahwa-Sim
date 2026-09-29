@@ -1,17 +1,26 @@
 extends Control
 ## Flat "Right Mix" prep station. Shows the order, then the player makes it:
 ## pick the ingredients from the tray, pick the tool to make it with, then
-## play that tool's gauge. Pays out tips (docked for wrong picks) and reports
-## back to main via prep_complete. Sayed's tutorials hook in at each step.
+## work through the drink's own steps (its "steps" list in menu_items.json):
+## sugar by the spoon, leaves or a bag in the glass, the gauge, a gentle
+## hand pour, stirring. Reports how good it came out back to main via
+## prep_complete. Sayed's tutorials hook in at each step.
 
 signal prep_complete(result: Dictionary)
+## The gauge finished (true) or the drink was ruined (false).
+signal _brewed(ok: bool)
 
 @export var result_hold_sec := 1.4
 ## Each wrong pick takes this share off the tip, down to half.
 @export_range(0.0, 1.0) var mistake_penalty := 0.2
 
 var _item: Dictionary = {}
+var _sugar := ""
 var _mistakes := 0
+var _accuracy := 1.0
+## Sugar off by some spoons, or the sugar layer pierced: each docks quality.
+var _sugar_factor := 1.0
+var _pour_factor := 1.0
 ## Bumped per order so a flow that outlives its order stops.
 var _run := 0
 
@@ -37,15 +46,21 @@ func _ready() -> void:
 
 ## Shows the order with the stove idle in front and the blender behind,
 ## without starting anything (called while the screen is still fading in).
-func load_order(item_id: String) -> bool:
+func load_order(item_id: String, sugar := "") -> bool:
 	_run += 1
 	_item = GameData.get_menu_item(item_id)
 	if _item.is_empty():
 		push_error("PrepStation: unknown menu item '%s'" % item_id)
 		return false
+	_sugar = sugar
 	order_display.text = tr(_item.get("name_key", "")) if _item.has("name_key") else _item.get("name_ar", item_id)
+	if not sugar.is_empty():
+		order_display.text += " " + GameData.sugar_name(sugar)
 	result_label.text = ""
 	_mistakes = 0
+	_accuracy = 1.0
+	_sugar_factor = 1.0
+	_pour_factor = 1.0
 	var active := _gauge_for(_item.get("station", ""))
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.reset()
@@ -53,6 +68,9 @@ func load_order(item_id: String) -> bool:
 		gauge.modulate.a = 1.0
 	if active:
 		active.call("set_look", _item.get("look", {}))
+	var look: Dictionary = _item.get("look", {})
+	heat_gauge.water = look.get("pot", "") == "water"
+	heat_gauge.manual_pour = "pour_gentle" in _item.get("steps", [])
 	backdrop.idle_station = "blend"
 	picker.hide_now()
 	return active != null
@@ -98,7 +116,7 @@ func start_order() -> void:
 	if run != _run:
 		return
 
-	# 3. Bring the chosen tool forward, explain it the first time, then go.
+	# 3. Bring the chosen tool forward.
 	var gauge := _gauge_for(_item.get("station", ""))
 	if gauge == null:
 		return
@@ -108,10 +126,131 @@ func start_order() -> void:
 		gauge.modulate.a = 0.0
 		create_tween().tween_property(gauge, "modulate:a", 1.0, 0.3)
 		backdrop.idle_station = "heat"
-	await _explain_station(gauge)
+
+	# 4. The drink's own steps, in order (untyped: the step callbacks are
+	# the stove's, which the blender doesn't have).
+	var art = _active_art()
+	for step in _item.get("steps", ["brew"]):
+		if run != _run:
+			return
+		match step:
+			"sugar", "sugar_pot":
+				await _sugar_step(step == "sugar_pot")
+			"tea_leaves":
+				if art is KanakaStove:
+					(art as KanakaStove).sugar_on_top = "sugar" in _item.get("steps", []) \
+						and _item.steps.find("sugar") > _item.steps.find("tea_leaves")
+				await _tap_step("PREP_ADD_TEA", {"id": "tea", "name_key": "ING_TEA"}, 1, art.add_leaves, "first_leaves",
+					"TUT_ADD_TEA")
+			"brew", "boil":
+				await _explain_station(gauge)
+				if run != _run:
+					return
+				gauge.start(float(_item.get("prep_time_sec", 10)))
+				if not await _brewed:
+					return
+			"pour":
+				pass  # the gauge pours as soon as it's taken off the fire
+			"pour_gentle":
+				await _gentle_pour(art as KanakaStove)
+			"teabag":
+				await _tap_step("PREP_DUNK", {"id": "teabag", "name_key": "ING_TEABAG"}, 3, art.dunk_bag, "first_teabag",
+					"TUT_DUNK")
+			"stir":
+				var turns := 4
+				var left := [turns]
+				await _tap_step("PREP_STIR", {"id": "spoon", "name_key": "ING_STIR"}, turns, func() -> void:
+					art.stir(left[0], 0.92 if "teabag" in _item.steps else 1.0)
+					left[0] -= 1, "first_stir", "TUT_STIR")
 	if run != _run:
 		return
-	gauge.start(float(_item.get("prep_time_sec", 10)))
+	await _finish_steps()
+	if run != _run:
+		return
+	_complete()
+
+
+## Sugar by the spoon: tap the sugar as many times as the grade takes, then
+## "done". Each spoon off the order docks the drink.
+func _sugar_step(into_pot: bool) -> void:
+	var art = _active_art()
+	var target := GameData.sugar_taps(_item.id, _sugar)
+	var hint := GameData.sugar_hint(_item.id, _sugar)
+	# The first few days the title spells out what the grade means.
+	var title := tr("PREP_SUGAR").format({"grade": GameData.sugar_name(_sugar)})
+	if Economy.day_number <= 3:
+		title = "%s (%s)" % [tr("PREP_SUGAR_TITLE"), hint]
+	var half: bool = _item.get("sugar_unit", "") == "half"
+	picker.show_counter(title, {"id": "sugar", "name_key": "ING_SUGAR_HALF" if half else "ING_SUGAR"},
+		{"id": "done", "name_key": "ING_DONE"}, art.add_sugar.bind(into_pot))
+	if Tutorial.pending("first_sugar"):
+		await Tutorial.play([{"text": tr("TUT_SUGAR_POT" if into_pot else "TUT_SUGAR").format({"order": order_display.text, "hint": hint}),
+			"target": picker.get_global_rect, "until": picker.step_done}])
+		Tutorial.mark("first_sugar")
+	if not picker.step_complete:
+		await picker.step_done
+	var off := absi(picker.count - target)
+	if off > 0:
+		_sugar_factor = maxf(0.4, 1.0 - 0.25 * off)
+		result_label.text = tr("PREP_SUGAR_MORE" if picker.count > target else "PREP_SUGAR_LESS")
+		get_tree().create_timer(1.4).timeout.connect(func() -> void: result_label.text = "")
+	await picker.slide_away()
+
+
+## One card tapped `count` times (leaves in, dunks of the bag, turns of the
+## spoon), with Sayed's tip the first time.
+func _tap_step(title_key: String, option: Dictionary, count: int, each: Callable, tut_id: String, tut_key: String) -> void:
+	picker.show_repeat(tr(title_key), option, count, each)
+	if Tutorial.pending(tut_id):
+		await Tutorial.play([{"text": tr(tut_key).format({"order": order_display.text, "count": GameData.ar_digits(count)}),
+			"target": picker.card_rect.bind(option.id), "until": picker.step_done}])
+		Tutorial.mark(tut_id)
+	if not picker.step_complete:
+		await picker.step_done
+	await picker.slide_away()
+
+
+## شاي على مية بيضا: hold to pour the boiling water down the side of the
+## glass. Holding speeds the flow up; let it get too strong and it punches
+## through the sugar and the tea darkens straight away.
+func _gentle_pour(stove: KanakaStove) -> void:
+	if stove == null:
+		return
+	var run := _run
+	if Tutorial.pending("first_gentle"):
+		await Tutorial.play([{"text": tr("TUT_POUR_GENTLE"), "target": stove.glass_rect}])
+		Tutorial.mark("first_gentle")
+	heat_gauge.status_label.text = tr("PREP_POUR_HOLD")
+	var pad := Control.new()
+	pad.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	pad.mouse_filter = MOUSE_FILTER_STOP
+	var held := [false]
+	pad.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+			held[0] = e.pressed)
+	add_child(pad)
+	var over := 0.0
+	while run == _run:
+		await get_tree().process_frame
+		var delta := get_process_delta_time()
+		var holding: bool = held[0] or Input.is_action_pressed("ui_accept")
+		stove.pour_flow = move_toward(stove.pour_flow, 1.0 if holding else 0.0, delta * (0.8 if holding else 2.2))
+		if stove.pour_flow > KanakaStove.FLOW_PIERCE:
+			over += delta
+			if over > 0.15 and not stove.pierced:
+				stove.pierce()
+				_pour_factor = 0.6
+				heat_gauge.status_label.text = tr("PREP_PIERCED")
+				_jolt(5.0, 0.2, 40)
+		else:
+			over = 0.0
+		if stove.pour_step(delta):
+			break
+	pad.queue_free()
+	if run != _run:
+		return
+	heat_gauge.status_label.text = tr("PREP_PERFECT") if not stove.pierced else tr("PREP_PIERCED")
+	await stove.end_pour()
 
 
 ## First time on each tool, Sayed shows what to watch.
@@ -166,10 +305,13 @@ func _on_wrong_pick(_id: String) -> void:
 ## The drink's done. Tips are paid when it's handed over on the street, so
 ## this only reports how good it came out: brew accuracy × the pick penalty.
 func _on_gauge_completed(accuracy: float) -> void:
-	var run := _run
-	await _finish_steps()
-	if run != _run:
-		return
+	_accuracy = accuracy
+	_brewed.emit(true)
+
+
+## Every step done: how it came out is brew accuracy × sugar × pour × picks.
+func _complete() -> void:
+	var accuracy := _accuracy * _sugar_factor * _pour_factor
 	var penalty := maxf(0.5, 1.0 - mistake_penalty * _mistakes)
 	var perfect := accuracy >= 1.0 and _mistakes == 0
 	var headline := tr("RESULT_SUCCESS") if perfect else tr("RESULT_OK")
@@ -197,6 +339,7 @@ func _finish_steps() -> void:
 
 
 func _on_gauge_failed() -> void:
+	_brewed.emit(false)
 	result_label.text = tr("RESULT_FAIL")
 	_finish({"success": false, "item_id": _item.id, "accuracy": 0.0, "quality": 0.0, "mistakes": _mistakes})
 

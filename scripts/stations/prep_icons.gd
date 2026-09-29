@@ -24,6 +24,14 @@ static func draw_icon(ci: CanvasItem, id: String, rect: Rect2) -> void:
 			_stove(ci, o, s)
 		"blender":
 			_blender(ci, o, s)
+		"sugar":
+			_sugar(ci, o, s)
+		"teabag":
+			_teabag(ci, o, s)
+		"spoon":
+			_spoon(ci, o, s)
+		"done":
+			_done(ci, o, s)
 
 
 # --- Ingredients -------------------------------------------------------------
@@ -184,6 +192,76 @@ static func _cube(ci: CanvasItem, c: Vector2, e: float) -> void:
 	var edges := PackedVector2Array([top[0], top[1], top[2], top[3], top[0]])
 	ci.draw_polyline(edges, Color(1, 1, 1, 0.8), 1.2, true)
 	ci.draw_line(top[2], left[2], Color(1, 1, 1, 0.5), 1.0)
+
+
+## Tin sugar bowl heaped white, a teaspoon standing in it.
+static func _sugar(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 40) * s, Vector2(38, 7) * s)
+	# Heap of sugar above the rim, grains catching the light.
+	var heap := _arc(o + Vector2(0, -2) * s, Vector2(32, 18) * s, PI, TAU, 14)
+	ci.draw_colored_polygon(heap, Color("f4f1ea"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for k in 22:
+		var p := o + Vector2(rng.randf_range(-26, 26), rng.randf_range(-14, -2)) * s
+		ci.draw_circle(p, 1.3 * s, Color("d8d2c4") if k % 2 else Color.WHITE)
+	# Spoon stuck in the heap.
+	ci.draw_line(o + Vector2(6, -8) * s, o + Vector2(26, -44) * s, Color("b3b9c2"), 4.0 * s)
+	ci.draw_line(o + Vector2(7, -9) * s, o + Vector2(26, -43) * s, Color("e6e9ee"), 1.5 * s)
+	# The bowl: a squat tin with a rolled rim.
+	var bowl := PackedVector2Array([o + Vector2(-38, -2) * s, o + Vector2(38, -2) * s, o + Vector2(30, 36) * s, o + Vector2(-30, 36) * s])
+	ci.draw_colored_polygon(bowl, Color("9fa7b3"))
+	ci.draw_colored_polygon(PackedVector2Array([bowl[0], o + Vector2(-20, -2) * s, o + Vector2(-16, 36) * s, bowl[3]]),
+		Color(1, 1, 1, 0.25))
+	ci.draw_colored_polygon(_ellipse(o + Vector2(0, -2) * s, Vector2(39, 6) * s, 0.0, 20), Color("c9ced6"))
+	ci.draw_colored_polygon(_ellipse(o + Vector2(0, -3) * s, Vector2(33, 4) * s, 0.0, 20), Color("f4f1ea"))
+	ci.draw_line(o + Vector2(-34, 14) * s, o + Vector2(34, 14) * s, Color(0, 0, 0, 0.15), 2.0 * s)
+
+
+## A paper tea bag on its string, with the little tag.
+static func _teabag(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(-6, 40) * s, Vector2(30, 6) * s)
+	var bag := PackedVector2Array([o + Vector2(-30, -6) * s, o + Vector2(10, -6) * s, o + Vector2(12, 34) * s, o + Vector2(-32, 34) * s])
+	ci.draw_colored_polygon(bag, Color("efe6d2"))
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-26, 4) * s, o + Vector2(6, 4) * s, o + Vector2(8, 30) * s,
+		o + Vector2(-28, 30) * s]), Color("6a3a1e", 0.55))
+	for k in 5:
+		ci.draw_line(o + Vector2(-30 + k * 10, -6) * s, o + Vector2(-30 + k * 10, -2) * s, Color("c9bda4"), 1.2 * s)
+	# Folded top with its staple, the string up and over to the tag.
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-30, -6) * s, o + Vector2(10, -6) * s, o + Vector2(0, -16) * s,
+		o + Vector2(-20, -16) * s]), Color("e2d7bf"))
+	ci.draw_line(o + Vector2(-14, -14) * s, o + Vector2(-6, -14) * s, Color("9fa7b3"), 2.0 * s)
+	var string := PackedVector2Array()
+	for i in 10:
+		var t := i / 9.0
+		string.append((o + Vector2(-10, -16) * s).bezier_interpolate(o + Vector2(0, -44) * s, o + Vector2(24, -44) * s,
+			o + Vector2(28, -22) * s, t))
+	ci.draw_polyline(string, Color("f4f1ea"), 1.5 * s, true)
+	var tag := Rect2(o + Vector2(18, -22) * s, Vector2(22, 26) * s)
+	ci.draw_colored_polygon(_rrect(tag, 3 * s), Color("c23b2a"))
+	ci.draw_colored_polygon(_rrect(tag.grow(-4 * s), 2 * s), Color("f2d24a"))
+
+
+## A teaspoon stirring a tea glass, with the swirl.
+static func _spoon(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 40) * s, Vector2(30, 6) * s)
+	var glass := PackedVector2Array([o + Vector2(-22, 38) * s, o + Vector2(22, 38) * s, o + Vector2(28, -24) * s, o + Vector2(-28, -24) * s])
+	ci.draw_colored_polygon(glass, Color(0.8, 0.9, 1.0, 0.25))
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-21, 34) * s, o + Vector2(21, 34) * s, o + Vector2(26, -14) * s,
+		o + Vector2(-26, -14) * s]), Color("9c3d16"))
+	ci.draw_polyline(_arc(o + Vector2(0, -14) * s, Vector2(20, 5) * s, 0.2, TAU - 0.6, 14), Color("dcb88a"), 2.0 * s)
+	ci.draw_polyline(_arc(o + Vector2(0, 6) * s, Vector2(14, 4) * s, 0.8, TAU - 0.2, 12), Color(1, 1, 1, 0.35), 1.5 * s)
+	ci.draw_line(o + Vector2(-2, 22) * s, o + Vector2(24, -46) * s, Color("b3b9c2"), 4.0 * s)
+	ci.draw_line(o + Vector2(-1, 20) * s, o + Vector2(24, -45) * s, Color("e6e9ee"), 1.5 * s)
+	ci.draw_polyline(_arc(o + Vector2(40, -30) * s, Vector2(12, 12) * s, -2.4, 0.9, 10), Color("7a5a2e"), 3.0 * s)
+
+
+## "Done": a big green tick in a ring.
+static func _done(ci: CanvasItem, o: Vector2, s: float) -> void:
+	ci.draw_colored_polygon(_ellipse(o, Vector2(38, 38) * s, 0.0, 28), Color("1f5a24"))
+	ci.draw_colored_polygon(_ellipse(o, Vector2(33, 33) * s, 0.0, 28), Color("4caf50"))
+	ci.draw_polyline(PackedVector2Array([o + Vector2(-16, 0) * s, o + Vector2(-5, 12) * s, o + Vector2(18, -12) * s]),
+		Color.WHITE, 7.0 * s, true)
 
 
 # --- Tools ---------------------------------------------------------------------

@@ -34,6 +34,19 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   the car and takes 20% off the tip (down to half).
 - **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
   explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
+- **Sugar by the spoon.** Every tea and coffee order comes with a sugar grade (on the ticket and in the shout):
+  tea is سادة / مظبوط / زيادة (0 / 2 / 3 spoons); Turkish coffee also has عالريحة and مانو, and each tap is half a
+  spoon (سادة 0, عالريحة ½, مظبوط 1, مانو 1½, زيادة 2). Tap the sugar once per spoon, then خلاص; each spoon off
+  the order takes a quarter off the drink's quality. The first three days the tray spells out the spoons.
+- **Tea is built in the glass**, the Egyptian way:
+  - **شاي كشري:** sugar first, then the loose tea on top, then boil water in the كنكة and pour it over (it darkens
+    from the leaves up), then **stir** (tap قلّب four times) until the sugar's gone and it's one colour.
+  - **شاي فتلة:** sugar, boiling water, then **dunk the tea bag** three times (the colour clouds down from it), stir.
+  - **شاي على مية بيضا:** tea at the bottom under a thick layer of sugar; boil the water, then **hold to pour it
+    down the side of the glass** — holding speeds the flow up, and if the meter hits red the stream punches
+    through the sugar and the tea darkens at once (quality docked). Poured gently the water stays clear over the
+    sugar; stirring darkens it gradually.
+  - **قهوة تركي:** the sugar goes into the كنكة with the coffee before it goes on the fire.
 - **Hot orders — tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
@@ -41,7 +54,7 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
   too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
   and tips drop.
-- **The day doesn't end by itself.** The clock starts at 4 pm and runs 1 game minute per real second, through
+- **The day doesn't end by itself.** The clock starts at 4 pm and runs 1 game minute every 2.5 real seconds (a full day is an hour of play), through
   sunset and night (the sodium streetlights and LED strips come on) and round again. Tap **🏠 روّح** to go home:
   you see the day's takings, the day number goes up and the next day starts at 4 pm.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
@@ -58,10 +71,10 @@ Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you 
 |---|---|
 | `scripts/main.gd` | WORLD ↔ PREP state machine + fades |
 | `scripts/stations/heat_gauge.gd` | Hot brew timing + scoring (tap in the green zone) |
-| `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
+| `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over; tea built in the glass (sugar layer, leaves, tea bag, colour steeping from bottom to top, stirring, the held side-pour and its flow meter) |
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
-| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper, road and tyres below |
+| `scripts/stations/trunk_backdrop.gd` | The prep screen's car, seen from behind at hatch height looking down into the trunk: body wider at the bumper tapering to the roof (the street shows round it), hatch overhead with its edge thickness, roof edge and wall thickness round the opening, trunk interior + supply rack, LED strips, lamp clusters standing proud, plate, thick chrome bumper, road below |
 | `scripts/stations/sky_art.gd` | The prep station's static sky: clouds rolled per day, sun on its arc, stars, the moon in its phase for the game day |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
 | `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |

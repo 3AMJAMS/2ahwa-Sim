@@ -62,6 +62,14 @@ const COLOR_SMOKE := Color(0.16, 0.14, 0.15, 0.5)
 const COLOR_GOLD_BAND := Color("c9a24a")
 ## How hard the poured drink steams, indexed by Pour.
 const GLASS_STEAM := [1.0, 0.35, 1.3]
+## Boiling water in the kanaka, and hot water in the glass before the tea
+## colours it.
+const COLOR_WATER := Color(0.78, 0.86, 0.94)
+const COLOR_SUGAR := Color("f4f1ea")
+## Height of the sugar layer per spoon (tea glass).
+const SUGAR_PER_SPOON := 7.0
+## Flow above this pours too hard and pierces the sugar layer.
+const FLOW_PIERCE := 0.72
 
 var heat := 0.0
 var flame := 0.0
@@ -75,10 +83,37 @@ var glass_foam := 0.0
 var overflow := 0.0
 var burn := 0.0
 
+# Tea built in the glass (شاي كشري / فتلة / على مية بيضا): the kanaka only
+# boils water; sugar, leaves or a bag go in the glass and the water takes on
+# the tea's colour as it steeps and is stirred.
+## Spoons of sugar in the glass, and how much of it has dissolved (0..1).
+var sugar_spoons := 0
+var sugar_melt := 0.0
+## Leaves in the glass (0..1 as they drop in); whether the sugar sits on
+## top of them (شاي على مية بيضا) rather than under.
+var leaves := 0.0
+var sugar_on_top := false
+## How strongly the water has taken the tea's colour, at the top and at the
+## bottom of the glass (0 = clear hot water, 1 = the finished tea).
+var steep_top := 0.0
+var steep_bottom := 0.0
+## A tea bag in the glass (0..1 lowered in), and its bob while dunking.
+var bag := 0.0
+var bag_dip := 0.0
+## Stirring: the spoon's swirl (0..1 strength) and its phase.
+var swirl := 0.0
+## The sugar layer was pierced by pouring too hard.
+var pierced := false
+## Gentle pour: how hard the water is flowing (0..1); the meter shows it.
+var pour_flow := 0.0
+var show_flow := false
+
 var _liquid := Color("9c3d16")
 var _foam := Color("dcb88a")
 var _leaves := Color("2e1b0e")
 var _cup := false
+var _pot_water := false
+var _swirl_t := 0.0
 var _on_burner := true
 var _pour_kind := Pour.PERFECT
 var _puffs := []
@@ -122,7 +157,13 @@ func set_look(look: Dictionary) -> void:
 	_foam = Color(look.get("foam", "#dcb88a"))
 	_leaves = Color(look["leaves"]) if look.has("leaves") else Color.TRANSPARENT
 	_cup = look.get("vessel", "glass") == "cup"
+	_pot_water = look.get("pot", "") == "water"
 	queue_redraw()
+
+
+## True when the tea is built in the glass and the kanaka just boils water.
+func builds_in_glass() -> bool:
+	return _pot_water and not _cup
 
 
 ## Kanaka back on a cold ring, full; glass empty.
@@ -145,6 +186,36 @@ func reset() -> void:
 	_bubbles.clear()
 	_drops.clear()
 	_reset_ice()
+	sugar_spoons = 0
+	sugar_melt = 0.0
+	leaves = 0.0
+	sugar_on_top = false
+	steep_top = 0.0
+	steep_bottom = 0.0
+	bag = 0.0
+	bag_dip = 0.0
+	swirl = 0.0
+	pierced = false
+	pour_flow = 0.0
+	show_flow = false
+	queue_redraw()
+
+
+## Fresh water in the kanaka back on a cold ring, leaving whatever has
+## already gone into the glass (sugar, leaves) where it is.
+func reset_pot() -> void:
+	_kill_tween()
+	_finish_sequence()
+	heat = 0.0
+	flame = 0.0
+	pot_pivot = REST_PIVOT
+	pot_tilt = 0.0
+	pot_level = 1.0
+	stream = 0.0
+	overflow = 0.0
+	burn = 0.0
+	_on_burner = true
+	_pour_kind = Pour.PERFECT
 	queue_redraw()
 
 
@@ -172,14 +243,122 @@ func pour(kind: Pour) -> void:
 	t.tween_property(self, "glass_fill", GLASS_FULL, 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(self, "pot_tilt", POUR_TILT_END, 0.85)
 	t.parallel().tween_property(self, "pot_level", 0.0, 0.85)
+	if builds_in_glass() and leaves > 0.0:
+		# Boiling water straight onto the leaves: dark at the bottom first.
+		t.parallel().tween_property(self, "steep_bottom", 0.8, 0.85)
+		t.parallel().tween_property(self, "steep_top", 0.35, 0.85).set_ease(Tween.EASE_IN)
 	t.tween_property(self, "stream", 0.0, 0.1)
-	if kind == Pour.PERFECT:
+	if kind == Pour.PERFECT and not builds_in_glass():
 		t.parallel().tween_property(self, "glass_foam", 1.0, 0.4)
 	t.tween_callback(_finish_sequence)
 	t.tween_property(self, "pot_pivot", LIFT_PIVOT, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t.parallel().tween_property(self, "pot_tilt", 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(self, "pot_pivot", REST_PIVOT, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await sequence_finished
+
+
+#region Building tea in the glass
+
+## One spoon of sugar: a spoonful of grains pours into the glass (or into
+## the kanaka for Turkish coffee), and the layer in the glass grows.
+func add_sugar(into_pot := false) -> void:
+	var at := _pot_xf() * Vector2(-10, K_RIM_Y - 60.0) if into_pot else Vector2(GLASS_BASE.x - 6.0, GLASS_BASE.y - GLASS_H - 50.0)
+	for k in 14:
+		_drops.append(_particle(at + Vector2(_rng.randf_range(-8, 8), _rng.randf_range(-6, 6)),
+			Vector2(_rng.randf_range(-30, 30), _rng.randf_range(40, 160)), _rng.randf_range(0.28, 0.4),
+			_rng.randf_range(1.8, 3.0), COLOR_SUGAR))
+	if not into_pot:
+		get_tree().create_timer(0.25).timeout.connect(func() -> void:
+			sugar_spoons += 1
+			queue_redraw())
+
+
+## A pinch of loose tea drops into the glass.
+func add_leaves() -> void:
+	for k in 18:
+		_drops.append(_particle(Vector2(GLASS_BASE.x + _rng.randf_range(-14, 14), GLASS_BASE.y - GLASS_H - 40.0),
+			Vector2(_rng.randf_range(-40, 40), _rng.randf_range(60, 180)), _rng.randf_range(0.3, 0.42),
+			_rng.randf_range(2.0, 3.2), _leaves if _leaves.a > 0.0 else Color("2e1b0e")))
+	if _leaves.a <= 0.0:
+		_leaves = Color("2e1b0e")
+	create_tween().tween_property(self, "leaves", 1.0, 0.45).set_delay(0.2)
+
+
+## Dunk the bag once: in it goes (the first time), down and up, and a cloud of
+## tea spreads from it, sinking.
+func dunk_bag() -> void:
+	var t := create_tween()
+	if bag < 1.0:
+		t.tween_property(self, "bag", 1.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(self, "bag_dip", 1.0, 0.18)
+	t.tween_property(self, "bag_dip", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
+	t.parallel().tween_property(self, "steep_top", minf(steep_top + 0.16, 0.7), 0.6)
+	t.parallel().tween_property(self, "steep_bottom", minf(steep_bottom + 0.3, 0.95), 0.6)
+
+
+## One turn of the spoon. `left` is how many turns remain including this
+## one: the colour evens out toward `final` and the sugar melts, so after
+## the last turn the glass is one even colour.
+func stir(left: int, final := 1.0) -> void:
+	var k := 1.0 / maxf(left, 1)
+	var t := create_tween()
+	t.tween_property(self, "swirl", 1.0, 0.12)
+	t.parallel().tween_property(self, "steep_top", lerpf(steep_top, final, k), 0.7)
+	t.parallel().tween_property(self, "steep_bottom", lerpf(steep_bottom, final, k), 0.7)
+	t.parallel().tween_property(self, "sugar_melt", lerpf(sugar_melt, 1.0, k), 0.7)
+	t.tween_property(self, "swirl", 0.0, 0.6).set_ease(Tween.EASE_OUT)
+
+
+## Lift the kanaka over to the glass and hold it there for a pour the player
+## controls (pour_flow); the landing point moves to the side of the glass.
+func lift_for_pour() -> void:
+	_kill_tween()
+	_on_burner = false
+	var t := create_tween()
+	_tween = t
+	t.tween_property(self, "flame", 0.0, 0.2)
+	t.parallel().tween_property(self, "pot_pivot", LIFT_PIVOT, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(self, "pot_pivot", POUR_PIVOT + Vector2(18, -6), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.parallel().tween_property(self, "pot_tilt", POUR_TILT * 0.6, 0.45).set_trans(Tween.TRANS_SINE)
+	await t.finished
+	show_flow = true
+
+
+## Advances the held pour by one frame. Returns true once the glass is full.
+func pour_step(delta: float) -> bool:
+	stream = pour_flow
+	glass_fill = minf(glass_fill + pour_flow * 0.32 * delta, GLASS_FULL)
+	var k := glass_fill / GLASS_FULL
+	pot_level = 1.0 - k
+	pot_tilt = lerpf(POUR_TILT * 0.6, POUR_TILT_END, k) - pour_flow * 0.15
+	return glass_fill >= GLASS_FULL - 0.001
+
+
+## The stream punched through the sugar: tea bleeds up from the leaves.
+func pierce() -> void:
+	pierced = true
+	create_tween().tween_property(self, "steep_bottom", 0.7, 0.5)
+	create_tween().tween_property(self, "steep_top", 0.3, 1.2)
+
+
+## Back to the ring after a held pour.
+func end_pour() -> void:
+	show_flow = false
+	stream = 0.0
+	pour_flow = 0.0
+	var t := create_tween()
+	t.tween_property(self, "pot_pivot", LIFT_PIVOT, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.parallel().tween_property(self, "pot_tilt", 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(self, "pot_pivot", REST_PIVOT, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await t.finished
+
+
+## Scene-space rect round the glass, for the tutorial's spotlight.
+func glass_rect() -> Rect2:
+	var a := scene_to_global(Vector2(GLASS_BASE.x - 110, GLASS_BASE.y - GLASS_H - 70))
+	return Rect2(a, scene_to_global(Vector2(GLASS_BASE.x + 110, GLASS_BASE.y + 20)) - a)
+
+#endregion
 
 
 ## The drink foams over, the spill chokes the flame and it all turns to smoke.
@@ -199,6 +378,7 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_t += delta
+	_swirl_t += delta * (2.0 + 10.0 * swirl)
 	var xf := _scene_xf()
 	var s := _scene_scale()
 	_haze.position = xf * (BURNER_TOP + Vector2(-130, -110))
@@ -211,6 +391,13 @@ func _process(delta: float) -> void:
 
 
 func _served_color(kind: Pour) -> Color:
+	if builds_in_glass():
+		return COLOR_WATER
+	return _brew_color(kind)
+
+
+## The drink's colour as poured: paler if lukewarm, stewed if too hot.
+func _brew_color(kind: Pour) -> Color:
 	match kind:
 		Pour.LUKEWARM:
 			return _liquid.lerp(Color("d8b48a"), 0.45)
@@ -459,6 +646,11 @@ func _draw_pot() -> void:
 	var liquid := _liquid.darkened(0.3).lerp(COLOR_BURNT, burn)
 	var foam := _foam.lerp(COLOR_FOAM_BURNT, burn)
 	var foam_light := _foam_light().lerp(foam, burn)
+	if _pot_water:
+		# Just water: grey-blue in the pot's shadow, a white rolling boil.
+		liquid = COLOR_WATER.darkened(0.45).lerp(Color("5a5048"), burn)
+		foam = COLOR_WATER.lightened(0.4).lerp(Color("8a8078"), burn)
+		foam_light = Color.WHITE.lerp(foam, burn)
 	var cover := smoothstep(42.0, 66.0, heat)
 	var rise := _foam_rise()
 	var spill := _spill()
@@ -576,6 +768,10 @@ func _draw_glass_back() -> void:
 	draw_colored_polygon(_glass_poly(b.y, b.y - GLASS_H, 0.0), Color(0.8, 0.9, 1.0, 0.1))
 	_arc(Vector2(b.x, b.y - GLASS_H), Vector2(GLASS_HW.y, 8), PI, TAU, Color(1, 1, 1, 0.3), 2.0)
 	var floor_y := b.y - GLASS_FOOT
+	if builds_in_glass():
+		_draw_glass_build(floor_y)
+		_draw_ice()
+		return
 	if _leaves.a > 0.0:
 		# Loose leaves waiting at the bottom (شاي كشري is brewed straight in).
 		for i in 16:
@@ -596,6 +792,106 @@ func _draw_glass_back() -> void:
 	_draw_ice()
 
 
+## Tea made in the glass, bottom up: sugar and leaves (in whichever order
+## they went in), then the water, shading from its colour at the bottom to
+## its colour at the top, the bag if there is one, and the stir's swirl.
+func _draw_glass_build(floor_y: float) -> void:
+	var b := GLASS_BASE
+	var sugar_h := sugar_spoons * SUGAR_PER_SPOON * (1.0 - sugar_melt)
+	var leaf_bed := floor_y
+	var sugar_base := floor_y
+	if sugar_on_top:
+		sugar_base = floor_y - 5.0 * leaves
+	else:
+		leaf_bed = floor_y - sugar_h
+	# Leaves: a dark bed, scattered bits rising into the water as it's stirred.
+	if leaves > 0.0:
+		var bed_h := 6.0 * leaves * (1.0 - 0.6 * sugar_melt)
+		if bed_h > 0.5:
+			draw_colored_polygon(_glass_poly(leaf_bed, leaf_bed - bed_h, 4.0), _leaves)
+		for i in 18:
+			var x := b.x + float((i * 37) % 64) - 32.0
+			var rise := float((i * 13) % 50) * sugar_melt * (0.5 + 0.5 * sin(_swirl_t + i))
+			draw_circle(Vector2(x, leaf_bed - bed_h - 1.0 - float((i * 7) % 5) - rise), 2.3, Color(_leaves, leaves))
+	# Sugar: white with a grainy, slightly heaped top.
+	if sugar_h > 0.5:
+		var top := sugar_base - sugar_h
+		var body := _glass_poly(sugar_base, top, 4.0)
+		draw_colored_polygon(body, COLOR_SUGAR)
+		var hw := _glass_hw(top) - 4.0
+		var heap := PackedVector2Array()
+		for i in 9:
+			var u := -1.0 + i / 4.0
+			heap.append(Vector2(b.x + u * hw, top - 4.0 * (1.0 - u * u) * (1.0 - sugar_melt)))
+		heap.append(Vector2(b.x + hw, top + 2.0))
+		heap.append(Vector2(b.x - hw, top + 2.0))
+		draw_colored_polygon(heap, COLOR_SUGAR)
+		for i in 16:
+			draw_circle(Vector2(b.x + float((i * 29) % 60) - 30.0, top + float((i * 17) % int(maxf(sugar_h, 2.0)))),
+				1.1, Color("d8d2c4"))
+		if pierced:
+			# Where the stream broke through: a dark crater bleeding tea up.
+			var hole := Vector2(b.x + 26.0, top + 2.0)
+			_fill_ellipse(hole, Vector2(12, 4), _leaves.lerp(_brew_color(_pour_kind), 0.4))
+			_soft_blob(hole + Vector2(0, -12), Vector2(26, 22), Color(_brew_color(_pour_kind), 0.45))
+	# The water, taking on the tea's colour.
+	if glass_fill > 0.001:
+		var top_y := _glass_surface_y()
+		var tea := _brew_color(_pour_kind)
+		var bottom_col := COLOR_WATER.lerp(tea, steep_bottom)
+		var top_col := COLOR_WATER.lerp(tea, steep_top)
+		bottom_col.a = lerpf(0.3, 0.92, steep_bottom)
+		top_col.a = lerpf(0.3, 0.92, steep_top)
+		var water := _glass_poly(floor_y, top_y, 4.0)
+		draw_polygon(water, PackedColorArray([bottom_col, bottom_col, top_col, top_col]))
+		var hw := _glass_hw(top_y) - 4.0
+		_fill_ellipse(Vector2(b.x, top_y), Vector2(hw, 6), Color(top_col.lightened(0.15), maxf(top_col.a, 0.5)))
+		# Swirl lines while stirring.
+		if swirl > 0.02:
+			for k in 3:
+				var y := lerpf(top_y + 10.0, floor_y - 10.0, (k + 0.5) / 3.0)
+				var w := _glass_hw(y) - 10.0
+				var a0 := _swirl_t * 1.3 + k * 2.0
+				_arc(Vector2(b.x, y), Vector2(w, 5.0), a0, a0 + 2.4, Color(1, 1, 1, 0.3 * swirl), 2.0)
+		# Tea cloud spreading from the bag.
+		if bag > 0.0:
+			var bag_c := Vector2(b.x - 8.0, lerpf(top_y + 30.0, floor_y - 34.0, bag) + bag_dip * 16.0)
+			_soft_blob(bag_c + Vector2(0, 18), Vector2(40, 44), Color(tea, 0.35 * bag))
+	if bag > 0.0:
+		_draw_tea_bag()
+
+
+## The bag hanging in the glass on its string, the tag outside over the rim.
+func _draw_tea_bag() -> void:
+	var b := GLASS_BASE
+	var rim := Vector2(b.x + GLASS_HW.y - 6.0, b.y - GLASS_H)
+	var bag_top := Vector2(b.x - 8.0, lerpf(b.y - GLASS_H - 40.0, b.y - GLASS_FOOT - 60.0, bag) + bag_dip * 16.0)
+	draw_line(bag_top, rim, Color("f4f1ea"), 1.5, true)
+	draw_line(rim, rim + Vector2(10, 26), Color("f4f1ea"), 1.5, true)
+	var tag := Rect2(rim + Vector2(2, 26), Vector2(20, 24))
+	draw_rect(tag, Color("c23b2a"))
+	draw_rect(tag.grow(-4), Color("f2d24a"))
+	var body := PackedVector2Array([bag_top + Vector2(-14, 6), bag_top + Vector2(14, 6), bag_top + Vector2(16, 44),
+		bag_top + Vector2(-16, 44)])
+	draw_colored_polygon(body, Color("e6dcc6").lerp(Color("8a5a3a"), 0.5 * bag))
+	draw_colored_polygon(PackedVector2Array([bag_top + Vector2(-14, 6), bag_top + Vector2(14, 6), bag_top + Vector2(6, 0),
+		bag_top + Vector2(-6, 0)]), Color("e2d7bf"))
+	draw_line(bag_top + Vector2(-12, 24), bag_top + Vector2(12, 24), Color(0, 0, 0, 0.12), 1.0)
+
+
+## Pour meter by the glass during a held pour: a green band to stay in and
+## the red top where the stream would break the sugar.
+func _draw_flow_meter() -> void:
+	var r := Rect2(GLASS_BASE.x + 92.0, GLASS_BASE.y - 170.0, 20.0, 150.0)
+	draw_colored_polygon(PrepIcons._rrect(r.grow(4), 10), Color(0.05, 0.05, 0.1, 0.75))
+	var red_y := r.end.y - r.size.y * FLOW_PIERCE
+	draw_rect(Rect2(r.position, Vector2(r.size.x, red_y - r.position.y)), Color(0.88, 0.27, 0.17, 0.45))
+	draw_rect(Rect2(Vector2(r.position.x, red_y), Vector2(r.size.x, r.size.y * (FLOW_PIERCE - 0.2))), Color(0.3, 0.69, 0.31, 0.45))
+	var h := r.size.y * pour_flow
+	var col := Color("4caf50") if pour_flow < FLOW_PIERCE else Color("e0452b")
+	draw_rect(Rect2(r.position.x + 3, r.end.y - h, r.size.x - 6, h), col)
+
+
 func _draw_glass_front() -> void:
 	var b := GLASS_BASE
 	var top := b.y - GLASS_H
@@ -614,9 +910,17 @@ func _draw_glass_front() -> void:
 		draw_line(Vector2(b.x + u * GLASS_HW.x, b.y - GLASS_FOOT), Vector2(b.x + u * _glass_hw(facet_top), facet_top),
 			Color(1, 1, 1, 0.14), 2.0, true)
 	_arc(Vector2(b.x, facet_top), Vector2(_glass_hw(facet_top), 6), 0.0, PI, Color(1, 1, 1, 0.18), 1.5)
-	# Teaspoon leaning out of the glass.
-	draw_line(Vector2(b.x - 20, top + 12), Vector2(b.x - 66, top - 44), COLOR_METAL, 5.0, true)
-	_fill_ellipse(Vector2(b.x - 68, top - 47), Vector2(5, 6), COLOR_METAL_LIGHT)
+	# Teaspoon leaning out of the glass, circling while it stirs.
+	var tip := Vector2(b.x - 20, top + 12)
+	var handle := Vector2(b.x - 66, top - 44)
+	if swirl > 0.01:
+		var c := Vector2(cos(_swirl_t * 3.0) * 26.0, sin(_swirl_t * 3.0) * 6.0) * swirl
+		tip = Vector2(b.x, b.y - GLASS_FOOT - 30.0) + c
+		handle = tip + Vector2(-30.0 - c.x * 0.5, -130.0)
+	draw_line(tip, handle, COLOR_METAL, 5.0, true)
+	_fill_ellipse(handle + Vector2(-2, -3), Vector2(5, 6), COLOR_METAL_LIGHT)
+	if show_flow:
+		_draw_flow_meter()
 
 
 ## Inside of the فنجان: dark well, then the coffee surface seen through the rim.
@@ -721,6 +1025,9 @@ func _glass_surface_y() -> float:
 
 
 func _stream_end() -> Vector2:
+	if show_flow:
+		# Poured down the side of the glass so it runs in gently.
+		return Vector2(GLASS_BASE.x + _glass_hw(_glass_surface_y()) - 10.0, _glass_surface_y())
 	return Vector2(GLASS_BASE.x + 8.0, _glass_surface_y())
 
 #endregion

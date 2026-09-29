@@ -32,6 +32,8 @@ const SHOULDER_Y := -116.0
 
 var state := State.ARRIVING
 var item_id := ""
+## Sugar grade ordered ("mazboot", "ziyada", ...; "" for drinks without one).
+var sugar := ""
 var shout := ""
 ## Seconds of patience at the start, and what's left.
 var patience_max := 90.0

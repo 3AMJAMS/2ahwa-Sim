@@ -13,6 +13,8 @@ const WRONG := Color("e0452b")
 
 var id := ""
 var picked := false
+## A count shown in a bubble on the corner (spoons of sugar so far); -1 hides it.
+var badge := -1
 
 var _label := Label.new()
 var _shake := 0.0
@@ -88,6 +90,14 @@ func _draw() -> void:
 		var x := inner.position.x + 14 + k * (inner.size.x - 28) / 13.0
 		draw_line(Vector2(x, inner.end.y - 60), Vector2(x + 5, inner.end.y - 60), Color(EDGE, 0.35), 2.0)
 	PrepIcons.draw_icon(self, id, Rect2(inner.position + Vector2(14, 12), Vector2(inner.size.x - 28, 134)))
+	if badge >= 0:
+		var bc := Vector2(26, 26)
+		draw_circle(bc, 22, Color("7a5a2e"))
+		draw_circle(bc, 19, Color("e0a458"))
+		var text := GameData.ar_digits(badge)
+		var font := get_theme_default_font()
+		var sz := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 28)
+		draw_string(font, bc + Vector2(-sz.x * 0.5, 10), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color("3a2412"))
 	if picked:
 		var c := Vector2(r.end.x - 24, 24)
 		draw_circle(c, 22, Color("1f5a24"))

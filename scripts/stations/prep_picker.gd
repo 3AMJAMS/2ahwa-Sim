@@ -21,6 +21,12 @@ var _busy := false
 var _repeat_left := 0
 var _repeat_total := 0
 var _repeat_each: Callable
+## Counting mode (sugar spoons): taps on the item card add one each, up to
+## _count_max, until the done card is tapped. `count` is how many went in.
+var count := 0
+var _counting := false
+var _count_max := 0
+var _done_id := ""
 
 var _title := Label.new()
 var _row := HBoxContainer.new()
@@ -56,6 +62,7 @@ func show_step(title: String, options: Array, required: Array) -> void:
 	_required = required.duplicate()
 	_picked.clear()
 	_repeat_left = 0
+	_counting = false
 	_busy = false
 	step_complete = false
 	_base_title = title
@@ -84,6 +91,19 @@ func show_repeat(title: String, option: Dictionary, count: int, each: Callable) 
 	_title.text = "%s (%s/%s)" % [title, GameData.ar_digits(0), GameData.ar_digits(count)]
 
 
+## One card tapped as many times as the player thinks right, then the done
+## card: `each` is called per tap; read `count` after step_done.
+func show_counter(title: String, option: Dictionary, done_option: Dictionary, each: Callable, max_taps := 8) -> void:
+	show_step(title, [option, done_option], [])
+	_counting = true
+	count = 0
+	_count_max = max_taps
+	_done_id = done_option.id
+	_repeat_each = each
+	_base_title = title
+	_title.text = title
+
+
 func hide_now() -> void:
 	visible = false
 	step_complete = true
@@ -110,6 +130,24 @@ func card_rect(item_id: String) -> Rect2:
 
 func _on_card(item_id: String) -> void:
 	if _busy or step_complete:
+		return
+	if _counting:
+		if item_id == _done_id:
+			for card in _cards:
+				if card.id == item_id:
+					card.mark_right()
+			_busy = true
+			await get_tree().create_timer(0.35).timeout
+			step_complete = true
+			step_done.emit()
+		elif count < _count_max:
+			count += 1
+			_repeat_each.call()
+			for card in _cards:
+				if card.id == item_id:
+					card.badge = count
+					card.queue_redraw()
+			picked_right.emit()
 		return
 	if _repeat_left > 0:
 		_repeat_left -= 1
