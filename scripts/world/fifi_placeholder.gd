@@ -164,6 +164,11 @@ static func iso3(p: Vector3) -> Vector2:
 	return iso(p.x, p.y, p.z)
 
 
+## Where drinks leave the trunk for the customer (local space).
+func trunk_mouth() -> Vector2:
+	return iso(138, 10, 72)
+
+
 ## Tap area: the whole tail — hatch glass, tailgate, bumper and rear
 ## quarters — padded so a thumb landing on the edge still counts.
 func get_trunk_polygon() -> PackedVector2Array:
@@ -441,11 +446,12 @@ func _draw_open_hatch() -> void:
 	var tail_f: Vector3 = o[3]
 	var tail_n: Vector3 = o[4]
 	var glass_n: Vector3 = o[5]
-	# Raised this far we see the hatch's underside: trim panel round the glass.
+	# Raised this far we see the hatch's underside: bare painted inner steel
+	# round the glass, as on a Fiat 127, with lightening holes on the tailgate.
 	var out2 := _swing(HINGE + Vector2(1, 0.8)) - HINGE
 	var n := Vector3(out2.x, 0, out2.y)
 	var outside := n.dot(VIEW_DIR) > 0.0
-	var skin := COLOR_PAINT if outside else COLOR_TRIM
+	var skin := COLOR_PAINT if outside else COLOR_PAINT.darkened(0.2)
 	if not outside:
 		n = -n
 	var inward := -n.normalized() * 4.0
@@ -483,8 +489,21 @@ func _draw_open_hatch() -> void:
 	var seal := pane_2d.duplicate()
 	seal.append(pane_2d[0])
 	_m.polyline(seal, COLOR_RUBBER, 2.0, true)
-	# Lock on the tailgate's lip.
+	# Lock on the tailgate's lip; from below, the stamped panel's oval
+	# lightening holes either side of a dark lock plate.
 	var lock := tail_f.lerp(tail_n, 0.5).lerp(glass_f.lerp(glass_n, 0.5), 0.2)
+	if not outside:
+		var hole_col := _shade(COLOR_PAINT.darkened(0.55), n)
+		for t in [0.2, 0.32, 0.68, 0.8]:
+			var c: Vector3 = tail_f.lerp(tail_n, t).lerp(glass_f.lerp(glass_n, t), 0.45)
+			var ring := PackedVector2Array()
+			for k in 8:
+				var a := TAU * k / 8.0
+				ring.append(iso3(c + Vector3(0, cos(a) * 3.5, 0) + (glass_f - tail_f).normalized() * sin(a) * 2.0))
+			_m.colored_polygon(ring, hole_col)
+		_m.colored_polygon(_project([lock + Vector3(0, -7, 0), lock + Vector3(0, 7, 0),
+			lock + Vector3(0, 7, 0) + (glass_f - tail_f).normalized() * 5.0,
+			lock + Vector3(0, -7, 0) + (glass_f - tail_f).normalized() * 5.0]), _shade(Color("2c2a30"), n))
 	_m.line(iso3(lock + Vector3(0, -5, 0)), iso3(lock + Vector3(0, 5, 0)), _shade(COLOR_CHROME, n), 2.5)
 	for side in [-1.0, 1.0]:
 		var foot := Vector3(142, side * 50.0, 78)

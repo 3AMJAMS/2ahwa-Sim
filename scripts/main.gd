@@ -162,6 +162,10 @@ func _on_customer_tapped(c: Customer) -> void:
 func _serve(c: Customer) -> void:
 	var quality: float = _holding.quality
 	_holding = {}
+	await _hand_over(c)
+	if not is_instance_valid(c) or not c.is_waiting():
+		_update_hint()
+		return
 	var price := GameData.price_for(c.item_id, Economy.current_venue_tier)
 	var speed := lerpf(speed_tip.x, speed_tip.y, c.patience / c.patience_max)
 	var tips := maxi(1, roundi(price * quality * speed))
@@ -174,6 +178,30 @@ func _serve(c: Customer) -> void:
 		await get_tree().create_timer(0.9).timeout
 		await Tutorial.play([{"text": tr("TUT_FIRST_TIPS"), "target": world_host.wallet_label.get_global_rect}])
 		Tutorial.mark("first_tips")
+
+
+## The drink travels from FIFI's trunk to the customer's hand or car window.
+func _hand_over(c: Customer) -> void:
+	var item := GameData.get_menu_item(c.item_id)
+	var look: Dictionary = item.get("look", {})
+	var drink := Color(look.get("liquid", "#9c3d16"))
+	var cup := Node2D.new()
+	cup.light_mask = 0
+	cup.draw.connect(func() -> void:
+		cup.draw_colored_polygon(PackedVector2Array([Vector2(-9, 0), Vector2(9, 0), Vector2(11, -26), Vector2(-11, -26)]),
+			Color(0.85, 0.93, 1.0, 0.5))
+		cup.draw_colored_polygon(PackedVector2Array([Vector2(-8, -1), Vector2(8, -1), Vector2(9.5, -18), Vector2(-9.5, -18)]), drink)
+		cup.draw_line(Vector2(-11, -26), Vector2(11, -26), Color(1, 1, 1, 0.8), 1.5))
+	world_host.add_child(cup)
+	var from: Vector2 = world_host.fifi.position + world_host.fifi.trunk_mouth()
+	var to := c.handoff_point()
+	cup.position = from
+	var t := create_tween()
+	t.tween_method(func(k: float) -> void:
+		cup.position = from.lerp(to, k) + Vector2(0, -90.0 * sin(PI * k)), 0.0, 1.0, 0.45) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_callback(cup.queue_free)
+	await t.finished
 
 
 ## "+12 ج.م" floating up off the customer, and a buzz on a big tip.

@@ -77,11 +77,13 @@
       "id": "karkade_cold",
       "name_key": "PREP_KARKADE_COLD",
       "name_ar": "كركديه ساقع",
-      "station": "blend",
+      "station": "heat",
       "ingredients": [
-        "karkade",
-        "ice"
+        "karkade"
       ],
+      "finish": {
+        "ice": 3
+      },
       "shout_keys": [
         "SHOUT_KARKADE_COLD_1",
         "SHOUT_KARKADE_COLD_2",
@@ -89,13 +91,40 @@
       ],
       "unlock_tier": 0,
       "base_price_egp": 12,
-      "prep_time_sec": 9,
+      "prep_time_sec": 11,
       "difficulty": 1,
       "sugar_grade": null,
       "look": {
         "liquid": "#a3183a",
-        "bits": "#5c0d22",
-        "ice": true
+        "foam": "#c9566e",
+        "vessel": "glass"
+      }
+    },
+    {
+      "id": "iced_tea",
+      "name_key": "PREP_ICED_TEA",
+      "name_ar": "شاي ساقع",
+      "station": "heat",
+      "ingredients": [
+        "tea"
+      ],
+      "finish": {
+        "ice": 3
+      },
+      "shout_keys": [
+        "SHOUT_ICED_TEA_1",
+        "SHOUT_ICED_TEA_2",
+        "SHOUT_ICED_TEA_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 10,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "sugar_grade": null,
+      "look": {
+        "liquid": "#b5651d",
+        "foam": "#d9a066",
+        "vessel": "glass"
       }
     },
     {
@@ -106,12 +135,15 @@
       "ingredients": [
         "mango"
       ],
+      "finish": {
+        "ice": 3
+      },
       "shout_keys": [
         "SHOUT_MANGO_1",
         "SHOUT_MANGO_2",
         "SHOUT_MANGO_3"
       ],
-      "unlock_tier": 0,
+      "unlock_tier": 2,
       "base_price_egp": 15,
       "prep_time_sec": 11,
       "difficulty": 2,

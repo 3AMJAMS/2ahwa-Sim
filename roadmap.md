@@ -96,6 +96,9 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
 - Serve: back on the street with the drink, tap the customer to hand it over. Tips are paid on serving: price × venue × drink quality (brew accuracy × pick penalty) × speed (60–100% by patience left). Customers who run out of patience leave angry and the ticket tears off
 - Day summary adds orders served and customers lost; tutorial extended: the first customer (who waits forever), their ticket, the trunk, and handing the first drink over
 - App icon, hidden five-tap save reset for testers, Android APK + Web builds for friends
+- FIFI parks in the slow lane (البطيء) by the kerb. Most customers (about two in three) are drive-bys: a car (sedan, taxi, pickup, microbus) pulls in behind FIFI or stops beside her trunk in the next lane, the driver winds the window down (arm on the sill), orders, takes the drink through the window and pulls away, some leaving the window down, some winding it back up. The rest walk up the pavement with a proper walk cycle (swinging arms and legs, a little bob)
+- FIFI's menu is hot drinks only: iced drinks are made on the كنكة, then a second "add ice" step (tap the ice card once per cube, cubes drop into the glass). كركديه ساقع and the new شاي ساقع (iced tea) work this way; mango leaves FIFI's menu for a later tier and, like every fruit drink, gets ice added after rather than blended
+- Prep station art: the raised hatch now looks like a Fiat 127's from inside (bare painted steel with a pressed rib, hinge brackets, a stamped inner panel with oval lightening holes, lock block and chrome latch hook, rubber bump stops); the rear windscreen and the street around it show a static sky (clouds rolled per day, sun on its arc, stars and the moon in its phase for the game day); asphalt under the bumper with the rear tyres, axle, exhaust and the car's shadow
 
 **Remaining:** shisha coal-rotation station, "ask to repeat", day-start/day-end time-lapse, GameAnalytics, device/aspect-ratio pass
 
@@ -137,7 +140,7 @@ Project: **2ahwa Sim**. Effectively solo (you + AI assistance); friends' input i
 ---
 
 ## Feature Ideas Backlog
-Retention (regulars with memory, loyalty card, badges) · Atmosphere (radio/ambient events, seasonal weather, khamaseen wind, a daily-changing street: pavement on either side of FIFI, then new spots each day with trees, street corners, cats/dogs) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special, equipment wear: a blender pushed too hard can break and needs a paid repair — Phase 1 only has the free thermal cut-out) · Sharing (photo-mode/receipt screen)
+Retention (regulars with memory, loyalty card, badges) · Atmosphere (animated prep-station sky: drifting clouds, twinkling stars, maybe the moon rising — decide after playtesting the static one; radio/ambient events, seasonal weather, khamaseen wind, a daily-changing street: pavement on either side of FIFI, then new spots each day with trees, street corners, cats/dogs) · Cultural (café-history trivia notebook) · Economy (Ramadan iftar pricing, daily special, equipment wear: a blender pushed too hard can break and needs a paid repair — Phase 1 only has the free thermal cut-out) · Sharing (photo-mode/receipt screen)
 
 ---
 
@@ -174,8 +177,24 @@ Idle/incremental layer, optional **Phase 7** post-launch bolt-on — prototype s
 ---
 
 ## Hot & Cold Menu
+**FIFI (tier 0) is hot drinks only**, plus iced versions made the same way: brew on the كنكة, then add ice cubes (no blending). Built: شاي كشري/فتلة, قهوة تركي, كركديه سخن, كركديه ساقع, شاي ساقع.
 **Hot:** شاي (full ladder) · قهوة تركي (سادة→سرياقوسي) · سحلب · كركديه/ينسون (dual) · حلبة · قرفة · زنجبيل · كاكاو · الحلبسة
-**Cold:** كركديه بارد/ينسون بارد (dual) · مانجو (fruit kept in Sayed's ice box: rides in FIFI's passenger seat, set on the pavement each day) · تمر هندي · سوبيا (seasonal) · عرقسوس · قصب · خروب · قمر الدين (seasonal) · ليمون بالنعناع · بطيخ بالنعناع · جوافة/موز بلبن · آيس لاتيه/موكا/كولد برو (Modern unlock)
+**Cold (brewed + ice, any tier):** كركديه ساقع · شاي ساقع · ينسون ساقع · تمر هندي · عرقسوس · خروب · سوبيا (seasonal) · قمر الدين (seasonal)
+**Fruit, juices and cocktails (higher tiers, WAHSH / street ahwa and up):** مانجو (moved off FIFI's menu, iced not blended) · برتقال · جزر · جوافة · فراولة · بطيخ بالنعناع · موز بلبن · كوكتيل (layered fruit) · آيس لاتيه/موكا/كولد برو (Modern unlock). **Exception:** ليمون / ليمون بالنعناع comes earlier, as soon as the lemon squeezer is bought. Fruit lives in Sayed's ice box (rides in FIFI's passenger seat, set on the pavement each day).
+
+## Tools & Prep Station Expansion
+- **Juicers** (later tiers): orange juicer, carrot juicer, and more (sugar-cane press for the juice shop, below), each a station slot with its own minigame
+- **Lemon squeezer** for the prep station, hung on **movable side racks** (not fixed): the player drags racks and tools to where they like them
+- **More pots and tools:** bigger and double كنكة, a tea kettle, a سحلب pot, a milk pan, strainers; each with its own look on the rack
+
+## Beverages Chain & Branches
+All the places Sayed opens sit under one **beverages chain** (name TBD), each branch with its own menu focus:
+- **FIFI / WAHSH / ahwas / cafés:** the main ladder (below), hot drinks first
+- **عصارة (محل عصاير):** a juice shop like the ones selling قصب (sugar-cane) — mainly cold drinks, fresh juices and cocktails; cane press, juicers, blenders, fruit display
+- **Soft-drinks factory:** far future, after a long while, the chain bottling its own drinks
+- **Research rule:** when each new place is reached, do a fresh research pass on that kind of place (real menus, prices, equipment, décor, customers) before building it
+
+---
 
 ---
 

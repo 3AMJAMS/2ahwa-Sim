@@ -15,25 +15,29 @@ Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH
 
 Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → fade to the flat prep station →
 pick the ingredients from the tray → pick the tool (the كنكة on the fire or the blender) → make the order
-(شاي كشري, قهوة تركي or كركديه on the stove; كركديه ساقع or عصير مانجا in the blender) → tips paid →
-fade back to the street. The first order is always شاي كشري, then orders rotate at random.
+(شاي كشري, قهوة تركي, كركديه; the iced ones — كركديه ساقع, شاي ساقع — are brewed then get ice cubes) →
+fade back to the street and hand it over. FIFI's menu is hot drinks only for now; fruit drinks come at higher tiers.
+The first order is always شاي كشري, then orders rotate at random.
+
+Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
 First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
 
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
-- **Customers walk up to FIFI** and shout their order; it's clipped to a ticket at the top of the screen with a
+- **Customers pull up to FIFI**, parked in the slow lane (البطيء): most drive up, stop behind her or beside the
+  trunk, wind the window down and order; the rest walk up the pavement. Each shouts their order; it's clipped to a ticket at the top of the screen with a
   patience bar. **Tap the trunk** (makes whoever is most impatient), the ticket, or the customer to make an order;
-  once it's made, **tap the customer to serve it**. Tips are paid on serving and shrink the longer they waited;
+  once it's made, **tap the customer to serve it** (the cup goes in through the car window, then they drive off). Tips are paid on serving and shrink the longer they waited;
   customers who run out of patience walk off. Space/Enter opens the trunk on desktop.
-- **Pick what goes in it** from the tray at the bottom — شاي, بن, كركديه, مانجا, تلج (كركديه ساقع needs two:
-  كركديه and تلج) — then **pick the tool**: الكنكة for hot drinks, الخلاط for cold ones. Each wrong pick shakes
+- **Pick what goes in it** from the tray at the bottom — شاي, بن, كركديه — then **pick the tool** (الكنكة).
+  Iced drinks then ask for ice: **tap the ice card once per cube** and watch them drop into the glass. Each wrong pick shakes
   the car and takes 20% off the tip (down to half).
 - **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
   explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
 - **Hot orders — tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
-- **Cold orders — the blender runs by itself.** Press and hold (or hold Space) for turbo: it finishes faster
+- **Blended orders (later tiers) — the blender runs by itself.** Press and hold (or hold Space) for turbo: it finishes faster
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
   too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
   and tips drop.
@@ -57,10 +61,11 @@ Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you 
 | `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
-| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper |
+| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper, road and tyres below |
+| `scripts/stations/sky_art.gd` | The prep station's static sky: clouds rolled per day, sun on its arc, stars, the moon in its phase for the game day |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
 | `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |
-| `scripts/world/customer.gd`, `customer_queue.gd` | Customers: walk up, shout the order, patience, served/angry exits; the queue spawns them into three spots by the trunk |
+| `scripts/world/customer.gd`, `customer_queue.gd` | Customers: drive-bys (pull in behind or beside FIFI, window down, order, drive off) and walkers (animated walk cycle), shouting the order, patience, served/angry exits |
 | `scripts/ui/ticket_rail.gd` | Order tickets along the top of the street view |
 | `scripts/world/sidewalk_furniture.gd` | Sayed's folding lawn chair, his tea and his radio on the pavement (customer seating comes later as an upgrade) |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |

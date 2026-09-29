@@ -58,6 +58,67 @@ func scene_to_global(p: Vector2) -> Vector2:
 	return get_global_transform() * (_scene_xf() * p)
 
 
+## Ice cubes dropped into the served glass by the "add ice" finish step:
+## each is {x, y, to, rot}; they fall in, bob, and float at the surface.
+var _ice_cubes: Array = []
+## The drink is iced: subclasses stop the glass steaming.
+var iced := false
+
+
+## Drops one cube into the glass (subclasses say where its surface is).
+func add_ice_cube() -> void:
+	var n := _ice_cubes.size()
+	var surf := _ice_surface_y()
+	var cube := {"x": _ice_glass_x() + [-15.0, 13.0, -1.0, 17.0, -17.0][n % 5], "y": surf - 170.0,
+		"to": surf + 3.0 + float(n % 2) * 6.0, "rot": randf_range(-0.5, 0.5), "splash": 0.0}
+	_ice_cubes.append(cube)
+	iced = true
+	var t := create_tween()
+	t.tween_method(func(v: float) -> void:
+		cube.y = v
+		queue_redraw(), cube.y, cube.to + 8.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func() -> void: cube.splash = 1.0)
+	t.tween_method(func(v: float) -> void:
+		cube.y = v
+		cube.splash = maxf(cube.splash - 0.08, 0.0)
+		queue_redraw(), cube.to + 8.0, cube.to, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _reset_ice() -> void:
+	_ice_cubes.clear()
+	iced = false
+
+
+## Where the served glass's drink surface is, and its centre x (scene space).
+func _ice_surface_y() -> float:
+	return COUNTER_Y - 120.0
+
+
+func _ice_glass_x() -> float:
+	return 250.0
+
+
+## The cubes, drawn in the glass after the drink and before its front.
+func _draw_ice() -> void:
+	for cube in _ice_cubes:
+		var c := Vector2(cube.x, cube.y)
+		var e := 13.0
+		var xf := Transform2D(float(cube.rot), c)
+		var top := PackedVector2Array([xf * Vector2(0, -e), xf * Vector2(e, -e * 0.5), xf * Vector2(0, 0), xf * Vector2(-e, -e * 0.5)])
+		var left := PackedVector2Array([xf * Vector2(-e, -e * 0.5), xf * Vector2(0, 0), xf * Vector2(0, e), xf * Vector2(-e, e * 0.5)])
+		var right := PackedVector2Array([xf * Vector2(0, 0), xf * Vector2(e, -e * 0.5), xf * Vector2(e, e * 0.5), xf * Vector2(0, e)])
+		draw_colored_polygon(left, Color(0.72, 0.86, 0.98, 0.75))
+		draw_colored_polygon(right, Color(0.6, 0.78, 0.95, 0.75))
+		draw_colored_polygon(top, Color(0.9, 0.97, 1.0, 0.9))
+		draw_polyline(PackedVector2Array([top[0], top[1], top[2], top[3], top[0]]), Color(1, 1, 1, 0.8), 1.5, true)
+		if cube.splash > 0.0:
+			var s: float = cube.splash
+			draw_arc(Vector2(cube.x, cube.to), 16.0 + 24.0 * (1.0 - s), PI, TAU, 12, Color(1, 1, 1, 0.6 * s), 2.0)
+			for k in 3:
+				draw_circle(Vector2(cube.x + (k - 1) * 14.0, cube.to - 10.0 - 20.0 * (1.0 - s) - k * 3.0), 2.5,
+					Color(1, 1, 1, 0.7 * s))
+
+
 ## Where the appliance itself sits in scene space; subclasses narrow it.
 func _focus_scene_rect() -> Rect2:
 	return Rect2(Vector2.ZERO, SCENE_SIZE)

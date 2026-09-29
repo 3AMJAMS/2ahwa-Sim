@@ -51,7 +51,20 @@ var u := 0.0:
 		u = value
 		position = _point(u, lane_v) + Vector2(0, bob)
 
+## Drive-by customers: where to stop (u, NAN when just passing), the lane to
+## pull into, and how far the near front window is wound down (0..1).
+signal parked
+var stop_u := NAN
+var park_lane := NAN
+var is_parked := false
+var departing := false
+var window_open := 0.0
+
 var _lamps := Node2D.new()
+var _window_layer := Node2D.new()
+var _driver_skin := Color("b97a52")
+var _driver_hair := Color("1d1612")
+var _driver_arm := false
 var _m: MeshCanvas
 var _mesh: ArrayMesh
 var _soft := StationArt._make_soft_texture()
@@ -81,6 +94,11 @@ func _ready() -> void:
 	cur_speed = speed
 	_end_f = dir * (_length() * 0.5 + 0.01)
 	add_child(_lamps)
+	add_child(_window_layer)
+	_window_layer.draw.connect(_draw_window)
+	_driver_skin = [Color("c68c62"), Color("a86f48"), Color("8a5a3a"), Color("d9a47a")][rng.randi() % 4]
+	_driver_hair = [Color("1d1612"), Color("2a1f18"), Color("6a6560")][rng.randi() % 3]
+	_driver_arm = rng.randf() < 0.5
 	_lamps.draw.connect(_draw_lamps)
 
 
@@ -99,8 +117,137 @@ func step_lane(delta: float) -> void:
 		changing_lane = false
 
 
+## Pull over: brake smoothly to a stop at `at_u`, drifting into `lane` first.
+func pull_over(at_u: float, lane: float) -> void:
+	stop_u = at_u
+	park_lane = lane
+
+
+## Winds the near front window to `to` (0 shut, 1 open) over `time` seconds.
+func roll_window(to: float, time := 0.8) -> void:
+	var t := create_tween()
+	t.tween_method(func(v: float) -> void:
+		window_open = v
+		_window_layer.queue_redraw(), window_open, to, time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await t.finished
+
+
+## Order done: after `delay`, maybe wind the window back up, then pull out
+## into the traffic lane and drive away.
+func drive_off(keep_window_open: bool, delay: float) -> void:
+	await get_tree().create_timer(delay).timeout
+	if not keep_window_open:
+		await roll_window(0.0, 0.7)
+	stop_u = NAN
+	is_parked = false
+	departing = true
+	if not is_equal_approx(lane_v, Traffic.LANES[0][0]):
+		change_lane(Traffic.LANES[0][0])
+
+
+## Outline round the whole vehicle (local space), for taps.
+func body_outline() -> PackedVector2Array:
+	var half := _length() * 0.5
+	var w := _half_width()
+	var roof := _roof_h()
+	var pts := PackedVector2Array()
+	for f in [-half, half]:
+		for b in [-w, w]:
+			pts.append(_q(f, b, 0.0))
+			pts.append(_q(f * 0.8, b, roof))
+	return Geometry2D.convex_hull(pts)
+
+
+## Just above the middle of the roof (local space).
+func roof_top() -> Vector2:
+	return _q(0.0, 0.0, _roof_h())
+
+
+## Middle of the near front window (local space), where drinks are handed in.
+func window_centre() -> Vector2:
+	var win := _window_shape()
+	if win.is_empty():
+		return _q(0.0, _half_width(), 1.0)
+	var c := Vector2.ZERO
+	for p in win[0]:
+		c += p
+	c /= win[0].size()
+	return _q(c.x, win[1], c.y)
+
+
+func _roof_h() -> float:
+	match kind:
+		Kind.MICROBUS:
+			return 2.1
+		Kind.PICKUP:
+			return 1.74
+		Kind.TUKTUK:
+			return 1.8
+		Kind.SCOOTER:
+			return 1.8
+	return 1.45
+
+
+## The near front window as [(f, h) points, b], or [] for kinds without one.
+func _window_shape() -> Array:
+	match kind:
+		Kind.TAXI, Kind.SEDAN:
+			return [[Vector2(-0.02, 0.93), Vector2(0.84, 0.93), Vector2(0.4, 1.36), Vector2(-0.02, 1.36)], 0.715]
+		Kind.PICKUP:
+			return [[Vector2(0.05, 1.1), Vector2(1.05, 1.1), Vector2(0.72, 1.64), Vector2(0.05, 1.64)], 0.815]
+		Kind.MICROBUS:
+			return [[Vector2(1.12, 1.26), Vector2(1.95, 1.26), Vector2(1.62, 1.82), Vector2(1.12, 1.82)], 0.875]
+	return []
+
+
+## The window wound down: dark cabin, the driver (maybe an elbow on the
+## sill), and what's left of the glass sliding into the door.
+func _draw_window() -> void:
+	if window_open <= 0.01:
+		return
+	var win := _window_shape()
+	if win.is_empty():
+		return
+	var pts: Array = win[0]
+	var b: float = win[1] + 0.01
+	var h0 := INF
+	var h1 := -INF
+	var f0 := INF
+	var f1 := -INF
+	for p in pts:
+		h0 = minf(h0, p.y)
+		h1 = maxf(h1, p.y)
+		f0 = minf(f0, p.x)
+		f1 = maxf(f1, p.x)
+	var opening := PackedVector2Array()
+	for p in pts:
+		opening.append(_q(p.x, b, p.y))
+	_window_layer.draw_colored_polygon(opening, Color("15141a"))
+	# The driver, head and shoulder in the opening.
+	var head := _q(lerpf(f0, f1, 0.45), b - 0.4, lerpf(h0, h1, 0.5))
+	_window_layer.draw_circle(head + Vector2(0, 16), 15, Color("3a4a5a"))
+	_window_layer.draw_circle(head, 11, _driver_skin)
+	_window_layer.draw_arc(head, 11, PI, TAU, 10, _driver_hair, 5.0)
+	if _driver_arm and window_open > 0.9:
+		_window_layer.draw_line(_q(lerpf(f0, f1, 0.55), b, h0 + 0.02), _q(lerpf(f0, f1, 0.8), b + 0.12, h0 + 0.02),
+			_driver_skin, 8.0, true)
+	# Glass sinks into the door from the top.
+	var cut := lerpf(h1, h0, window_open)
+	if cut > h0 + 0.01:
+		var glass_fh := PackedVector2Array()
+		for p in pts:
+			glass_fh.append(Vector2(p.x, minf(p.y, cut)))
+		var glass := PackedVector2Array()
+		for p in glass_fh:
+			glass.append(_q(p.x, b + 0.005, p.y))
+		if Geometry2D.triangulate_polygon(glass).size() > 0:
+			_window_layer.draw_colored_polygon(glass, _shade(GLASS.lerp(GLASS_SKY, 0.35), Vector3(0, 1, 0)))
+			_window_layer.draw_line(_q(f0, b + 0.006, cut), _q(lerpf(f0, f1, 0.9), b + 0.006, cut), Color(1, 1, 1, 0.3), 1.5)
+
+
 func set_light(ambient: Color, darkness: float) -> void:
 	self_modulate = ambient
+	_window_layer.modulate = ambient
 	_lamps.modulate.a = lerpf(0.2, 1.0, darkness)
 
 

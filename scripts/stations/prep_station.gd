@@ -67,7 +67,7 @@ func start_order() -> void:
 	var guided := Tutorial.pending("first_prep")
 
 	# 1. Ingredients.
-	picker.show_step(tr("PREP_PICK_INGREDIENTS"), GameData.ingredients, needs)
+	picker.show_step(tr("PREP_PICK_INGREDIENTS"), GameData.menu_ingredients(), needs)
 	if guided and not needs.is_empty():
 		var steps := [{"text": tr("TUT_ORDER").format({"order": order_name}), "target": order_box.get_global_rect}]
 		for i in needs.size():
@@ -166,6 +166,10 @@ func _on_wrong_pick(_id: String) -> void:
 ## The drink's done. Tips are paid when it's handed over on the street, so
 ## this only reports how good it came out: brew accuracy × the pick penalty.
 func _on_gauge_completed(accuracy: float) -> void:
+	var run := _run
+	await _finish_steps()
+	if run != _run:
+		return
 	var penalty := maxf(0.5, 1.0 - mistake_penalty * _mistakes)
 	var perfect := accuracy >= 1.0 and _mistakes == 0
 	var headline := tr("RESULT_SUCCESS") if perfect else tr("RESULT_OK")
@@ -173,6 +177,23 @@ func _on_gauge_completed(accuracy: float) -> void:
 	_celebrate(perfect)
 	_finish({"success": true, "item_id": _item.id, "accuracy": accuracy, "quality": accuracy * penalty,
 		"mistakes": _mistakes})
+
+
+## After the pour: iced drinks get their cubes dropped in, one tap each
+## (brewed or blended first, never blended with the ice).
+func _finish_steps() -> void:
+	var ice := int(_item.get("finish", {}).get("ice", 0))
+	if ice <= 0:
+		return
+	var art := _active_art()
+	picker.show_repeat(tr("PREP_ADD_ICE"), {"id": "ice", "name_key": "ING_ICE"}, ice, art.add_ice_cube)
+	if Tutorial.pending("first_ice"):
+		await Tutorial.play([{"text": tr("TUT_ADD_ICE").format({"order": order_display.text, "count": GameData.ar_digits(ice)}),
+			"target": picker.card_rect.bind("ice"), "until": picker.step_done}])
+		Tutorial.mark("first_ice")
+	if not picker.step_complete:
+		await picker.step_done
+	await picker.slide_away()
 
 
 func _on_gauge_failed() -> void:
