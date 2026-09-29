@@ -144,6 +144,7 @@ func reset() -> void:
 	_puffs.clear()
 	_bubbles.clear()
 	_drops.clear()
+	_reset_ice()
 	queue_redraw()
 
 
@@ -258,7 +259,7 @@ func _emit_particles(delta: float) -> void:
 			_drop_acc -= 1.0
 			_drops.append(_particle(_stream_end(), Vector2(_rng.randf_range(-90, 90), _rng.randf_range(-170, -70)),
 				_rng.randf_range(0.2, 0.35), _rng.randf_range(2.5, 4.0), _served_color(_pour_kind)))
-	if glass_fill > 0.1 and _puffs.size() < 120:
+	if glass_fill > 0.1 and _puffs.size() < 120 and not iced:
 		_glass_steam_acc += delta * 7.0 * GLASS_STEAM[_pour_kind] * glass_fill
 		while _glass_steam_acc >= 1.0:
 			_glass_steam_acc -= 1.0
@@ -592,6 +593,7 @@ func _draw_glass_back() -> void:
 		for i in 9:
 			draw_circle(Vector2(b.x - hw * 0.7 + i * hw * 0.17, top_y + sin(i * 2.1) * 2.5), 2.2,
 				Color(_foam, glass_foam))
+	_draw_ice()
 
 
 func _draw_glass_front() -> void:
@@ -727,3 +729,11 @@ func _stream_end() -> Vector2:
 ## The pot on the burner and the gas cylinder under it.
 func _focus_scene_rect() -> Rect2:
 	return Rect2(470, 225, 260, 385)
+
+
+func _ice_surface_y() -> float:
+	return _glass_surface_y()
+
+
+func _ice_glass_x() -> float:
+	return GLASS_BASE.x

@@ -49,6 +49,7 @@ func _draw() -> void:
 	# Sky, fading lighter toward the horizon.
 	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, horizon), Vector2(0, horizon)]),
 		PackedColorArray([sky.darkened(0.35), sky.darkened(0.35), sky.lightened(0.12), sky.lightened(0.12)]))
+	SkyArt.paint(self, Rect2(0, 0, size.x, horizon - 120.0), PackedVector2Array(), _soft)
 	_draw_buildings(horizon, amb, dark)
 	# Road down to the viewer, with the far kerb under the buildings.
 	draw_rect(Rect2(0, horizon, size.x, size.y - horizon), ASPHALT * amb)

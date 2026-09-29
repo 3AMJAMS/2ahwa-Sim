@@ -113,6 +113,7 @@ func reset() -> void:
 	_puffs.clear()
 	_drops.clear()
 	_sparks.clear()
+	_reset_ice()
 	_make_chunks()
 	queue_redraw()
 
@@ -549,6 +550,7 @@ func _draw_glass_back() -> void:
 				quad.append(at + Vector2(cos(a), sin(a)) * 12.0)
 			draw_colored_polygon(quad, Color(COLOR_ICE, ice_in))
 			draw_polyline(quad + PackedVector2Array([quad[0]]), Color(1, 1, 1, 0.8 * ice_in), 1.5)
+	_draw_ice()
 
 
 func _draw_straw() -> void:
@@ -615,3 +617,11 @@ func _stream_end() -> Vector2:
 ## The blender, jug to base.
 func _focus_scene_rect() -> Rect2:
 	return Rect2(515, 165, 200, 445)
+
+
+func _ice_surface_y() -> float:
+	return _glass_surface_y()
+
+
+func _ice_glass_x() -> float:
+	return GLASS_BASE.x

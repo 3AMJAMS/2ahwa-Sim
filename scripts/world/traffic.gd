@@ -12,7 +12,9 @@ extends Node2D
 const LANES := [[-3.0, -1.0], [-6.5, -1.0], [-9.9, 1.0]]
 ## Vehicles enter and leave this many tiles either side of FIFI, off screen.
 const START_U := 30.0
-const MAX_VEHICLES := 7
+const MAX_VEHICLES := 9
+## How gently customer cars brake to their spot (tiles/s²).
+const PARK_DECEL := 2.2
 ## Clear road kept to the vehicle ahead: a fixed margin plus a time gap.
 const MIN_GAP := 1.5
 const TIME_GAP := 0.7
@@ -53,12 +55,30 @@ func _process(delta: float) -> void:
 			if gap < safe:
 				# Ease down toward the leader's speed, and below it when too close.
 				target = minf(target, leader.cur_speed * clampf(gap / safe, 0.0, 1.0))
-			# Stuck behind something slow? Pull out into the other lane going
-			# the same way, if it's clear alongside.
-			if leader.speed < car.speed * 0.85 and not car.changing_lane:
+			# Stuck behind something slow (or a car stopped at FIFI)? Pull out
+			# into the other lane going the same way, if it's clear alongside.
+			if leader.cur_speed < car.speed * 0.85 and not car.changing_lane and is_nan(car.stop_u):
 				var other := _free_neighbour_lane(car, cars)
 				if other != car.lane_v:
 					car.change_lane(other)
+		if car.is_parked:
+			continue
+		if not is_nan(car.stop_u):
+			# A customer: ease off to stop at the spot, drifting into the
+			# parking lane on the way.
+			var dist := (car.stop_u - car.u) * car.dir
+			if dist < 14.0 and not car.changing_lane and car.target_lane != car.park_lane:
+				car.change_lane(car.park_lane)
+			target = minf(target, sqrt(2.0 * PARK_DECEL * maxf(dist, 0.0)))
+			if dist <= 0.03 and car.cur_speed < 0.6:
+				car.u = car.stop_u
+				car.cur_speed = 0.0
+				car.is_parked = true
+				car.parked.emit()
+				continue
+		elif car.departing and car.changing_lane:
+			# Pulling out from beside FIFI: creep until back in the lane.
+			target = minf(target, 1.4)
 		var rate := ACCEL if target > car.cur_speed else BRAKE
 		car.cur_speed = move_toward(car.cur_speed, target, rate * delta)
 		if car.kind == StreetVehicle.Kind.TUKTUK or car.kind == StreetVehicle.Kind.SCOOTER:
@@ -74,6 +94,27 @@ func _process(delta: float) -> void:
 			_wait[i] = _rng.randf_range(1.2, 2.2) if _rng.randf() < 0.35 else _rng.randf_range(4.0, 11.0)
 			if cars.size() < MAX_VEHICLES and _entry_clear(i, cars):
 				_spawn(i)
+
+
+## A car that will pull over for a drink: comes down the near lane and stops
+## at `at_u` in `lane`. Null if the lane entry is blocked right now.
+func spawn_customer_car(kind: StreetVehicle.Kind, at_u: float, lane: float) -> StreetVehicle:
+	var cars: Array[StreetVehicle] = []
+	for v in get_children():
+		cars.append(v as StreetVehicle)
+	if not _entry_clear(0, cars):
+		return null
+	var car := StreetVehicle.new()
+	car.kind = kind
+	car.lane_v = LANES[0][0]
+	car.target_lane = LANES[0][0]
+	car.dir = LANES[0][1]
+	car.speed = _rng.randf_range(4.5, 6.0)
+	car.u = -car.dir * START_U
+	car.pull_over(at_u, lane)
+	add_child(car)
+	car.set_light(_ambient, _darkness)
+	return car
 
 
 ## The nearest vehicle ahead of `car` in its lane, if any.

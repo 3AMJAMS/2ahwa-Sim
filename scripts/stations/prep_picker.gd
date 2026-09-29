@@ -18,6 +18,9 @@ var _picked: Array = []
 var _cards: Array[PickCard] = []
 var _base_title := ""
 var _busy := false
+var _repeat_left := 0
+var _repeat_total := 0
+var _repeat_each: Callable
 
 var _title := Label.new()
 var _row := HBoxContainer.new()
@@ -52,6 +55,7 @@ func show_step(title: String, options: Array, required: Array) -> void:
 	_cards.clear()
 	_required = required.duplicate()
 	_picked.clear()
+	_repeat_left = 0
 	_busy = false
 	step_complete = false
 	_base_title = title
@@ -67,6 +71,17 @@ func show_step(title: String, options: Array, required: Array) -> void:
 		modulate.a = 0.0
 		var t := create_tween()
 		t.tween_property(self, "modulate:a", 1.0, 0.25)
+
+
+## One card tapped `count` times (dropping ice cubes, say); `each` is called
+## per tap and step_done fires after the last.
+func show_repeat(title: String, option: Dictionary, count: int, each: Callable) -> void:
+	show_step(title, [option], [])
+	_repeat_left = count
+	_repeat_total = count
+	_repeat_each = each
+	_base_title = title
+	_title.text = "%s (%s/%s)" % [title, GameData.ar_digits(0), GameData.ar_digits(count)]
 
 
 func hide_now() -> void:
@@ -95,6 +110,20 @@ func card_rect(item_id: String) -> Rect2:
 
 func _on_card(item_id: String) -> void:
 	if _busy or step_complete:
+		return
+	if _repeat_left > 0:
+		_repeat_left -= 1
+		_repeat_each.call()
+		picked_right.emit()
+		var done := _repeat_total - _repeat_left
+		_title.text = "%s (%s/%s)" % [_base_title, GameData.ar_digits(done), GameData.ar_digits(_repeat_total)]
+		if _repeat_left == 0:
+			for card in _cards:
+				card.mark_right()
+			_busy = true
+			await get_tree().create_timer(0.5).timeout
+			step_complete = true
+			step_done.emit()
 		return
 	if item_id in _required and not item_id in _picked:
 		_picked.append(item_id)

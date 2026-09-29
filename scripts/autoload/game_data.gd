@@ -47,6 +47,17 @@ func pick_order(rng: RandomNumberGenerator, avoid_id := "") -> String:
 	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
 
 
+## The ingredient cards worth showing: those some orderable drink uses.
+func menu_ingredients() -> Array:
+	var used := {}
+	for id in menu_items:
+		var item: Dictionary = menu_items[id]
+		if int(item.get("unlock_tier", 0)) <= Economy.current_venue_tier and Economy.owns_slot(item.get("station", "")):
+			for ing in item.get("ingredients", []):
+				used[ing] = true
+	return ingredients.filter(func(e: Dictionary) -> bool: return used.has(e.id))
+
+
 ## The tool a station's drinks are made with ("heat" → the stove).
 func tool_for_station(station: String) -> String:
 	for t in tools:

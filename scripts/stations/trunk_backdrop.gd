@@ -39,6 +39,7 @@ const ROOF_TOP := 200.0
 const ROOF_BOTTOM := 226.0
 const SODIUM := Color("ffa94d")
 const BULB := Color("fff1d6")
+const ASPHALT := Color("4a4c54")
 
 ## Screen y of the front edge of the trunk floor (top of the art's carpet band).
 var floor_y := 1400.0
@@ -121,19 +122,30 @@ func _draw_hatch(w: float) -> void:
 	var dark := DayClock.darkness()
 	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, ROOF_TOP), Vector2(0, ROOF_TOP)]),
 		PackedColorArray([sky.darkened(0.3), sky.darkened(0.3), sky, sky]))
+	# The 127's hatch from inside: bare body-colour steel, no trim panel, in
+	# the trunk's shade, with a pressed rib running round the window frame.
+	var inner_paint := PAINT.darkened(0.32)
 	var hatch := PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(r + 4, HATCH_H), Vector2(l - 4, HATCH_H)])
-	draw_colored_polygon(hatch, TRIM.darkened(0.25))
+	draw_colored_polygon(hatch, inner_paint)
+	var rib := PackedVector2Array([Vector2(40, 26), Vector2(w - 40, 26), Vector2(r - 26, HATCH_H - 16), Vector2(l + 26, HATCH_H - 16),
+		Vector2(40, 26)])
+	draw_polyline(rib, inner_paint.darkened(0.25), 3.0, true)
+	draw_polyline(PointerHand._offset(rib, Vector2(0, 3)), inner_paint.lightened(0.18), 1.5, true)
+	# Hinge brackets up at the roof line.
+	for x in [l + 90.0, r - 90.0]:
+		draw_rect(Rect2(x - 22, HATCH_H - 22, 44, 20), Color("2c2a30"))
+		draw_rect(Rect2(x - 22, HATCH_H - 22, 44, 5), Color("45434b"))
+		for bx in [x - 12.0, x + 12.0]:
+			draw_circle(Vector2(bx, HATCH_H - 11), 3.0, Color("6a6e76"))
 	# Rear windscreen: what's behind it is sky, tinted by the glass.
 	var pane := PackedVector2Array([Vector2(70, 34), Vector2(w - 70, 34), Vector2(r - 44, HATCH_H - 28),
 		Vector2(l + 44, HATCH_H - 28)])
 	var top_col := sky.darkened(0.25).lerp(GLASS, 0.3)
 	var low_col := sky.lightened(0.08).lerp(GLASS_SKY, 0.3)
 	draw_polygon(pane, PackedColorArray([top_col, top_col, low_col, low_col]))
+	var pane_box := Rect2(pane[0], Vector2.ZERO).expand(pane[2]).expand(pane[1])
+	SkyArt.paint(self, pane_box, pane, _soft)
 	if dark > 0.05:
-		for k in 14:
-			var p := Vector2(110 + float((k * 173) % 860), 44 + float((k * 67) % 100))
-			if Geometry2D.is_point_in_polygon(p, pane):
-				draw_circle(p, 1.6, Color(1, 1, 1, 0.6 * dark))
 		# The streetlight overhead, seen through the glass.
 		var lamp := Vector2(w * 0.8, 70)
 		_soft_blob(lamp, Vector2(150, 110), Color(SODIUM, 0.35 * dark))
@@ -158,10 +170,29 @@ func _draw_hatch(w: float) -> void:
 	var seal := pane.duplicate()
 	seal.append(pane[0])
 	draw_polyline(seal, SEAL, 5.0, true)
-	# Painted lip nearest us with the latch, and the trim's hinge edge.
-	draw_colored_polygon(PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(w + 40, 22), Vector2(-40, 22)]),
-		PAINT.darkened(0.25))
-	draw_rect(Rect2(w * 0.5 - 30, 8, 60, 12), CHROME)
+	# The stamped inner panel along the hatch's bottom edge (nearest us): a
+	# recessed strip with oval lightening holes showing the outer skin, the
+	# lock and its latch hook in the middle, rubber bump stops at the ends.
+	var lip := PackedVector2Array([Vector2(-60, 0), Vector2(w + 60, 0), Vector2(w + 40, 30), Vector2(-40, 30)])
+	draw_colored_polygon(lip, inner_paint.lightened(0.05))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(60, 5, w - 120, 18), 8), inner_paint.darkened(0.18))
+	for k in 4:
+		var cx := lerpf(140.0, w - 140.0, (k + (1.0 if k >= 2 else 0.0)) / 4.0)
+		if absf(cx - w * 0.5) < 120.0:
+			continue
+		draw_colored_polygon(PrepIcons._ellipse(Vector2(cx, 14), Vector2(46, 7), 0.0, 18), PAINT.darkened(0.1))
+		draw_arc(Vector2(cx, 14), 46, PI, TAU, 12, inner_paint.darkened(0.4), 1.5)
+	var lock := Vector2(w * 0.5, 15)
+	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(48, 12), Vector2(96, 24)), 5), Color("2c2a30"))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(lock - Vector2(40, 8), Vector2(80, 16)), 4), Color("4a4850"))
+	draw_colored_polygon(PackedVector2Array([lock + Vector2(-9, 8), lock + Vector2(9, 8), lock + Vector2(6, 26),
+		lock + Vector2(-6, 26)]), CHROME.darkened(0.2))
+	draw_arc(lock + Vector2(0, 26), 7, 0.0, PI, 8, CHROME.darkened(0.2), 4.0)
+	for bx in [lock.x - 30.0, lock.x + 30.0]:
+		draw_circle(Vector2(bx, lock.y), 3.0, CHROME)
+	for x in [30.0, w - 30.0]:
+		draw_colored_polygon(PrepIcons._ellipse(Vector2(x, 20), Vector2(14, 8), 0.0, 12), SEAL)
+	draw_line(Vector2(-40, 30), Vector2(w + 40, 30), inner_paint.darkened(0.3), 2.0)
 	draw_line(Vector2(l - 4, HATCH_H - 2), Vector2(r + 4, HATCH_H - 2), SEAL, 4.0)
 
 
@@ -490,10 +521,57 @@ func _draw_rear_panel(w: float, h: float) -> void:
 	draw_rect(Rect2(0, bumper_top + 40, w, 8), Color(0, 0, 0, 0.25))
 	for x in [w * 0.27, w * 0.73]:
 		draw_rect(Rect2(x - 16, bumper_top - 10, 32, 68), SEAL)
-	draw_rect(Rect2(0, bumper_top + 48, w, h - bumper_top - 48), Color("100e19"))
-	_soft_blob(Vector2(w * 0.5, bumper_top + 60), Vector2(w * 0.6, 40), Color(0, 0, 0, 0.5))
-	draw_circle(Vector2(w * 0.3, bumper_top + 66), 14, Color("3a3a42"))
-	draw_circle(Vector2(w * 0.3, bumper_top + 66), 8, Color("121016"))
+	_draw_ground(w, h, bumper_top + 48)
+
+
+## Below the bumper, looking down: the asphalt of the slow lane (grainy, a
+## crack and an old oil stain), the car's shadow, the floor pan, rear axle
+## and exhaust in the dark under the body, and the rear tyres at the corners.
+func _draw_ground(w: float, h: float, top: float) -> void:
+	var amb := DayClock.ambient()
+	var dark := DayClock.darkness()
+	var road := ASPHALT * amb
+	draw_rect(Rect2(0, top, w, h - top), road)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 127
+	for k in int(w * (h - top) / 420.0):
+		var p := Vector2(rng.randf() * w, top + rng.randf() * (h - top))
+		var grain := road.lightened(0.12) if rng.randf() < 0.5 else road.darkened(0.2)
+		draw_rect(Rect2(p, Vector2.ONE * rng.randf_range(1.5, 3.5)), grain)
+	var crack := PackedVector2Array()
+	for k in 7:
+		crack.append(Vector2(w * 0.58 + k * 34.0, h - 6.0 - k * 9.0 + (8.0 if k % 2 == 0 else -4.0)))
+	draw_polyline(crack, road.darkened(0.45), 2.0, true)
+	_soft_blob(Vector2(w * 0.72, h - 24), Vector2(80, 16), Color(0.05, 0.05, 0.08, 0.35))
+	# The sodium streetlight's pool on the road after dark.
+	if dark > 0.05:
+		_soft_blob(Vector2(w * 0.8, h), Vector2(w * 0.5, 70), Color(SODIUM, 0.18 * dark))
+	# The car's shadow and what's under it, dark between the wheels.
+	var under := h - top
+	draw_rect(Rect2(0, top, w, under * 0.4), Color(0.03, 0.03, 0.05, 0.6))
+	_soft_blob(Vector2(w * 0.5, top + under * 0.45), Vector2(w * 0.62, under * 0.25), Color(0, 0, 0, 0.55))
+	var axle_y := top + under * 0.2
+	draw_line(Vector2(150, axle_y), Vector2(w - 150, axle_y), Color("1b1a1f"), 7.0)
+	draw_line(Vector2(170, axle_y + 7), Vector2(w - 170, axle_y + 7), Color("26252b"), 3.0)
+	draw_rect(Rect2(w * 0.4, top + 2, w * 0.2, under * 0.14), Color("17161b"))
+	# Exhaust pipe under the left side, its tip poking out.
+	var pipe := Vector2(w * 0.3, top + under * 0.22)
+	draw_line(pipe + Vector2(40, -12), pipe, Color("2e2d33"), 9.0)
+	draw_colored_polygon(PrepIcons._ellipse(pipe, Vector2(12, 8), 0.0, 14), Color("4a4850"))
+	draw_colored_polygon(PrepIcons._ellipse(pipe, Vector2(7, 5), 0.0, 12), Color("0c0b0f"))
+	# Rear tyres at the corners, tread facing us, sitting on their shadows.
+	for x in [34.0, w - 154.0]:
+		var tyre := Rect2(x, top, 120, under * 0.62)
+		_soft_blob(Vector2(tyre.get_center().x, tyre.end.y), Vector2(90, 14), Color(0, 0, 0, 0.6))
+		draw_colored_polygon(PrepIcons._rrect(tyre, 18), Color("26252b") * amb)
+		draw_colored_polygon(PrepIcons._rrect(tyre.grow_individual(-10, -4, -10, -6), 12), Color("3a3940") * amb)
+		draw_line(Vector2(tyre.position.x + 14, tyre.end.y - 5), Vector2(tyre.end.x - 14, tyre.end.y - 5),
+			Color("5a5962") * amb, 2.0)
+		for k in 5:
+			var ty := tyre.position.y + 12 + k * (tyre.size.y - 20) / 5.0
+			draw_line(Vector2(tyre.position.x + 16, ty), Vector2(tyre.end.x - 16, ty + 4), Color("141317"), 3.0)
+		draw_line(Vector2(tyre.get_center().x, tyre.position.y + 6), Vector2(tyre.get_center().x, tyre.end.y - 6),
+			Color("141317"), 4.0)
 
 
 ## LED strips down the raised hatch's sides and along its hinge edge, then

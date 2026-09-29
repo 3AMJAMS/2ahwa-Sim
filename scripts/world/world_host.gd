@@ -43,6 +43,9 @@ const STREETLIGHTS := [[Vector2(-3, 3.75), -1.0], [Vector2(9, 3.75), -1.0], [Vec
 const POLE_H := 260.0
 ## How far each arm reaches out over the road, in tiles.
 const ARM_REACH := 1.25
+## The street sits a little left of centre so FIFI and the customers pulled
+## up behind and beside her all fit on a phone screen.
+const VIEW_SHIFT := Vector2(-170, 0)
 
 var interactive := true
 
@@ -77,6 +80,9 @@ func _ready() -> void:
 	# The labels are UI, not scenery: keep the streetlights off them.
 	hint_label.light_mask = 0
 	wallet_label.light_mask = 0
+	# The labels stay centred on screen, not on the shifted street.
+	for label in [hint_label, wallet_label]:
+		label.position.x -= VIEW_SHIFT.x
 	wallet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	wallet_label.gui_input.connect(_on_wallet_input)
 	for lamp in STREETLIGHTS:
@@ -89,6 +95,7 @@ func _ready() -> void:
 	fifi.add_sibling(_furniture)
 	# Customers stand on the pavement, in front of FIFI and the chair.
 	_furniture.add_sibling(queue)
+	queue.traffic = _traffic
 	Economy.currency_changed.connect(_pop_wallet.unbind(1))
 	get_viewport().size_changed.connect(_recenter)
 	Economy.currency_changed.connect(_update_wallet.unbind(1))
@@ -122,7 +129,7 @@ func set_interactive(value: bool) -> void:
 
 
 func _recenter() -> void:
-	position = get_viewport_rect().size * 0.5
+	position = get_viewport_rect().size * 0.5 + VIEW_SHIFT
 
 
 func _relight() -> void:
