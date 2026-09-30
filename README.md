@@ -22,6 +22,13 @@ The first order is always شاي كشري, then orders rotate at random.
 Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
 First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
 
+## Play it
+- **Web / iPhone:** https://3amjams.github.io/2ahwa-Sim/ (built and published by `.github/workflows/web.yml` on every
+  merge to `main`; one-time setup: repo Settings → Pages → Source: **GitHub Actions**). On iPhone open it in Safari,
+  then Share → **Add to Home Screen**: it installs like an app, full screen, with its own icon. (A native iOS app
+  needs a Mac with Xcode and a paid Apple developer account, so the web app is the iOS route for now.)
+- **Android:** install the APK (export preset "Android", arm64).
+
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 - **Customers pull up to FIFI**, parked in the slow lane (البطيء): most drive up, stop behind her or beside the
@@ -57,7 +64,8 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 - **A shift is 15 minutes.** The clock starts at 4 pm and runs through sunset (about 4 minutes in) and night
   (the sodium streetlights and LED strips come on) to 4 am, when Sayed packs up by himself (an order being made is
   handed over first). Tap **روّح** to go home earlier. Either way you see the day's takings, the day number goes up
-  and the next day starts at 4 pm.
+  and the next day starts at 4 pm. The day ends on a dawn screen with Sayed's receipt for the day (orders
+  served, customers lost, the takings, a "خالص" stamp) and a **يوم جديد** button.
 - **Sayed's racks are movable.** Tap **رتّب** in the prep station's corner, drag the rail of kanakas, the lemon-squeezer
   rack or the chalk menu board wherever you like, then خلاص. Positions are kept in the save.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.

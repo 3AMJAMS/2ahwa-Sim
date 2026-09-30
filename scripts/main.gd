@@ -10,7 +10,6 @@ extends Node
 enum State { WORLD, TO_PREP, PREP, TO_WORLD, GOING_HOME }
 
 ## How long the end-of-day summary stays up.
-@export var day_summary_sec := 2.2
 ## Tip multiplier from how much patience was left when served: from `x` for a
 ## customer who was about to walk off to `y` for one served straight away.
 @export var speed_tip := Vector2(0.6, 1.0)
@@ -32,12 +31,19 @@ var _holding := {}
 @onready var go_home_button: Button = $Hud/GoHomeButton
 @onready var vignette: ColorRect = $VignetteLayer/Vignette
 var rail := TicketRail.new()
+var summary := DaySummary.new()
+## The day ended at 4 am rather than by روّح.
+var _closed_by_clock := false
 
 
 func _ready() -> void:
 	world_host.trunk_tapped.connect(_on_trunk_tapped)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
+	var summary_layer := CanvasLayer.new()
+	summary_layer.layer = 9
+	add_child(summary_layer)
+	summary_layer.add_child(summary)
 	DayClock.closing_time.connect(_on_closing_time)
 	world_host.reset_requested.connect(_confirm_reset)
 	queue.customer_ordered.connect(_on_customer_ordered)
@@ -306,6 +312,7 @@ func _on_closing_time() -> void:
 	while state != State.WORLD and state != State.GOING_HOME:
 		await get_tree().create_timer(0.5).timeout
 	if state == State.WORLD:
+		_closed_by_clock = true
 		go_home()
 
 
@@ -316,17 +323,17 @@ func go_home() -> void:
 	world_host.set_interactive(false)
 	go_home_button.visible = false
 	rail.visible = false
-	fade_label.text = tr("UI_DAY_OVER").format({
-		"day": GameData.ar_digits(Economy.day_number),
-		"amount": GameData.ar_digits(Economy.currency_egp - _day_start_money),
-		"served": GameData.ar_digits(Economy.served_today),
-		"failed": GameData.ar_digits(Economy.failed_today)})
-	fade_label.visible = true
-	await _fade("fade_out")
 	_holding = {}
 	rail.clear()
 	queue.clear()
-	await get_tree().create_timer(day_summary_sec).timeout
+	queue.open = false
+	# Packing up at dawn: the day's receipt, then on to tomorrow.
+	await summary.show_day({"day": Economy.day_number, "amount": Economy.currency_egp - _day_start_money,
+		"served": Economy.served_today, "failed": Economy.failed_today, "closed": _closed_by_clock})
+	_closed_by_clock = false
+	await _fade("fade_out")
+	summary.hide_now()
+	queue.open = true
 	Economy.end_day()
 	DayClock.start_day()
 	_day_start_money = Economy.currency_egp

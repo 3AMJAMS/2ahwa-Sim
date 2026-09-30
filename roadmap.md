@@ -110,6 +110,9 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
 - **Better bodies:** customers rebuilt at ~5 heads tall (jaw, ears, eyes with whites, varied hair, glasses, beards, collars, buttons, cuffs, hands with thumbs, shoes with soles, lit from the left); **Sayed now sits in his lawn chair** between orders, towel on his shoulder, sipping his tea
 - **Prep station car redrawn** from behind at hatch height, looking down into the trunk (after the Renault 4 coffee-car photo): body wider at the bumper tapering to the roof with the street visible round it, the hatch overhead showing its edge thickness, the roof edge and the walls' thickness round a narrowing opening, deeper trunk floor, lamp clusters standing proud, a thick chrome bumper seen from above; tyres no longer visible
 
+- **End of day** is now a dawn receipt, not a black screen: pre-dawn sky over the rooftops, Sayed's day written up like a café receipt (orders served, customers lost, takings counting up, a red "خالص" stamp), his line for the day, and a "يوم جديد" button
+- **Play links:** the Web build is published to GitHub Pages by a workflow on every merge (installable on iPhone via Safari → Add to Home Screen); Android APK for testers
+
 **Later (from the Sep 30 batch):**
 - **Cat animations:** jumping down off FIFI, walking the pavement, sitting, stretching, grooming, rubbing round customers' legs, curling up under the chair, begging at the ice box; customers who stop to pet it
 - **Isometric "block" characters and cat** (previewed, not adopted): an option to redraw people and the cat as iso voxel-style figures matching FIFI's projection, with four facings; decide after comparing with the current figures
