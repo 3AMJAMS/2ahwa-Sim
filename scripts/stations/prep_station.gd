@@ -31,9 +31,40 @@ var _run := 0
 @onready var result_label: Label = %ResultLabel
 @onready var backdrop: TrunkBackdrop = %Backdrop
 @onready var picker: PrepPicker = %Picker
+var racks := ToolRacks.new()
+
+
+## The car is laid out once at this size and scaled to fit the screen, so it
+## looks the same on every device; the street fills whatever is left round it.
+const DESIGN_SIZE := Vector2(1080, 1440)
 
 
 func _ready() -> void:
+	var frame := $Frame as Control
+	frame.resized.connect(_fit_car)
+	_fit_car()
+	# Sayed's racks hang over the car and under the kit; "رتّب" lets the
+	# player move them.
+	var car := backdrop.get_parent() as Control
+	racks.backdrop = backdrop
+	racks.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	car.add_child(racks)
+	car.move_child(racks, backdrop.get_index() + 1)
+	var arrange := Button.new()
+	arrange.text = tr("UI_ARRANGE")
+	arrange.add_theme_font_size_override("font_size", 28)
+	arrange.position = Vector2(18, 20)
+	arrange.custom_minimum_size = Vector2(120, 60)
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.1, 0.07, 0.1, 0.85)
+	box.border_color = Color("e0a458")
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(14)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		arrange.add_theme_stylebox_override(state, box)
+	arrange.add_theme_color_override("font_color", Color("ffd27a"))
+	arrange.pressed.connect(func() -> void: racks.set_arranging(not racks.arranging))
+	car.add_child(arrange)
 	for gauge in [heat_gauge, blend_gauge]:
 		gauge.gauge_completed.connect(_on_gauge_completed)
 	heat_gauge.gauge_failed.connect(_on_gauge_failed)
@@ -42,6 +73,17 @@ func _ready() -> void:
 	picker.wrong_pick.connect(_on_wrong_pick)
 	DayClock.minute_changed.connect(_relight)
 	_relight()
+
+
+func _fit_car() -> void:
+	var frame := $Frame as Control
+	var car := $Frame/Car as Control
+	var k := minf(frame.size.x / DESIGN_SIZE.x, frame.size.y / DESIGN_SIZE.y)
+	if k <= 0.0:
+		return
+	car.size = DESIGN_SIZE
+	car.scale = Vector2(k, k)
+	car.position = (frame.size - DESIGN_SIZE * k) * 0.5
 
 
 ## Shows the order with the stove idle in front and the blender behind,
@@ -285,6 +327,7 @@ func _process(_delta: float) -> void:
 ## The car's paintwork follows the time of day; its LEDs and the kit don't.
 func _relight() -> void:
 	backdrop.self_modulate = Color.WHITE.lerp(DayClock.ambient(), 0.5)
+	racks.self_modulate = backdrop.self_modulate
 
 
 func _gauge_for(station: String) -> Control:

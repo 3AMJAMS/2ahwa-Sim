@@ -38,6 +38,7 @@ func _ready() -> void:
 	world_host.trunk_tapped.connect(_on_trunk_tapped)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
+	DayClock.closing_time.connect(_on_closing_time)
 	world_host.reset_requested.connect(_confirm_reset)
 	queue.customer_ordered.connect(_on_customer_ordered)
 	queue.customer_left.connect(_on_customer_left)
@@ -297,6 +298,15 @@ func _on_prep_complete(result: Dictionary) -> void:
 		elif result.get("success", false):
 			_flash_hint.call_deferred(tr("UI_CUSTOMER_GONE"))
 	transition_to_world()
+
+
+## 4 am: the shift's over. If an order is being made, finish handing it
+## over first, then close.
+func _on_closing_time() -> void:
+	while state != State.WORLD and state != State.GOING_HOME:
+		await get_tree().create_timer(0.5).timeout
+	if state == State.WORLD:
+		go_home()
 
 
 func go_home() -> void:

@@ -65,6 +65,9 @@ var idle_station := "blend":
 		idle_station = value
 		queue_redraw()
 
+## The trunk's frame moved (the tool racks follow it).
+signal frame_changed
+
 var _font: Font = preload("res://assets/ui/main_theme.tres").default_font
 var _t := 0.0
 ## One layer per LED colour, each drawn once; the breathing is just their
@@ -104,6 +107,7 @@ func set_frame(new_floor: float, new_sill: float, new_inner: Vector2, new_scale:
 	inner = new_inner
 	art_scale = new_scale
 	queue_redraw()
+	frame_changed.emit()
 	for layer in _led_groups:
 		layer.queue_redraw()
 
@@ -331,6 +335,21 @@ func _draw_bulbs() -> void:
 		draw_circle(bulb, 14, StationArt.hdr(BULB, 2.6))
 
 
+## Where things sit inside the trunk, for the tool racks drawn over it:
+## the seat back's top, the back of the floor, the opening's and the back
+## wall's edges, and the supply plank.
+func trunk_geo() -> Dictionary:
+	var top := ROOF_BOTTOM + 10.0
+	var depth := 150.0 * art_scale
+	var fl := _open_x(floor_y, -1)
+	var fr := _open_x(floor_y, 1)
+	var seat_top := top + 70.0
+	return {"top": top, "seat_top": seat_top, "back": floor_y - depth, "floor": floor_y,
+		"tl": _open_x(top, -1), "tr": _open_x(top, 1), "fl": fl, "fr": fr,
+		"bl": fl + depth * 0.9, "br": fr - depth * 0.9, "s": art_scale,
+		"plank": maxf(floor_y - 480.0 * art_scale, seat_top + 170.0)}
+
+
 ## Looking down into the trunk: a sliver of headliner, the rear seat back,
 ## the trim walls with their wheel-arch humps, and a deep carpeted floor.
 func _draw_interior(w: float) -> void:
@@ -382,9 +401,107 @@ func _draw_interior(w: float) -> void:
 		var y := lerpf(back, floor_y, d)
 		var x := lerpf(lerpf(bl, fl, d), lerpf(br, fr, d), t)
 		draw_circle(Vector2(x, y), 1.5, Color(1, 1, 1, 0.05))
+	_draw_depth(fl, fr, bl, br, back, seat_top, top)
+	_draw_jerrycan(Vector2(bl + 40.0 * art_scale, back + 30.0 * art_scale), art_scale * 0.9)
+	_draw_mat(fl, fr, bl, br, back)
 	_draw_idle_appliance(Vector2(br - 110.0 * art_scale, back + 4.0), art_scale * 0.62)
 	_draw_rack(fl, fr, bl, br, back, seat_top)
+	_draw_power(tl, top, seat_top, bl)
 	_draw_bulbs()
+
+
+## Light and shade that give the trunk its depth: the bulbs' warm pools on
+## the seat back, dark creases where the walls meet the seat and the floor,
+## and the back of the floor falling into shadow.
+func _draw_depth(fl: float, fr: float, bl: float, br: float, back: float, seat_top: float, top: float) -> void:
+	var o := _opening()
+	for x in [o[0].x + 70.0, o[1].x - 70.0]:
+		_soft_blob(Vector2(lerpf(x, size.x * 0.5, 0.35), seat_top + 60.0), Vector2(220, 170), Color(1.0, 0.82, 0.5, 0.16))
+	var ao := Color(0, 0, 0, 0.55)
+	var clear := Color(0, 0, 0, 0)
+	for side: float in [-1.0, 1.0]:
+		var deep := bl if side < 0 else br
+		var band := 46.0 * art_scale * side
+		draw_polygon(PackedVector2Array([Vector2(deep, seat_top - 16), Vector2(deep, back), Vector2(deep + band, back),
+			Vector2(deep + band, seat_top - 16)]), PackedColorArray([ao, ao, clear, clear]))
+		draw_polygon(PackedVector2Array([Vector2(deep, seat_top - 16), Vector2(deep, back), Vector2(deep - band * 0.8, back + 20.0),
+			Vector2(deep - band * 0.8, seat_top - 30)]), PackedColorArray([ao, ao, clear, clear]))
+	draw_polygon(PackedVector2Array([Vector2(bl, back), Vector2(br, back), Vector2(br, back + 60.0 * art_scale),
+		Vector2(bl, back + 60.0 * art_scale)]), PackedColorArray([ao, ao, clear, clear]))
+	draw_polygon(PackedVector2Array([Vector2(bl, back), Vector2(br, back), Vector2(br, back - 40.0 * art_scale),
+		Vector2(bl, back - 40.0 * art_scale)]), PackedColorArray([Color(0, 0, 0, 0.4), Color(0, 0, 0, 0.4), clear, clear]))
+	draw_polygon(PackedVector2Array([Vector2(o[0].x, top - 10), Vector2(o[1].x, top - 10), Vector2(br, seat_top + 30),
+		Vector2(bl, seat_top + 30)]), PackedColorArray([Color(0, 0, 0, 0.45), Color(0, 0, 0, 0.45), clear, clear]))
+
+
+## A blue 20-litre water jerrycan standing at the back of the floor.
+func _draw_jerrycan(base: Vector2, k: float) -> void:
+	if k <= 0.05:
+		return
+	var w := 92.0 * k
+	var h := 128.0 * k
+	_soft_blob(base + Vector2(w * 0.5, 0), Vector2(w * 0.8, 14 * k), Color(0, 0, 0, 0.5))
+	var body := Rect2(base + Vector2(0, -h), Vector2(w, h))
+	draw_colored_polygon(PrepIcons._rrect(body, 12 * k), Color("2f6fb3"))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(body.position + Vector2(w * 0.62, 6 * k), Vector2(w * 0.34, h - 12 * k)), 8 * k),
+		Color(0, 0, 0, 0.18))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(body.position + Vector2(8 * k, 10 * k), Vector2(12 * k, h - 24 * k)), 5 * k),
+		Color(1, 1, 1, 0.18))
+	for y in [0.4, 0.65]:
+		draw_line(body.position + Vector2(6 * k, h * y), body.position + Vector2(w - 6 * k, h * y), Color(0, 0, 0, 0.15), 3.0 * k)
+	# Handle across the top, cap to one side, water line showing through.
+	draw_colored_polygon(PrepIcons._rrect(Rect2(body.position + Vector2(w * 0.2, -22 * k), Vector2(w * 0.5, 26 * k)), 8 * k),
+		Color("2f6fb3").darkened(0.1))
+	draw_colored_polygon(PrepIcons._rrect(Rect2(body.position + Vector2(w * 0.28, -14 * k), Vector2(w * 0.34, 12 * k)), 5 * k),
+		Color("1d1b20"))
+	draw_rect(Rect2(body.position + Vector2(w * 0.72, -16 * k), Vector2(18 * k, 18 * k)), Color("f2c230"))
+	draw_rect(Rect2(body.position + Vector2(w * 0.72, -16 * k), Vector2(18 * k, 4 * k)), Color("f2c230").lightened(0.3))
+	draw_line(body.position + Vector2(4 * k, h * 0.3), body.position + Vector2(w - 4 * k, h * 0.3), Color(0.8, 0.9, 1.0, 0.25), 2.0 * k)
+
+
+## Ribbed rubber mat over the carpet at the front of the floor.
+func _draw_mat(fl: float, fr: float, bl: float, br: float, back: float) -> void:
+	var near := floor_y - 4.0
+	var far := lerpf(floor_y, back, 0.75)
+	var inset_near := 30.0 * art_scale
+	var mat := PackedVector2Array([Vector2(lerpf(fl, bl, 0.1) + inset_near, near), Vector2(lerpf(fr, br, 0.1) - inset_near, near),
+		Vector2(lerpf(fr, br, 0.8), far), Vector2(lerpf(fl, bl, 0.8), far)])
+	draw_colored_polygon(mat, Color("26232a"))
+	for k in 12:
+		var t := (k + 0.5) / 12.0
+		var y := lerpf(near, far, pow(t, 0.8))
+		draw_line(Vector2(lerpf(mat[0].x, mat[3].x, t) + 6, y), Vector2(lerpf(mat[1].x, mat[2].x, t) - 6, y), Color("3a3640"), 2.0)
+	draw_polyline(PackedVector2Array([mat[0], mat[1], mat[2], mat[3], mat[0]]), Color("1a181d"), 2.0, true)
+
+
+## Power strip on the left wall: the bulbs' leads and the blender's cable,
+## with a cable running down to the battery.
+func _draw_power(tl: float, top: float, seat_top: float, bl: float) -> void:
+	var s := art_scale
+	var strip := Rect2(Vector2(lerpf(tl, bl, 0.45) - 30 * s, seat_top + 90 * s), Vector2(60 * s, 22 * s))
+	_soft_blob(strip.get_center() + Vector2(6, 10), Vector2(50, 20) * s, Color(0, 0, 0, 0.4))
+	draw_colored_polygon(PrepIcons._rrect(strip, 5 * s), Color("ece6da"))
+	for k in 3:
+		var c := strip.position + Vector2((12 + k * 18) * s, 11 * s)
+		draw_rect(Rect2(c - Vector2(5, 5) * s, Vector2(10, 10) * s), Color("2a2a30"))
+	draw_circle(strip.position + Vector2(56 * s, 5 * s), 3 * s, StationArt.hdr(Color(1.0, 0.25, 0.2), 1.6))
+	var o := _opening()
+	for target in [Vector2(o[0].x + 70.0, ROOF_BOTTOM + 14), Vector2(o[1].x - 70.0, ROOF_BOTTOM + 14)]:
+		var cable := PackedVector2Array()
+		var a := strip.position + Vector2(12 * s, 0)
+		for i in 9:
+			var t := i / 8.0
+			cable.append(a.lerp(target, t) + Vector2(0, sin(t * PI) * 26.0))
+		draw_polyline(cable, Color("1d1b20"), 3.0, true)
+	var down := PackedVector2Array()
+	var from := strip.position + Vector2(30 * s, 22 * s)
+	for i in 9:
+		var t := i / 8.0
+		down.append(from + Vector2(sin(t * PI) * 10.0 - t * 12.0, t * 240.0 * s))
+	draw_polyline(down, Color("1d1b20"), 4.0, true)
+
+
+
 
 
 ## Wooden rack across the trunk, stocked with the stand's supplies.
@@ -394,6 +511,8 @@ func _draw_rack(l: float, r: float, bl: float, br: float, back: float, seat_top:
 	var x0 := lerpf(l, bl, 0.5)
 	var x1 := lerpf(r, br, 0.5)
 	var post_foot := lerpf(floor_y, back, 0.5)
+	# The plank and its load throw a shadow on the seat back behind.
+	_soft_blob(Vector2((x0 + x1) * 0.5, y + 44.0 * s), Vector2((x1 - x0) * 0.56, 56.0 * s), Color(0, 0, 0, 0.45))
 	for x in [x0 + 10.0 * s, x1 - 26.0 * s]:
 		draw_rect(Rect2(x, y, 16.0 * s, post_foot - y), WOOD.darkened(0.35))
 		draw_rect(Rect2(x, y, 4.0 * s, post_foot - y), WOOD.darkened(0.2))

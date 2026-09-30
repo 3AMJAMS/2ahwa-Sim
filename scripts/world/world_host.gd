@@ -61,6 +61,8 @@ var _m: MeshCanvas
 var _street_mesh: ArrayMesh
 var _lamp_mesh: ArrayMesh
 var _furniture := SidewalkFurniture.new()
+var _cat := StreetCat.new()
+var _sayed := SayedFigure.new()
 ## Customers walking up to the trunk; main.gd drives the orders.
 var queue := CustomerQueue.new()
 
@@ -90,9 +92,18 @@ func _ready() -> void:
 	# Passing traffic drives in the lanes behind FIFI, so it goes under her.
 	add_child(_traffic)
 	move_child(_traffic, 0)
+	# The street's cat, asleep on FIFI's roof, lying along the car.
+	_cat.position = fifi.iso(40, 4, fifi.Z_ROOF)
+	_cat.rotation = 0.32
+	_cat.scale = Vector2.ONE * 1.15
+	fifi.add_child(_cat)
 	# Sayed's chairs stand on the pavement, nearer us than FIFI.
 	_furniture.position = fifi.position
 	fifi.add_sibling(_furniture)
+	# Sayed sits in his chair between orders.
+	_sayed.position = SidewalkFurniture.iso(Vector3(54, 150, 33))
+	_sayed.scale = Vector2.ONE * 0.85
+	_furniture.add_child(_sayed)
 	# Customers stand on the pavement, in front of FIFI and the chair.
 	_furniture.add_sibling(queue)
 	queue.traffic = _traffic
@@ -137,6 +148,8 @@ func _relight() -> void:
 	fifi.ambient = DayClock.ambient()
 	fifi.darkness = dark
 	_furniture.ambient = DayClock.ambient()
+	_cat.modulate = DayClock.ambient()
+	_sayed.modulate = DayClock.ambient()
 	queue.modulate = Color.WHITE.lerp(DayClock.ambient(), 0.8)
 	_traffic.set_light(DayClock.ambient(), dark)
 	for light in _lamp_lights:

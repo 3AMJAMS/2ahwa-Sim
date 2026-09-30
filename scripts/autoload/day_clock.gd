@@ -4,12 +4,17 @@ extends Node
 ## scenes read the sky colour, ambient light and darkness from here.
 
 signal minute_changed
+## The shift is over (4 am): Sayed packs up and the day ends.
+signal closing_time
 
 ## Sayed opens up in the late afternoon.
 const START_HOUR := 16.0
-## Game minutes per real second: a full 24 hours takes an hour of play
-## (4 pm to sunset is about 10 minutes).
-const MINUTES_PER_SECOND := 0.4
+## A shift runs from 4 pm to 4 am and takes this many real minutes; the
+## day then ends by itself (the player can still go home earlier).
+const SHIFT_HOURS := 12.0
+const SHIFT_REAL_MINUTES := 15.0
+## Game minutes per real second (0.8: sunset comes about 4 minutes in).
+const MINUTES_PER_SECOND := SHIFT_HOURS * 60.0 / (SHIFT_REAL_MINUTES * 60.0)
 ## Lighting keyframes round the clock: hour, ambient tint, sky, darkness 0..1.
 const KEYS := [
 	[0.0, Color(0.62, 0.6, 0.76), Color("0e1022"), 1.0],
@@ -26,11 +31,18 @@ const KEYS := [
 
 ## Minutes since midnight.
 var minutes := START_HOUR * 60.0
+## Game minutes since the shift started, and whether closing time was called.
+var elapsed := 0.0
+var _closed := false
 var _last_whole := -1
 
 
 func _process(delta: float) -> void:
 	minutes = fmod(minutes + delta * MINUTES_PER_SECOND, 1440.0)
+	elapsed += delta * MINUTES_PER_SECOND
+	if not _closed and elapsed >= SHIFT_HOURS * 60.0:
+		_closed = true
+		closing_time.emit()
 	var whole := int(minutes)
 	if whole != _last_whole:
 		_last_whole = whole
@@ -40,6 +52,8 @@ func _process(delta: float) -> void:
 
 func start_day() -> void:
 	minutes = START_HOUR * 60.0
+	elapsed = 0.0
+	_closed = false
 	_last_whole = -1
 
 

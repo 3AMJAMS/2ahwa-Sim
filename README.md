@@ -35,7 +35,7 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 - **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
   explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
 - **Sugar by the spoon.** Every tea and coffee order comes with a sugar grade (on the ticket and in the shout):
-  tea is سادة / مظبوط / زيادة (0 / 2 / 3 spoons); Turkish coffee also has عالريحة and مانو, and each tap is half a
+  tea is سادة / مظبوط / زيادة (0 / 2 / 3 spoons; على مية بيضا packs the same spoons into a thicker layer); Turkish coffee also has عالريحة and مانو, and each tap is half a
   spoon (سادة 0, عالريحة ½, مظبوط 1, مانو 1½, زيادة 2). Tap the sugar once per spoon, then خلاص; each spoon off
   the order takes a quarter off the drink's quality. The first three days the tray spells out the spoons.
 - **Tea is built in the glass**, the Egyptian way:
@@ -54,9 +54,12 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
   too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
   and tips drop.
-- **The day doesn't end by itself.** The clock starts at 4 pm and runs 1 game minute every 2.5 real seconds (a full day is an hour of play), through
-  sunset and night (the sodium streetlights and LED strips come on) and round again. Tap **🏠 روّح** to go home:
-  you see the day's takings, the day number goes up and the next day starts at 4 pm.
+- **A shift is 15 minutes.** The clock starts at 4 pm and runs through sunset (about 4 minutes in) and night
+  (the sodium streetlights and LED strips come on) to 4 am, when Sayed packs up by himself (an order being made is
+  handed over first). Tap **روّح** to go home earlier. Either way you see the day's takings, the day number goes up
+  and the next day starts at 4 pm.
+- **Sayed's racks are movable.** Tap **رتّب** in the prep station's corner, drag the rail of kanakas, the lemon-squeezer
+  rack or the chalk menu board wherever you like, then خلاص. Positions are kept in the save.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
 
 ### Visual effects
@@ -74,13 +77,17 @@ Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you 
 | `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over; tea built in the glass (sugar layer, leaves, tea bag, colour steeping from bottom to top, stirring, the held side-pour and its flow meter) |
 | `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
 | `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
-| `scripts/stations/trunk_backdrop.gd` | The prep screen's car, seen from behind at hatch height looking down into the trunk: body wider at the bumper tapering to the roof (the street shows round it), hatch overhead with its edge thickness, roof edge and wall thickness round the opening, trunk interior + supply rack, LED strips, lamp clusters standing proud, plate, thick chrome bumper, road below |
+| `scripts/stations/trunk_backdrop.gd` | The prep screen's car (laid out at a fixed 1080×1440 and scaled to fit, so it looks the same on every screen), seen from behind at hatch height looking down into the trunk: body wider at the bumper tapering to the roof (the street shows round it), hatch overhead with its edge thickness, roof edge and wall thickness round the opening, trunk interior + supply rack, water jerrycan, power strip and cables, rubber mat, light pools and shadows for depth, LED strips, lamp clusters standing proud, plate, thick chrome bumper, road below |
+| `scripts/stations/tool_racks.gd` | Movable racks over the trunk: a rail of hanging kanakas (three sizes), ladle, milk pan and tongs; the lemon squeezer, tea strainer and towel; the chalk menu board with today's prices; the arrange mode |
 | `scripts/stations/sky_art.gd` | The prep station's static sky: clouds rolled per day, sun on its arc, stars, the moon in its phase for the game day |
 | `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
 | `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |
 | `scripts/world/customer.gd`, `customer_queue.gd` | Customers: drive-bys (pull in behind or beside FIFI, window down, order, drive off) and walkers (animated walk cycle), shouting the order, patience, served/angry exits |
 | `scripts/ui/ticket_rail.gd` | Order tickets along the top of the street view |
 | `scripts/world/sidewalk_furniture.gd` | Sayed's folding lawn chair, his tea and his radio on the pavement (customer seating comes later as an upgrade) |
+| `scripts/world/figure_art.gd` | Builds the street's people (customers and Sayed): ~5 heads tall, jaw, ears, eyes, varied hair, glasses, beards, collars, buttons, cuffs, hands, shoes; the limbs separate so they can swing |
+| `scripts/world/sayed_figure.gd` | Sayed in his chair between orders: breathing, sipping his tea |
+| `scripts/world/street_cat.gd` | The ginger-and-white street cat asleep on FIFI's roof: breathing, ear twitches, tail flicks, lifting its head to look round, blinking and yawning |
 | `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
 | `scripts/stations/prep_station.gd` | Runs an order: ingredients → tool → gauge, pays tips (docked for wrong picks), tutorial hooks |
 | `scripts/stations/prep_picker.gd`, `pick_card.gd`, `prep_icons.gd` | The pick tray, its cards, and their procedural icons (ingredients and tools) |

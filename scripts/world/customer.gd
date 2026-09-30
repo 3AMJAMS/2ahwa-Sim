@@ -71,6 +71,9 @@ var _cloth := Color.WHITE
 var _trousers := Color.WHITE
 var _extra := Color.WHITE
 var _moustache := true
+var _beard := false
+var _glasses := false
+var _style := 0
 
 
 ## A walker heading for `stand_at`, entering the pavement at `from_u`.
@@ -151,6 +154,12 @@ func _roll_look() -> void:
 	_skin = SKIN[_rng.randi() % SKIN.size()]
 	_hair = [Color("1d1612"), Color("2a1f18"), Color("6a6560"), Color("3a2a1c")][_rng.randi() % 4]
 	_moustache = _rng.randf() < 0.75
+	_beard = _rng.randf() < 0.18
+	_glasses = _rng.randf() < 0.2
+	_style = _rng.randi() % 4
+	# Some older men, greying.
+	if _rng.randf() < 0.25:
+		_hair = [Color("8a8680"), Color("b8b4ae")][_rng.randi() % 2]
 	_trousers = [Color("2b2f3a"), Color("3a3a40"), Color("4a3f35"), Color("2f4a7a")][_rng.randi() % 4]
 	match _look:
 		Look.GALABEYA:
@@ -394,98 +403,22 @@ func _draw_limb(i: int) -> void:
 		_limbs[i].draw_mesh(_limb_meshes[i], null)
 
 
-## A chunky ~4-heads-tall figure seen three-quarters from the front, feet at
-## the origin, about 180 px tall. Legs and arms are separate (see _build_limb).
+## About five heads tall, three-quarters from the front, feet at the origin
+## (FigureArt builds it). Legs and arms are separate so they can swing.
 func _build_body() -> void:
-	_ellipse(Vector2(0, 0), Vector2(30, 10), Color(0, 0, 0, 0.28))
-	match _look:
-		Look.GALABEYA:
-			_trap(-12, 26, 22, -126, 20, _cloth)
-			_m.line(Vector2(0, -122), Vector2(0, -92), _cloth.darkened(0.25), 2.0)
-			_head(_moustache)
-			# White kufi cap.
-			_ellipse(Vector2(0, -170), Vector2(21, 9), Color("f1ede4"))
-			_m.colored_polygon(PackedVector2Array([Vector2(-21, -170), Vector2(21, -170), Vector2(18, -181), Vector2(-18, -181)]),
-				Color("f1ede4"))
-		Look.SHIRT:
-			_trap(-58, 22, 21, -126, 20, _cloth)
-			_m.line(Vector2(0, -124), Vector2(0, -60), _cloth.darkened(0.2), 1.5)
-			_m.rect(Rect2(-22, -62, 44, 5), Color("3a2a1c"))
-			_head(_moustache)
-			_hair_short()
-		Look.HIJAB:
-			_trap(-10, 27, 21, -124, 20, _cloth)
-			# Scarf round the head and down over the shoulders, face showing.
-			_m.colored_polygon(PackedVector2Array([Vector2(-26, -118), Vector2(26, -118), Vector2(30, -136), Vector2(-30, -136)]),
-				_extra.darkened(0.08))
-			_ellipse(Vector2(0, -155), Vector2(27, 29), _extra)
-			_ellipse(Vector2(0, -150), Vector2(16, 19), _skin)
-			_face(Vector2(0, -150), false)
-		Look.TSHIRT:
-			_trap(-60, 21, 20, -124, 20, _cloth)
-			_head(false)
-			_hair_short()
+	FigureArt.build_body(_m, _look_dict())
 
 
 ## Limb k in its own space, pivot at the origin (hip or shoulder).
-## Walkers in a robe only show their feet swinging under the hem.
 func _build_limb(k: int) -> void:
-	var robe := _look == Look.GALABEYA or _look == Look.HIJAB
-	if k < 2:
-		var shoe := Color("5a3a28") if _look == Look.GALABEYA else Color("1a1a1e")
-		if _look == Look.TSHIRT:
-			shoe = Color("e9e6df")
-		if not robe:
-			_m.colored_polygon(PackedVector2Array([Vector2(-8, 0), Vector2(8, 0), Vector2(7, 58), Vector2(-7, 58)]),
-				_trousers.darkened(0.08 if k == 0 else 0.0))
-		_ellipse(Vector2(1, 60), Vector2(10, 5), shoe)
-	else:
-		var sleeve := _cloth.darkened(0.05 if k == 2 else 0.15)
-		var short := _look == Look.TSHIRT
-		var elbow := Vector2(3 if k == 3 else -3, 28)
-		var hand := Vector2(2 if k == 3 else -2, 52)
-		_m.line(Vector2.ZERO, elbow, sleeve, 11.0)
-		_m.circle(elbow, 5.5, _skin if short else sleeve)
-		_m.line(elbow, hand, _skin if short else sleeve, 10.0)
-		_m.circle(hand, 6.5, _skin)
+	FigureArt.build_limb(_m, _look_dict(), k)
 
 
-## A shape wider or narrower at the bottom: hem y0 half-width w0, top y1 w1.
-func _trap(y0: float, w0: float, w1: float, y1: float, round_top: float, color: Color) -> void:
-	var pts := PackedVector2Array([Vector2(-w0, y0), Vector2(w0, y0)])
-	for i in 7:
-		var a := PI * i / 6.0
-		pts.append(Vector2(cos(a) * w1, y1 + round_top * 0.5 - sin(a) * round_top * 0.5))
-	_m.colored_polygon(pts, color)
-	# Shade the far side to give it some roundness.
-	_m.colored_polygon(PackedVector2Array([Vector2(w0 * 0.35, y0), Vector2(w0, y0), Vector2(w1, y1 + round_top * 0.5),
-		Vector2(w1 * 0.4, y1)]), Color(0, 0, 0, 0.12))
-
-
-func _head(moustache: bool) -> void:
-	_m.rect(Rect2(-6, -134, 12, 10), _skin.darkened(0.1))
-	_ellipse(Vector2(0, -154), Vector2(21, 24), _skin)
-	for side in [-1.0, 1.0]:
-		_ellipse(Vector2(side * 21, -152), Vector2(4, 6), _skin.darkened(0.1))
-	_face(Vector2(0, -154), moustache)
-
-
-func _face(c: Vector2, moustache: bool) -> void:
-	var mood_y := -2.0 * _mood
-	for side in [-1.0, 1.0]:
-		_m.circle(c + Vector2(side * 8, -3), 2.6, Color("1d1612"))
-		# Brows tilt down to the middle when they're cross.
-		_m.line(c + Vector2(side * 4, -9 + (3.0 if _mood < 0 else 0.0)), c + Vector2(side * 13, -10), _hair, 2.5)
-	if moustache:
-		_m.colored_polygon(PackedVector2Array([c + Vector2(-9, 7), c + Vector2(0, 5), c + Vector2(9, 7), c + Vector2(7, 10),
-			c + Vector2(-7, 10)]), _hair)
-	_m.polyline(PackedVector2Array([c + Vector2(-5, 13 - mood_y * 0.5), c + Vector2(0, 13 + mood_y), c + Vector2(5, 13 - mood_y * 0.5)]),
-		Color("6a2e22"), 2.0)
-
-
-func _hair_short() -> void:
-	_m.colored_polygon(PackedVector2Array([Vector2(-21, -158), Vector2(-20, -170), Vector2(-12, -178), Vector2(0, -180),
-		Vector2(12, -178), Vector2(20, -170), Vector2(21, -158), Vector2(14, -168), Vector2(-14, -168)]), _hair)
+func _look_dict() -> Dictionary:
+	var kind: String = ["galabeya", "shirt", "hijab", "tshirt"][_look]
+	return {"kind": kind, "skin": _skin, "hair": _hair, "cloth": _cloth, "trousers": _trousers, "extra": _extra,
+		"moustache": _moustache and _look != Look.HIJAB, "beard": _beard and _look != Look.HIJAB,
+		"glasses": _glasses, "style": _style, "mood": _mood}
 
 
 func _ellipse(c: Vector2, r: Vector2, color: Color) -> void:

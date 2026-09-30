@@ -102,8 +102,18 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
 
 - **Sugar grades on every tea and coffee order** (shout, ticket, prep title): tea سادة/مظبوط/زيادة, Turkish coffee adds عالريحة and مانو (half-spoon taps: ½ / 1 / 1½ / 2). Tap the sugar per spoon, then خلاص; each spoon off docks quality
 - **Tea built in the glass:** شاي كشري (sugar → loose tea → boiling water from the كنكة → stir), new **شاي فتلة** (sugar → water → dunk the bag → stir) and new **شاي على مية بيضا** (tea under a thick sugar layer → hold-to-pour the water down the side without piercing the sugar, a flow meter shows how hard → stir, darkening gradually). Coffee's sugar goes in the كنكة
-- The day runs slower: 1 game minute every 2.5 real seconds (a full day is an hour of play)
+- **A shift lasts 15 minutes**: 4 pm to 4 am, then Sayed packs up by himself (روّح still ends it early; an order being made is handed over first)
+- شاي على مية بيضا uses the tea spoons (مظبوط 2, زيادة 3), laid as a thicker layer over the leaves
+- **Prep station, fixed layout:** the car is laid out once at 1080×1440 and scaled to fit, so it looks the same on every screen; the street fills the rest
+- **Prep station, crammed with kit:** movable racks (tap رتّب, drag, خلاص; kept in the save): a rail of spare كنكة in three sizes, ladle, milk pan and tongs; the **lemon squeezer** with a tea strainer and a checked towel; a chalk menu board listing today's drinks and prices. Also a water jerrycan, power strip and cables to the bulbs, a ribbed rubber mat, and depth from the bulbs' light pools, the plank's shadow and darkened corners
+- **The street cat** (ginger and white, ringed tail, from Sayed's real cat photos) asleep on FIFI's roof: breathing, ear twitches, tail flicks, lifting its head to look round, blinking, yawning
+- **Better bodies:** customers rebuilt at ~5 heads tall (jaw, ears, eyes with whites, varied hair, glasses, beards, collars, buttons, cuffs, hands with thumbs, shoes with soles, lit from the left); **Sayed now sits in his lawn chair** between orders, towel on his shoulder, sipping his tea
 - **Prep station car redrawn** from behind at hatch height, looking down into the trunk (after the Renault 4 coffee-car photo): body wider at the bumper tapering to the roof with the street visible round it, the hatch overhead showing its edge thickness, the roof edge and the walls' thickness round a narrowing opening, deeper trunk floor, lamp clusters standing proud, a thick chrome bumper seen from above; tyres no longer visible
+
+**Later (from the Sep 30 batch):**
+- **Cat animations:** jumping down off FIFI, walking the pavement, sitting, stretching, grooming, rubbing round customers' legs, curling up under the chair, begging at the ice box; customers who stop to pet it
+- **Isometric "block" characters and cat** (previewed, not adopted): an option to redraw people and the cat as iso voxel-style figures matching FIFI's projection, with four facings; decide after comparing with the current figures
+- **Card mechanic rework** (options, not yet chosen): pick from the real shelf in the trunk instead of a tray; drag ingredients into the glass or كنكة; gestures per step (circle to stir, swipe to dunk, hold to pour); recipe hints that fade as the player learns; later, two or three glasses in parallel
 
 **Remaining:** shisha coal-rotation station, "ask to repeat", day-start/day-end time-lapse, GameAnalytics, device/aspect-ratio pass
 

@@ -113,6 +113,9 @@ var _foam := Color("dcb88a")
 var _leaves := Color("2e1b0e")
 var _cup := false
 var _pot_water := false
+## How thick each spoon of sugar lies in the glass (على مية بيضا packs it
+## in a thick layer over the leaves).
+var _sugar_layer := 1.0
 var _swirl_t := 0.0
 var _on_burner := true
 var _pour_kind := Pour.PERFECT
@@ -158,6 +161,7 @@ func set_look(look: Dictionary) -> void:
 	_leaves = Color(look["leaves"]) if look.has("leaves") else Color.TRANSPARENT
 	_cup = look.get("vessel", "glass") == "cup"
 	_pot_water = look.get("pot", "") == "water"
+	_sugar_layer = float(look.get("sugar_layer", 1.0))
 	queue_redraw()
 
 
@@ -797,7 +801,7 @@ func _draw_glass_back() -> void:
 ## its colour at the top, the bag if there is one, and the stir's swirl.
 func _draw_glass_build(floor_y: float) -> void:
 	var b := GLASS_BASE
-	var sugar_h := sugar_spoons * SUGAR_PER_SPOON * (1.0 - sugar_melt)
+	var sugar_h := sugar_spoons * SUGAR_PER_SPOON * _sugar_layer * (1.0 - sugar_melt)
 	var leaf_bed := floor_y
 	var sugar_base := floor_y
 	if sugar_on_top:

@@ -90,8 +90,8 @@
       "prep_time_sec": 12,
       "difficulty": 3,
       "sugar": {
-        "mazboot": 3,
-        "ziyada": 4
+        "mazboot": 2,
+        "ziyada": 3
       },
       "steps": [
         "tea_leaves",
@@ -104,7 +104,8 @@
         "liquid": "#8f3812",
         "foam": "#dcb88a",
         "vessel": "glass",
-        "pot": "water"
+        "pot": "water",
+        "sugar_layer": 2.0
       }
     },
     {
