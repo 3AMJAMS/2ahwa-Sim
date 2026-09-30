@@ -21,7 +21,7 @@ var _day_start_money := 0
 var _making: Customer
 var _holding := {}
 
-@onready var world_host: Node2D = $WorldHost
+@onready var world_host: Node3D = $WorldHost
 @onready var queue: CustomerQueue = $WorldHost.queue
 @onready var prep_layer: Control = $PrepLayer
 @onready var prep_station: Control = $PrepLayer/PrepStation
@@ -37,6 +37,7 @@ var _closed_by_clock := false
 
 
 func _ready() -> void:
+	prep_station.attach(world_host.prep_rig)
 	world_host.trunk_tapped.connect(_on_trunk_tapped)
 	prep_station.prep_complete.connect(_on_prep_complete)
 	go_home_button.pressed.connect(go_home)
@@ -191,21 +192,26 @@ func _serve(c: Customer) -> void:
 func _hand_over(c: Customer) -> void:
 	var item := GameData.get_menu_item(c.item_id)
 	var look: Dictionary = item.get("look", {})
-	var drink := Color(look.get("liquid", "#9c3d16"))
-	var cup := Node2D.new()
-	cup.light_mask = 0
-	cup.draw.connect(func() -> void:
-		cup.draw_colored_polygon(PackedVector2Array([Vector2(-9, 0), Vector2(9, 0), Vector2(11, -26), Vector2(-11, -26)]),
-			Color(0.85, 0.93, 1.0, 0.5))
-		cup.draw_colored_polygon(PackedVector2Array([Vector2(-8, -1), Vector2(8, -1), Vector2(9.5, -18), Vector2(-9.5, -18)]), drink)
-		cup.draw_line(Vector2(-11, -26), Vector2(11, -26), Color(1, 1, 1, 0.8), 1.5))
+	var v := Vox.new()
+	var cup_look: bool = look.get("vessel", "glass") == "cup"
+	if cup_look:
+		v.cyl(Vector3(0, 0, 0), 0.07, 0.07, 0.008, Color("ebe6dc"), 10)
+		v.cyl(Vector3(0, 0.008, 0), 0.035, 0.045, 0.06, Color("f4f1ea"), 10)
+		v.cyl(Vector3(0, 0.06, 0), 0.042, 0.042, 0.004, Color(look.get("foam", "#a0724a")), 10)
+	else:
+		v.cyl(Vector3(0, 0, 0), 0.034, 0.042, 0.075, Color(look.get("liquid", "#9c3d16")), 8)
+		v.use("glass").cyl(Vector3(0, 0, 0), 0.04, 0.048, 0.11, Color(0.85, 0.93, 1.0, 0.35), 8)
+	var cup := MeshInstance3D.new()
+	cup.mesh = v.commit()
 	world_host.add_child(cup)
-	var from: Vector2 = world_host.fifi.position + world_host.fifi.trunk_mouth()
-	var to := c.handoff_point()
-	cup.position = from
+	var from: Vector3 = world_host.trunk_mouth()
+	var to: Vector3 = c.handoff_point()
+	cup.global_position = from
 	var t := create_tween()
 	t.tween_method(func(k: float) -> void:
-		cup.position = from.lerp(to, k) + Vector2(0, -90.0 * sin(PI * k)), 0.0, 1.0, 0.45) \
+		if is_instance_valid(c):
+			to = c.handoff_point()
+		cup.global_position = from.lerp(to, k) + Vector3(0, 0.7 * sin(PI * k), 0), 0.0, 1.0, 0.5) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	t.tween_callback(cup.queue_free)
 	await t.finished
@@ -216,12 +222,11 @@ func _tip_pop(c: Customer, tips: int) -> void:
 	var pop := Label.new()
 	pop.text = "+%s %s" % [GameData.ar_digits(tips), tr("UI_CURRENCY")]
 	pop.add_theme_font_size_override("font_size", 52)
-	pop.add_theme_color_override("font_color", StationArt.hdr(Color(1.0, 0.84, 0.4), 1.3))
+	pop.add_theme_color_override("font_color", Color(1.0, 0.84, 0.4))
 	pop.add_theme_color_override("font_outline_color", Color(0.1, 0.06, 0.02))
 	pop.add_theme_constant_override("outline_size", 12)
-	pop.light_mask = 0
-	world_host.add_child(pop)
-	pop.position = c.position + Vector2(-90, -300)
+	world_host.ui.add_child(pop)
+	pop.position = world_host.screen_point(c.head_point()) + Vector2(-90, -120)
 	var t := pop.create_tween()
 	t.tween_property(pop, "position:y", pop.position.y - 150.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(pop, "modulate:a", 0.0, 0.5).set_delay(0.7)
@@ -262,7 +267,7 @@ func transition_to_prep(c: Customer) -> void:
 	go_home_button.visible = false
 	rail.visible = false
 	await _fade("fade_out")
-	world_host.visible = false
+	world_host.enter_prep()
 	prep_layer.visible = true
 	prep_station.load_order(c.item_id, c.sugar)
 	await _fade("fade_in")
@@ -278,7 +283,7 @@ func transition_to_world() -> void:
 	fade_label.visible = true
 	await _fade("fade_out")
 	prep_layer.visible = false
-	world_host.visible = true
+	world_host.exit_prep()
 	rail.visible = true
 	await _fade("fade_in")
 	fade_label.visible = false

@@ -121,7 +121,12 @@ class Ticket extends Control:
 		var item := GameData.get_menu_item(customer.item_id)
 		var needs: Array = item.get("ingredients", [])
 		var icon: String = needs[0] if not needs.is_empty() else "tea"
-		PrepIcons.draw_icon(self, icon, Rect2(w * 0.5 - 30, 18, 60, 54))
+		var spot := Rect2(w * 0.5 - 27, 18, 54, 54)
+		var tex := PrepIcons.baked(icon, 108)
+		if tex:
+			draw_texture_rect(tex, spot, false)
+		else:
+			PrepIcons.draw_icon(self, icon, spot)
 		# Patience bar, or the state once it's being made / ready.
 		var bar := Rect2(14, h - 26, w - 28, 10)
 		draw_rect(bar, Color(0, 0, 0, 0.15))

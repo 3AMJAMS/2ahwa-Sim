@@ -1,11 +1,10 @@
 class_name CustomerQueue
-extends Node2D
+extends Node3D
 ## Brings customers to FIFI, parked in the slow lane (البطيء) by the kerb.
 ## Most come by car, as they do at Cairo's coffee cars: a car pulls up behind
 ## FIFI or stops beside her in the next lane, winds the window down and
-## orders. The rest walk up the pavement to a spot by the trunk. Y-sorted so
-## nearer figures overlap farther ones; each customer's bubble and patience
-## bar live here too (drawn over FIFI), following their car.
+## orders. The rest walk up the pavement to a spot by the trunk. Each
+## customer's bubble and patience bar ride on the street's overlay.
 ## While Sayed's first-serve tutorial is pending, a single patient customer
 ## pulls up behind FIFI and orders شاي كشري.
 
@@ -38,8 +37,10 @@ const CAR_KINDS := [StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.SEDAN, StreetVe
 @export_range(0.0, 1.0) var by_car_share := 0.65
 
 var open := true
-## The street's traffic, which drives the customer cars (set by WorldHost).
+## The street's traffic, which drives the customer cars, and the street
+## itself (camera and overlay for the bubbles); both set by WorldHost.
 var traffic: Traffic
+var host: Node3D
 
 var _rng := RandomNumberGenerator.new()
 var _wait := 1.5
@@ -48,7 +49,6 @@ var _car_spots := [null, null]   # Customer (or null) per car spot
 
 
 func _ready() -> void:
-	y_sort_enabled = true
 	_rng.randomize()
 
 
@@ -148,6 +148,7 @@ func _spawn_car(order: String, spot: int, tutorial: bool) -> bool:
 
 
 func _register(c: Customer) -> void:
+	c.host = host
 	add_child(c)
 	c.ordered.connect(func() -> void: customer_ordered.emit(c))
 	c.tapped.connect(func() -> void: customer_tapped.emit(c))

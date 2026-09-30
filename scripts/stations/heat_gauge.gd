@@ -1,9 +1,11 @@
 class_name HeatGauge
-extends Control
+extends Node
 ## Stove heat mechanic: heat climbs 0 → 100 over prep_time_sec while the
-## كنكة boils on the ring (KanakaStove draws it; the slim bar is the readout).
-## Tap to take it off the fire inside the green zone for a perfect brew — it
-## pours into the glass before the result is reported. Reaching 100 boils over.
+## كنكة boils on the ring (Stove3D shows it; the slim bar beside the kanaka
+## is the readout). Tap the kanaka to take it off the fire inside the green
+## zone for a perfect brew — it pours into the glass before the result is
+## reported. Reaching 100 boils over. PrepStation builds the readouts and
+## routes the taps here.
 
 signal gauge_completed(accuracy: float)
 signal gauge_failed()
@@ -38,14 +40,23 @@ var _fill := StyleBoxFlat.new()
 ## Bumped on every start/reset so a pour that outlives its order is ignored.
 var _run_id := 0
 
-@onready var status_label: Label = %StatusLabel
-@onready var bar: ProgressBar = %ProgressBar
-@onready var green_zone: ColorRect = %GreenZone
-@onready var tap_label: Label = %TapToStopLabel
-@onready var stove: KanakaStove = %StoveView
+var status_label: Label
+var bar: ProgressBar
+var green_zone: ColorRect
+var tap_label: Label
+var stove: Stove3D
 
 
 func _ready() -> void:
+	set_process(false)
+
+
+func setup(the_stove: Stove3D, status: Label, heat_bar: ProgressBar, zone: ColorRect, tap: Label) -> void:
+	stove = the_stove
+	status_label = status
+	bar = heat_bar
+	green_zone = zone
+	tap_label = tap
 	var track := StyleBoxFlat.new()
 	track.bg_color = COLOR_TRACK
 	track.set_corner_radius_all(22)
@@ -91,10 +102,8 @@ func _process(delta: float) -> void:
 	_refresh()
 
 
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		accept_event()
-		stop()
+func is_heating() -> bool:
+	return state == State.HEATING
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -111,15 +120,15 @@ func stop() -> void:
 	set_process(false)
 	var accuracy := score(heat)
 	_refresh()
-	var pour := KanakaStove.Pour.PERFECT
+	var pour := Stove3D.Pour.PERFECT
 	if is_in_green(heat):
 		status_label.text = tr("PREP_PERFECT")
 	elif heat < green_min:
 		status_label.text = tr("PREP_LUKEWARM")
-		pour = KanakaStove.Pour.LUKEWARM
+		pour = Stove3D.Pour.LUKEWARM
 	else:
 		status_label.text = tr("PREP_TOO_HOT")
-		pour = KanakaStove.Pour.TOO_HOT
+		pour = Stove3D.Pour.TOO_HOT
 	var run := _run_id
 	if manual_pour:
 		stove._pour_kind = pour

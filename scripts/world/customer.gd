@@ -1,34 +1,27 @@
 class_name Customer
-extends Node2D
+extends Node3D
 ## One customer, on foot or at the wheel.
 ##  - On foot: walks up the pavement to a spot by FIFI's trunk (legs and arms
 ##    swinging), shouts the order, waits, then walks off.
-##  - By car: a passing car pulls up behind or beside FIFI, rolls the window
+##  - By car: a passing car pulls up behind or beside FIFI, winds the window
 ##    down and the driver shouts the order; once served they take the drink,
-##    roll the window back up (or leave it down) and drive off.
+##    wind the window back up (or leave it down) and drive off.
 ## Either way it follows the blueprint's patience state machine:
 ##   ARRIVING → ORDER_PLACED (waiting for the drink) → SERVED | LEFT_ANGRY
-## The figure is a placeholder (galabeya and kufi, shirt and trousers, hijab
-## and abaya, or t-shirt and jeans): body, legs and arms each baked into a
-## mesh, animated only by moving and rotating those parts.
+## Walkers are a random VoxPerson (skin tone, build, outfit, hair, things
+## they carry); the speech bubble and patience bar ride on the street's
+## overlay, pinned over the head or the car roof.
 
 signal ordered
 signal tapped
 signal left(angry: bool)
 
 enum State { ARRIVING, WAITING, LEAVING }
-enum Look { GALABEYA, SHIRT, HIJAB, TSHIRT }
 
-const TILE_W := 128.0
-const TILE_H := 64.0
-const PAVEMENT_RISE := 10.4
 const WALK_SPEED := 2.2
 ## The kerbside path along the pavement, and where walkers leave the scene.
 const PATH_V := 5.6
 const EXIT_U := -18.0
-const SKIN := [Color("c68c62"), Color("a86f48"), Color("8a5a3a"), Color("d9a47a")]
-const HIP_Y := -62.0
-const SHOULDER_Y := -116.0
 
 var state := State.ARRIVING
 var item_id := ""
@@ -47,33 +40,18 @@ var vehicle: StreetVehicle
 ## The drink is on the stove for them / ready in Sayed's hands.
 var being_made := false
 var drink_ready := false
+## The street (camera and overlay); set by CustomerQueue.
+var host: Node3D
+var person: VoxPerson
 
-var _look := Look.SHIRT
 var _rng := RandomNumberGenerator.new()
 var _pos := Vector2.ZERO
 var _path: Array[Vector2] = []
 var _t := 0.0
-var _rig := Node2D.new()
-var _body := Node2D.new()
-var _limbs: Array[Node2D] = []   # left leg, right leg, left arm, right arm
-var _mesh: ArrayMesh
-var _limb_meshes: Array[ArrayMesh] = []
-var _m: MeshCanvas
-var _bar := Node2D.new()
+var _bar := Control.new()
 var _bubble := PanelContainer.new()
 var _bubble_label := Label.new()
-var _area := Area2D.new()
-var _mood := 0.0
-## Colours are rolled once, so a redraw (the cross face) keeps the outfit.
-var _skin := Color.WHITE
-var _hair := Color.BLACK
-var _cloth := Color.WHITE
-var _trousers := Color.WHITE
-var _extra := Color.WHITE
-var _moustache := true
-var _beard := false
-var _glasses := false
-var _style := 0
+var _yaw := 0.0
 
 
 ## A walker heading for `stand_at`, entering the pavement at `from_u`.
@@ -98,81 +76,24 @@ func setup_car(order_id: String, shout_text: String, patience_sec: float, car: S
 
 func _ready() -> void:
 	_rng.randomize()
-	add_child(_bar)
+	var layer: Control = host.ui if host else null
+	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.draw.connect(_draw_bar)
 	_bar.visible = false
 	_build_bubble()
-	_area.input_pickable = true
-	_area.input_event.connect(_on_input)
-	add_child(_area)
+	if layer:
+		layer.add_child(_bar)
+		layer.add_child(_bubble)
+	tree_exiting.connect(func() -> void:
+		_bar.queue_free()
+		_bubble.queue_free())
 	if vehicle:
-		_ready_car()
+		_follow_car()
 	else:
-		_ready_walker()
-
-
-func _ready_walker() -> void:
-	_roll_look()
-	add_child(_rig)
-	move_child(_rig, 0)
-	# Legs behind the body, arms in front of it.
-	for i in 4:
-		var limb := Node2D.new()
-		_limbs.append(limb)
-		limb.draw.connect(_draw_limb.bind(i))
-	_limbs[0].position = Vector2(-10, HIP_Y)
-	_limbs[1].position = Vector2(10, HIP_Y)
-	_rig.add_child(_limbs[0])
-	_rig.add_child(_limbs[1])
-	_rig.add_child(_body)
-	_body.draw.connect(_draw_body)
-	var shoulder := 22.0
-	_limbs[2].position = Vector2(-shoulder, SHOULDER_Y)
-	_limbs[3].position = Vector2(shoulder, SHOULDER_Y)
-	_rig.add_child(_limbs[2])
-	_rig.add_child(_limbs[3])
-	_bar.position = Vector2(0, -212)
-	var shape := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
-	rect.size = Vector2(80, 200)
-	shape.shape = rect
-	shape.position = Vector2(0, -95)
-	_area.add_child(shape)
-	_place()
-
-
-func _ready_car() -> void:
-	var shape := CollisionPolygon2D.new()
-	shape.polygon = vehicle.body_outline()
-	_area.add_child(shape)
-	_bar.position = vehicle.roof_top() + Vector2(0, -26)
-	_follow_car()
-
-
-func _roll_look() -> void:
-	_look = (_rng.randi() % 4) as Look
-	_skin = SKIN[_rng.randi() % SKIN.size()]
-	_hair = [Color("1d1612"), Color("2a1f18"), Color("6a6560"), Color("3a2a1c")][_rng.randi() % 4]
-	_moustache = _rng.randf() < 0.75
-	_beard = _rng.randf() < 0.18
-	_glasses = _rng.randf() < 0.2
-	_style = _rng.randi() % 4
-	# Some older men, greying.
-	if _rng.randf() < 0.25:
-		_hair = [Color("8a8680"), Color("b8b4ae")][_rng.randi() % 2]
-	_trousers = [Color("2b2f3a"), Color("3a3a40"), Color("4a3f35"), Color("2f4a7a")][_rng.randi() % 4]
-	match _look:
-		Look.GALABEYA:
-			_cloth = [Color("d8d2c2"), Color("8a8474"), Color("5a6a7a"), Color("b8a888")][_rng.randi() % 4]
-		Look.HIJAB:
-			_cloth = [Color("1f1d24"), Color("3a2a4a"), Color("2a3a4a"), Color("4a2a2a")][_rng.randi() % 4]
-			_extra = [Color("c86a8a"), Color("e0c8a8"), Color("5a8aa8"), Color("8a6ab0"), Color("d8b060")][_rng.randi() % 5]
-		Look.TSHIRT:
-			_cloth = [Color("c8322b"), Color("2b2b30"), Color("e9e6df"), Color("3b8a5a")][_rng.randi() % 4]
-			_trousers = Color("2f4a7a")
-		_:
-			_cloth = [Color("2f5f8a"), Color("7a2e22"), Color("3d5a45"), Color("5a4a6a"), Color("8a6a3a"),
-				Color("c9c2b0")][_rng.randi() % 6]
+		person = VoxPerson.new()
+		add_child(person)
+		person.build(VoxPerson.random_look(_rng))
+		_place()
 
 
 func _build_bubble() -> void:
@@ -187,14 +108,11 @@ func _build_bubble() -> void:
 	style.content_margin_bottom = 8
 	_bubble.add_theme_stylebox_override("panel", style)
 	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bubble.light_mask = 0
 	_bubble_label.add_theme_font_size_override("font_size", 26)
 	_bubble_label.add_theme_color_override("font_color", Color("3a2412"))
 	_bubble_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_bubble_label.light_mask = 0
 	_bubble.add_child(_bubble_label)
 	_bubble.visible = false
-	add_child(_bubble)
 
 
 func _process(delta: float) -> void:
@@ -213,15 +131,26 @@ func _process(delta: float) -> void:
 				patience = maxf(patience - delta, 0.0)
 				if patience <= 0.0:
 					leave(true)
-			if vehicle == null:
+			if person:
 				# Shift from foot to foot; more impatient, more fidgety.
-				var urgency := 1.0 - patience / patience_max
-				_rig.position.y = -absf(sin(_t * (2.0 + 5.0 * urgency))) * (1.0 + 2.0 * urgency)
-				_pose(sin(_t * (1.5 + 3.0 * urgency)) * 0.06 * urgency, 0.0)
+				person.idle(delta, 1.0 - patience / patience_max)
+				_turn_to(deg_to_rad(15.0), delta)
 			_bar.queue_redraw()
 		State.LEAVING:
 			if vehicle == null and _walk(delta):
 				queue_free()
+	_pin_overlay()
+
+
+## Keeps the bubble and the bar over the head (or the car roof).
+func _pin_overlay() -> void:
+	if host == null:
+		return
+	var p: Vector2 = host.screen_point(head_point())
+	_bar.position = p + Vector2(0, -8)
+	if _bubble.visible:
+		_bubble.reset_size()
+		_bubble.position = p + Vector2(-_bubble.size.x * 0.5, -_bubble.size.y - 34)
 
 
 ## Walks along the path, legs and arms swinging; true when it's used up.
@@ -236,36 +165,22 @@ func _walk(delta: float) -> bool:
 		_path.remove_at(0)
 	else:
 		_pos += to.normalized() * step
-		# Face the way they walk: screen x grows with u and shrinks with v.
-		var sx := to.x - to.y
-		if absf(sx) > 0.01:
-			_rig.scale.x = signf(sx)
-	var phase := _t * 8.5
-	_rig.position.y = -absf(cos(phase)) * 4.0
-	_rig.rotation = sin(phase) * 0.025
-	_pose(sin(phase) * 0.42, 1.0)
+		_turn_to(atan2(to.x, to.y), delta * 2.0)
+	if person:
+		person.walk(delta)
 	_place()
 	return _path.is_empty()
 
 
-## Legs swing by `swing` radians (opposite each other), arms against them.
-func _pose(swing: float, lift: float) -> void:
-	if _limbs.size() < 4:
-		return
-	_limbs[0].rotation = swing
-	_limbs[1].rotation = -swing
-	_limbs[0].position.y = HIP_Y - maxf(swing, 0.0) * 6.0 * lift
-	_limbs[1].position.y = HIP_Y - maxf(-swing, 0.0) * 6.0 * lift
-	_limbs[2].rotation = -swing * 0.8
-	_limbs[3].rotation = swing * 0.8
+func _turn_to(yaw: float, delta: float) -> void:
+	_yaw = lerp_angle(_yaw, yaw, minf(1.0, delta * 8.0))
+	if person:
+		person.rotation.y = _yaw
 
 
 ## Standing (or parked) at the truck: shout the order.
 func arrive() -> void:
 	state = State.WAITING
-	_rig.rotation = 0.0
-	_rig.scale.x = 1.0
-	_pose(0.0, 0.0)
 	_bar.visible = true
 	_show_bubble(shout, 4.0)
 	ordered.emit()
@@ -275,9 +190,7 @@ func _show_bubble(text: String, hold: float) -> void:
 	_bubble_label.text = text
 	_bubble.visible = true
 	_bubble.modulate.a = 0.0
-	_bubble.reset_size()
-	var top := -275.0 if vehicle == null else _bar.position.y - 50.0
-	_bubble.position = Vector2(-_bubble.size.x * 0.5, top - _bubble.size.y * 0.5)
+	_pin_overlay()
 	var t := create_tween()
 	t.tween_property(_bubble, "modulate:a", 1.0, 0.2)
 	t.tween_interval(hold)
@@ -290,13 +203,11 @@ func serve() -> void:
 	drink_ready = false
 	_bar.visible = false
 	_show_bubble(tr("CUST_THANKS_%d" % (_rng.randi() % 3 + 1)), 1.4)
-	_mood = 1.0
+	_set_mood(1.0)
 	if vehicle:
 		state = State.LEAVING
 		vehicle.drive_off(_rng.randf() < 0.5, 1.2)
 	else:
-		_mesh = null
-		_body.queue_redraw()
 		_leave_path()
 	left.emit(false)
 
@@ -306,18 +217,21 @@ func leave(angry: bool) -> void:
 		return
 	_bar.visible = false
 	if angry:
-		_mood = -1.0
+		_set_mood(-1.0)
 		_show_bubble(tr("CUST_ANGRY_%d" % (_rng.randi() % 2 + 1)), 1.4)
 	if vehicle:
 		state = State.LEAVING
 		# Angry drivers wind the window straight back up; the rest may not.
 		vehicle.drive_off(not angry and _rng.randf() < 0.5, 0.8)
 	else:
-		if angry:
-			_mesh = null
-			_body.queue_redraw()
 		_leave_path()
 	left.emit(angry)
+
+
+func _set_mood(mood: float) -> void:
+	var who: VoxPerson = person if person else (vehicle.driver if vehicle else null)
+	if who:
+		who.set_mood(mood)
 
 
 func _leave_path() -> void:
@@ -329,38 +243,44 @@ func is_waiting() -> bool:
 	return state == State.WAITING
 
 
-## Where the drink is handed over (world-host space): the hand, or the car window.
-func handoff_point() -> Vector2:
+## Where the drink is handed over (world space): the hand, or the car window.
+func handoff_point() -> Vector3:
 	if vehicle:
-		return vehicle.position + vehicle.window_centre()
-	return position + Vector2(18, -80)
+		return vehicle.window_centre()
+	var fwd := Vector3(sin(_yaw), 0, cos(_yaw))
+	return global_position + Vector3(0, 0.95, 0) + fwd * 0.25
+
+
+## Over the head, or over the car's roof (world space).
+func head_point() -> Vector3:
+	if vehicle:
+		return vehicle.roof_top()
+	if person:
+		return global_position + person.head_top() + Vector3(0, 0.12, 0)
+	return global_position + Vector3(0, 1.9, 0)
+
+
+## The figure or the car (world space), for taps.
+func world_aabb() -> AABB:
+	if vehicle:
+		return vehicle.world_aabb()
+	var h := person.head_top().y if person else 1.8
+	return AABB(global_position + Vector3(-0.3, 0, -0.3), Vector3(0.6, h, 0.6))
 
 
 ## Screen rect round the figure or the car, for the tutorial's spotlight.
 func screen_rect() -> Rect2:
-	var xf := get_global_transform()
-	if vehicle:
-		var outline := vehicle.body_outline()
-		var r := Rect2(xf * outline[0], Vector2.ZERO)
-		for p in outline:
-			r = r.expand(xf * p)
-		return r
-	var p := xf * Vector2.ZERO
-	return Rect2(p + Vector2(-50, -215), Vector2(100, 225))
+	if host == null:
+		return Rect2()
+	return host.screen_rect_of(world_aabb())
 
 
 func _place() -> void:
-	position = Vector2((_pos.x - _pos.y) * TILE_W * 0.5, (_pos.x + _pos.y) * TILE_H * 0.5 - PAVEMENT_RISE)
+	position = Street3D.tile(_pos.x, _pos.y, Street3D.KERB_H)
 
 
 func _follow_car() -> void:
 	position = vehicle.position
-
-
-func _on_input(_viewport: Node, event: InputEvent, _shape: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		get_viewport().set_input_as_handled()
-		tapped.emit()
 
 
 ## Patience over the head (or the car): green → amber → red; a pot icon
@@ -378,52 +298,3 @@ func _draw_bar() -> void:
 	elif being_made:
 		_bar.draw_circle(Vector2(w * 0.5 + 18, 0), 13, Color("e0a458"))
 		_bar.draw_rect(Rect2(w * 0.5 + 11, -3, 14, 9), Color("5a3620"))
-
-
-# --- The figure -----------------------------------------------------------------
-
-func _draw_body() -> void:
-	if _mesh == null:
-		_m = MeshCanvas.new()
-		_build_body()
-		_mesh = _m.commit()
-		_m = null
-	if _mesh:
-		_body.draw_mesh(_mesh, null)
-
-
-func _draw_limb(i: int) -> void:
-	if _limb_meshes.is_empty():
-		for k in 4:
-			_m = MeshCanvas.new()
-			_build_limb(k)
-			_limb_meshes.append(_m.commit())
-		_m = null
-	if _limb_meshes[i]:
-		_limbs[i].draw_mesh(_limb_meshes[i], null)
-
-
-## About five heads tall, three-quarters from the front, feet at the origin
-## (FigureArt builds it). Legs and arms are separate so they can swing.
-func _build_body() -> void:
-	FigureArt.build_body(_m, _look_dict())
-
-
-## Limb k in its own space, pivot at the origin (hip or shoulder).
-func _build_limb(k: int) -> void:
-	FigureArt.build_limb(_m, _look_dict(), k)
-
-
-func _look_dict() -> Dictionary:
-	var kind: String = ["galabeya", "shirt", "hijab", "tshirt"][_look]
-	return {"kind": kind, "skin": _skin, "hair": _hair, "cloth": _cloth, "trousers": _trousers, "extra": _extra,
-		"moustache": _moustache and _look != Look.HIJAB, "beard": _beard and _look != Look.HIJAB,
-		"glasses": _glasses, "style": _style, "mood": _mood}
-
-
-func _ellipse(c: Vector2, r: Vector2, color: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 18:
-		var a := TAU * i / 18.0
-		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
-	_m.colored_polygon(pts, color)

@@ -6,6 +6,38 @@ extends RefCounted
 ## design space centred on the rect. Stand-ins until the real art lands.
 
 
+## Icons already painted into textures, by "id@pixels".
+static var _baked := {}
+
+
+## The icon as a texture `px` pixels square, painted once and then reused:
+## drawn live it's dozens of polygons, a draw call each. Null for the frame
+## or two it takes to paint, so callers draw it live meanwhile.
+static func baked(id: String, px: int) -> Texture2D:
+	var key := "%s@%d" % [id, px]
+	if not _baked.has(key):
+		_baked[key] = null
+		_bake(id, px, key)
+	return _baked[key]
+
+
+static func _bake(id: String, px: int, key: String) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var vp := SubViewport.new()
+	vp.disable_3d = true
+	vp.transparent_bg = true
+	vp.size = Vector2i(px, px)
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var painter := Node2D.new()
+	painter.draw.connect(func() -> void: draw_icon(painter, id, Rect2(0, 0, px, px)))
+	vp.add_child(painter)
+	tree.root.add_child.call_deferred(vp)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	_baked[key] = ImageTexture.create_from_image(vp.get_texture().get_image())
+	vp.queue_free()
+
+
 static func draw_icon(ci: CanvasItem, id: String, rect: Rect2) -> void:
 	var s := minf(rect.size.x, rect.size.y) / 100.0
 	var o := rect.get_center()

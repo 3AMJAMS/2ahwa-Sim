@@ -139,7 +139,10 @@
       },
       "sugar_unit": "half",
       "steps": [
-        "sugar_pot",
+        [
+          "coffee",
+          "sugar_pot"
+        ],
         "boil",
         "pour"
       ]
@@ -165,7 +168,12 @@
         "liquid": "#8e1330",
         "foam": "#c9566e",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "karkade",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "karkade_cold",
@@ -191,7 +199,12 @@
         "liquid": "#a3183a",
         "foam": "#c9566e",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "karkade",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "iced_tea",
@@ -217,7 +230,12 @@
         "liquid": "#b5651d",
         "foam": "#d9a066",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "tea_pot",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "mango_juice",
@@ -243,7 +261,11 @@
         "liquid": "#f2a324",
         "bits": "#f7c64f",
         "ice": false
-      }
+      },
+      "steps": [
+        "mango",
+        "blend"
+      ]
     }
   ]
 }
