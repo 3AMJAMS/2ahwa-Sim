@@ -51,6 +51,9 @@ locale/test="ar_EG"
 [rendering]
 
 renderer/rendering_method="mobile"
+scaling_3d/scale=0.75
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
 viewport/hdr_2d=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.055, 0.063, 0.157, 1)

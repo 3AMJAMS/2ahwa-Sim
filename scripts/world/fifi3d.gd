@@ -54,7 +54,10 @@ var _t := 0.0
 var _tap_ring: MeshInstance3D
 var _street_parts: Array[Node3D] = []
 var _bulb_light: OmniLight3D
-var _led_light: OmniLight3D
+## The LEDs' pink spill on the road behind her, painted on (a real light
+## there costs a pass over the whole road).
+var _led_pool := MeshInstance3D.new()
+var _led_mat := Street3D.pool_material()
 var _prepping := false
 
 
@@ -104,13 +107,15 @@ func _ready() -> void:
 	_bulb_light.position = Vector3(1.3, 1.15, 0)
 	_bulb_light.light_color = Color("ffd9a0")
 	_bulb_light.omni_range = 2.6
+	_bulb_light.light_cull_mask = Street3D.LIT_MASK
 	add_child(_bulb_light)
 	_street_parts.append(_bulb_light)
-	_led_light = OmniLight3D.new()
-	_led_light.position = Vector3(2.4, 0.6, 0.3)
-	_led_light.light_color = Color(1.0, 0.55, 0.85)
-	_led_light.omni_range = 3.5
-	add_child(_led_light)
+	# Built in street space (she's parked square to the road).
+	_led_pool.top_level = true
+	_led_pool.mesh = Street3D.pool_mesh(Vector2(position.x + LENGTH * 0.5 + 0.6, position.z), 1.5, 0.9)
+	_led_pool.material_override = _led_mat
+	_led_pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_led_pool)
 	set_time(0.0)
 
 
@@ -119,10 +124,9 @@ func set_time(dark: float) -> void:
 	Vox.set_glow("glow/bulb", lerpf(1.1, 2.2, dark))
 	Vox.set_glow("glow/tail", lerpf(0.0, 1.4, dark))
 	_bulb_light.light_energy = lerpf(0.3, 1.6, dark)
-	_led_light.light_energy = 1.2 * dark
-	# The pink wash on the pavement behind her; in the prep view it would sit
-	# between the camera and the trunk and tint everything.
-	_led_light.visible = dark > 0.02 and not _prepping
+	_led_mat.albedo_color = Color(Color(1.0, 0.45, 0.8) * (0.45 * dark), 1.0)
+	# In the prep view it would sit under the bumper and tint the shot pink.
+	_led_pool.visible = dark > 0.02 and not _prepping
 
 
 func _process(delta: float) -> void:

@@ -492,7 +492,6 @@ func _update() -> void:
 		d.scale = Vector3(1, k, 1)
 		(d.material_override as StandardMaterial3D).albedo_color = foam
 	_bubbles.emitting = _on_burner and heat > 25.0 and upright > 0.5
-	_bubbles.amount = 30
 	_bubbles.position = Vector3(0, surf_y + 0.003, 0)
 	_bubbles.speed_scale = lerpf(0.5, 1.6, boil)
 	_steam_pot.emitting = _on_burner and heat > 5.0
@@ -511,7 +510,6 @@ func _update() -> void:
 	else:
 		_update_glass(drink)
 	_steam_glass.emitting = glass_fill > 0.1 and not iced
-	_steam_glass.amount = 16
 	_steam_glass.speed_scale = GLASS_STEAM[_pour_kind] * (0.6 + 0.4 * glass_fill)
 	_update_stream(drink)
 	_update_spoon()

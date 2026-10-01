@@ -33,10 +33,6 @@ var _pressed := ""
 var _t := 0.0
 var _font: Font = preload("res://assets/ui/main_theme.tres").default_font
 var _cache := SubViewport.new()
-## What the cache painted, copied out once per repaint: drawn straight from
-## the viewport the colours come out darker under the project's HDR 2D.
-var _tex: Texture2D
-var _paint_id := 0
 ## A plain Node2D: a Control here would be mirrored by the Arabic layout.
 var _painter := Node2D.new()
 
@@ -62,12 +58,6 @@ func _repaint() -> void:
 	_cache.canvas_transform = Transform2D.IDENTITY.scaled(Vector2(k, k))
 	_painter.queue_redraw()
 	_cache.render_target_update_mode = SubViewport.UPDATE_ONCE
-	_paint_id += 1
-	var id := _paint_id
-	await RenderingServer.frame_post_draw
-	if id != _paint_id or not is_inside_tree():
-		return
-	_tex = ImageTexture.create_from_image(_cache.get_texture().get_image())
 	queue_redraw()
 
 
@@ -152,8 +142,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	if _tex:
-		draw_texture_rect(_tex, Rect2(Vector2.ZERO, size), false)
+	draw_texture_rect(_cache.get_texture(), Rect2(Vector2.ZERO, size), false)
 	for i in _ids.size():
 		var id := _ids[i]
 		var s := _rect(i)

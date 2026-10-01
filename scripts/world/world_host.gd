@@ -159,6 +159,8 @@ func enter_prep() -> void:
 	set_interactive(false)
 	overlay.visible = false
 	_furniture.sayed.visible = false
+	street.lamps_lit = false
+	_daylight.prep = true
 	fifi.set_prep(true, prep_rig)
 	prep_rig.camera.make_current()
 
@@ -166,6 +168,8 @@ func enter_prep() -> void:
 func exit_prep() -> void:
 	prepping = false
 	fifi.set_prep(false, prep_rig)
+	street.lamps_lit = true
+	_daylight.prep = false
 	_furniture.sayed.visible = true
 	overlay.visible = visible
 	camera.make_current()

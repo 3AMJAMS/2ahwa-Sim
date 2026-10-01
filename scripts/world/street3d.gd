@@ -9,6 +9,12 @@ extends Node3D
 ## after dusk. Static geometry is baked into a few meshes; set_time() only
 ## changes lights and glow levels.
 ##
+## Lights are the expensive part on a phone: a light costs something on
+## every pixel of every mesh it touches, and the road and pavements cover
+## the whole screen. So the ground sits on its own render layer that the
+## lamps (and FIFI's bulb) skip, and the lamps' pools on the ground are
+## painted on instead: glowing discs that follow the road and kerbs.
+##
 ## Laid out on the old tile grid: tile (u, v) sits at (u, 0, v) × TILE, so
 ## the lanes, spots and paths the traffic and customers use carry over.
 
@@ -17,6 +23,10 @@ const KERB_H := 0.15
 ## Road edges (z): the near kerb's road face and the far kerb's.
 const ROAD_NEAR := 1.5
 const ROAD_FAR := -6.9
+## The render layer of the big ground meshes (road, pavements, garden,
+## buildings), and the cull mask for lamps and bulbs that leaves them out.
+const GROUND_LAYER := 2
+const LIT_MASK := 1
 ## Near pavement runs to the garden railings; across the road the shops.
 const PAVE_NEAR_END := 7.8
 const FACADE_Z := -10.2
@@ -48,7 +58,15 @@ const SHOP_NAMES := ["بقالة الأمل", "صيدلية الشفا", "عصي
 const WALLS := ["e8d8b8", "d8c4a0", "c9b08a", "e0cfc0", "b8a898", "d8b8a8", "a8b0b8", "c8a888", "d0c0a0", "b89a7a"]
 const SIGN_COLORS := ["c8322b", "2a6ab0", "3b8a5a", "e0a030", "7a3a8a", "1c1c24", "e07a2a"]
 
+## While a drink is made the lamps' real light would only fall on FIFI's
+## trunk (most of the screen there), which the work bulb already lights.
+var lamps_lit := true:
+	set(on):
+		lamps_lit = on
+		for light in _lamp_lights:
+			light.visible = on and light.light_energy > 0.2
 var _lamp_lights: Array[SpotLight3D] = []
+var _pool_mat := Street3D.pool_material()
 var _moths: Array[CPUParticles3D] = []
 var _rng := RandomNumberGenerator.new()
 
@@ -61,17 +79,17 @@ func _ready() -> void:
 	_rng.seed = 1127
 	var v := Vox.new()
 	_road(v)
-	v.into(self, "Road")
+	v.into(self, "Road").layers = GROUND_LAYER
 	_kerbs_and_pavements(v)
-	v.into(self, "Pavements")
+	v.into(self, "Pavements").layers = GROUND_LAYER
 	_garden(v)
-	v.into(self, "Garden")
+	v.into(self, "Garden").layers = GROUND_LAYER
 	var x := X_MIN
 	var i := 0
 	while x < X_MAX:
 		var w := _rng.randf_range(6.5, 10.0)
 		_building(v, x, x + w, i)
-		v.into(self, "Building%d" % i)
+		v.into(self, "Building%d" % i).layers = GROUND_LAYER
 		x += w + (_rng.randf_range(0.8, 1.4) if _rng.randf() < 0.25 else 0.0)
 		i += 1
 	for lamp in LAMPS:
@@ -85,9 +103,10 @@ func set_time(darkness: float) -> void:
 	Vox.set_glow("glow/lamp", lerpf(0.0, 3.2, darkness))
 	Vox.set_glow("glow/window", lerpf(0.0, 1.6, darkness))
 	Vox.set_glow("glow/sign", lerpf(0.4, 2.2, darkness))
+	_pool_mat.albedo_color = Color(SODIUM * (1.15 * darkness), 1.0)
 	for light in _lamp_lights:
 		light.light_energy = 12.0 * darkness
-		light.visible = darkness > 0.02
+		light.visible = darkness > 0.02 and lamps_lit
 	for m in _moths:
 		m.emitting = darkness > 0.5
 
@@ -471,8 +490,15 @@ func _streetlight(v: Vox, at: Vector2, reach: float) -> void:
 	light.spot_angle_attenuation = 1.2
 	light.light_energy = 0.0
 	light.shadow_enabled = false
+	# Only people, cars and FIFI; the ground gets the painted pool.
+	light.light_cull_mask = LIT_MASK
 	add_child(light)
 	_lamp_lights.append(light)
+	var pool := MeshInstance3D.new()
+	pool.mesh = pool_mesh(Vector2(head.x, head.z + reach * 0.18), 5.6, 0.85)
+	pool.material_override = _pool_mat
+	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(pool)
 	var moths := CPUParticles3D.new()
 	moths.position = head + Vector3(0, -0.2, reach * 0.18)
 	moths.amount = 6
@@ -497,6 +523,82 @@ func _streetlight(v: Vox, at: Vector2, reach: float) -> void:
 	moths.emitting = false
 	add_child(moths)
 	_moths.append(moths)
+
+
+
+## Glowing ground light: added on top of whatever is under it, so it reads
+## as light without costing a real one. Its colour sets the brightness.
+static func pool_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = Color(0, 0, 0, 1)
+	return m
+
+
+## A disc of light `radius` across, centred at (x, z) on the ground, its
+## brightness falling off to nothing at the edge. It follows the street's
+## levels (road, kerbs, pavements) and stops at the shopfronts.
+static func pool_mesh(centre: Vector2, radius: float, core := 1.0) -> ArrayMesh:
+	var cell := 0.3
+	var zs: Array[float] = []
+	var z := centre.y - radius
+	while z < centre.y + radius:
+		zs.append(z)
+		z += cell
+	zs.append(centre.y + radius)
+	# Every level change gets two rows, one each side of the step.
+	for edge in [ROAD_NEAR, ROAD_NEAR + 0.3, ROAD_FAR, ROAD_FAR - 0.3]:
+		if edge > centre.y - radius and edge < centre.y + radius:
+			zs.append(edge - 0.001)
+			zs.append(edge + 0.001)
+	zs.sort()
+	var verts := PackedVector3Array()
+	var cols := PackedColorArray()
+	var n := ceili(radius * 2.0 / cell)
+	for j in zs.size() - 1:
+		var z0: float = maxf(zs[j], FACADE_Z)
+		var z1: float = maxf(zs[j + 1], FACADE_Z)
+		if z1 - z0 < 0.0005 and absf(_ground_y(z0) - _ground_y(z1)) < 0.01:
+			continue
+		for i in n:
+			var x0 := centre.x - radius + i * cell
+			var x1 := x0 + cell
+			var corners := [Vector2(x0, z0), Vector2(x1, z0), Vector2(x1, z1), Vector2(x0, z1)]
+			var a := []
+			var lit := false
+			for c: Vector2 in corners:
+				var k := clampf(1.0 - c.distance_to(centre) / radius, 0.0, 1.0)
+				k = pow(k, 1.6) * core
+				a.append(k)
+				lit = lit or k > 0.0
+			if not lit:
+				continue
+			var p := []
+			for c: Vector2 in corners:
+				p.append(Vector3(c.x, _ground_y(c.y) + 0.02, c.y))
+			for t in [[0, 2, 1], [0, 3, 2]]:
+				for idx: int in t:
+					verts.append(p[idx])
+					cols.append(Color(1, 1, 1, a[idx]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	var mesh := ArrayMesh.new()
+	if not verts.is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+## Height of the street surface at depth z (road, kerb tops, pavements).
+static func _ground_y(z: float) -> float:
+	if z > ROAD_NEAR or z < ROAD_FAR:
+		return KERB_H + 0.01
+	return 0.0
 
 #endregion
 

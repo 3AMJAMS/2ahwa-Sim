@@ -4,13 +4,12 @@ extends Node3D
 ## FIFI (her local space: the tail at +x, her left side at +z) and shown
 ## only while Sayed works, it stands in for the plainer street version:
 ## lamp clusters with chrome bezels and ribbed lenses, the plate, a rounded
-## chrome bumper with its rubber strip, stickers, and the raised hatch seen
-## from below (pressed inner panel, seal, latch, struts, fairy lights).
-## Inside: a wooden counter across the sill for the stove, the glass, the
-## blender and the jars; storage on the floor behind; a shelf on the seat
-## back; and Sayed's movable racks (the rail of كنكة, the lemon squeezer,
-## the chalk menu board), hanging bulbs, LED strips, fringe and charms.
-## The camera stands behind the car at hatch height looking down in.
+## chrome bumper with its rubber strip, and the raised hatch seen from below
+## (pressed inner panel, seal, latch, struts). Inside: a wooden counter
+## across the sill for the stove, the glass, the blender and the jars, two
+## work bulbs, and Sayed's movable racks (the rail of كنكة, the lemon
+## squeezer, the chalk menu board). Kept plain on purpose: decorations come
+## later. The camera stands behind the car at hatch height looking down in.
 
 const PAINT := Color("e9b42c")
 const CHROME := Color("d4d9e1")
@@ -23,7 +22,6 @@ const METAL := Color("b3b9c2")
 const METAL_DARK := Color("6f7682")
 const GRIP := Color("5a3620")
 const SQUEEZER := Color("f2c230")
-const TOWEL := Color("efe9dc")
 const BOARD := Color("22302a")
 
 const REAR_X := 1.8
@@ -58,7 +56,6 @@ const CAM_LOOK := Vector3(1.42, 0.95, 0.0)
 ## aspect it holds on wider screens.
 const H_FOV := 43.0
 const DESIGN_ASPECT := 0.75
-const LED_COLORS := Fifi3D.LED_COLORS
 
 var camera := Camera3D.new()
 var racks := {}
@@ -68,7 +65,6 @@ var _hatch_node: Node3D
 var arranging := false
 
 var _t := 0.0
-var _fan: Node3D
 var _cam_home := Transform3D.IDENTITY
 var _shake := 0.0
 var _shake_t := 0.0
@@ -79,9 +75,7 @@ func _ready() -> void:
 	_rear(v)
 	_counter(v)
 	_trunk(v)
-	_shelf(v)
-	_floor_storage(v)
-	_decor(v)
+	_bulbs(v)
 	v.into(self, "Rig")
 	var hatch := Node3D.new()
 	_hatch_node = hatch
@@ -90,13 +84,8 @@ func _ready() -> void:
 	add_child(hatch)
 	_hatch(v)
 	v.into(hatch, "Hatch")
-	_hatch_lights(v, hatch)
-	v.into(self, "Lights")
-	_fan = Node3D.new()
-	_fan.position = Vector3(1.05, 1.18, -0.66)
-	_fan.rotation_degrees.y = 30
-	add_child(_fan)
-	_build_fan(v)
+	_struts(v, hatch)
+	v.into(self, "Struts")
 	for id in RACKS:
 		var r := Node3D.new()
 		r.name = "Rack_" + id
@@ -112,14 +101,16 @@ func _ready() -> void:
 		racks[id] = r
 	_load_racks()
 	_labels()
-	for z in [-0.38, 0.38]:
-		var bulb := OmniLight3D.new()
-		bulb.position = Vector3(1.3, 1.22, z)
-		bulb.light_color = Color("ffd9a0")
-		bulb.light_energy = 0.45
-		bulb.omni_range = 2.2
-		bulb.omni_attenuation = 1.4
-		add_child(bulb)
+	# One work bulb's light for the trunk (each light is paid on every pixel
+	# it reaches, and this one reaches most of the screen).
+	var bulb := OmniLight3D.new()
+	bulb.position = Vector3(1.3, 1.22, 0.0)
+	bulb.light_color = Color("ffd9a0")
+	bulb.light_energy = 1.1
+	bulb.omni_range = 2.6
+	bulb.omni_attenuation = 1.1
+	bulb.light_cull_mask = Street3D.LIT_MASK
+	add_child(bulb)
 	camera.position = CAM_AT
 	add_child(camera)
 	camera.transform = Transform3D(Basis.looking_at(CAM_LOOK - CAM_AT, Vector3.UP), CAM_AT)
@@ -148,7 +139,6 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	_t += delta
-	_fan.get_child(0).rotation.z += delta * 14.0
 	if _shake > 0.0:
 		_shake_t += delta
 		_shake = maxf(_shake - delta, 0.0)
@@ -239,16 +229,6 @@ func _rear(v: Vox) -> void:
 	v.cyl(Vector3.ZERO, 0.035, 0.035, 0.12, Color("5a5a60"), 8)
 	v.cyl(Vector3(0, 0.1, 0), 0.028, 0.028, 0.025, Color("1a1a1a"), 8)
 	v.pop()
-	# Stickers: a white oval, the FIFI script, a little flag.
-	v.push_at(Vector3(x + 0.004, 0.52, 0.0), Vector3(0, 90, 0))
-	v.extrude(Vox.circle(Vector2.ZERO, Vector2(0.12, 0.045), 16), "z", 0.0, 0.004, Color("f4f1ea"))
-	v.pop()
-	for k in 3:
-		var c: Color = [Color("c8322b"), Color("f4f1ea"), Color("1c1c24")][k]
-		v.box(Vector3(x, 0.64 - k * 0.016, -0.36), Vector3(x + 0.004, 0.656 - k * 0.016, -0.28), c)
-	v.box(Vector3(x + 0.004, 0.622, -0.325), Vector3(x + 0.006, 0.634, -0.315), Color("c9a24a"))
-	for k in 4:
-		v.box(Vector3(x, 0.63, 0.24 + k * 0.035), Vector3(x + 0.008, 0.65, 0.265 + k * 0.035), CHROME)
 
 
 func _labels() -> void:
@@ -273,16 +253,6 @@ func _labels() -> void:
 	egypt.position = Vector3(REAR_X + 0.041, 0.428, 0.12)
 	egypt.rotation_degrees.y = 90
 	add_child(egypt)
-	var sticker := Label3D.new()
-	sticker.text = "صلّي على النبي"
-	sticker.font = font
-	sticker.font_size = 40
-	sticker.pixel_size = 0.0013
-	sticker.outline_size = 0
-	sticker.modulate = Color("2a6a3a")
-	sticker.position = Vector3(REAR_X + 0.009, 0.52, 0.0)
-	sticker.rotation_degrees.y = 90
-	add_child(sticker)
 
 #endregion
 
@@ -298,15 +268,8 @@ func _counter(v: Vox) -> void:
 		v.box(Vector3(x - 0.002, COUNTER_Y, -hw), Vector3(x + 0.002, COUNTER_Y + 0.001, hw), WOOD.darkened(0.15))
 	v.box(Vector3(COUNTER_X.y - 0.03, COUNTER_Y - 0.04, -hw), Vector3(COUNTER_X.y - 0.01, COUNTER_Y + 0.012, hw), Color("c9ced6"))
 	v.box(Vector3(COUNTER_X.x - 0.02, COUNTER_Y - 0.035, -hw), Vector3(COUNTER_X.x, COUNTER_Y + 0.06, hw), WOOD.darkened(0.2))
-	# Rubber mat under the glass and the stove, a rag, a spoon or two.
+	# Rubber mat under the glass.
 	v.box(Vector3(1.5, COUNTER_Y, 0.02), Vector3(1.74, COUNTER_Y + 0.004, 0.3), Color("2a3a4a"))
-	for k in 5:
-		v.box(Vector3(1.5, COUNTER_Y + 0.004, 0.04 + k * 0.055), Vector3(1.74, COUNTER_Y + 0.006, 0.05 + k * 0.055), Color("35485a"))
-	v.box(Vector3(1.68, COUNTER_Y, -0.52), Vector3(1.77, COUNTER_Y + 0.012, -0.36), TOWEL)
-	for k in 3:
-		v.box(Vector3(1.68, COUNTER_Y + 0.012, -0.5 + k * 0.05), Vector3(1.77, COUNTER_Y + 0.014, -0.49 + k * 0.05), Color("c23b2a"))
-	v.rod(Vector3(1.72, COUNTER_Y + 0.006, -0.02), Vector3(1.66, COUNTER_Y + 0.006, -0.12), 0.004, METAL, 4)
-	v.ball(Vector3(1.735, COUNTER_Y + 0.008, 0.0), Vector3(0.012, 0.005, 0.009), METAL, 6, 2)
 	# The ingredient jars and tins.
 	_sugar_tin(v, JARS.sugar)
 	_ice_bucket(v, JARS.ice)
@@ -371,155 +334,32 @@ func _trunk(v: Vox) -> void:
 	var roof := Fifi3D.ROOF_Y
 	var fy := Fifi3D.FLOOR_Y
 	v.box(Vector3(bx, fy, -zi), Vector3(1.74, fy + 0.03, zi), CARPET)
-	# Seat back, upholstered in panels with piping.
+	# Seat back.
 	v.box(Vector3(bx - 0.05, fy, -zi), Vector3(bx, roof - 0.08, zi), SEAT)
-	v.box(Vector3(bx, fy + 0.02, -zi), Vector3(bx + 0.035, roof - 0.12, zi), SEAT.darkened(0.08))
-	for k in 7:
-		var z := -zi + 0.1 + k * 0.205
-		v.box(Vector3(bx + 0.035, 0.52, z - 0.005), Vector3(bx + 0.04, roof - 0.14, z + 0.005), SEAT.darkened(0.3))
-	for y in [0.62, 0.86, 1.1]:
-		v.box(Vector3(bx + 0.035, y, -zi), Vector3(bx + 0.04, y + 0.008, zi), SEAT.darkened(0.25))
+	v.rbox(Vector3(bx, fy + 0.02, -zi), Vector3(bx + 0.035, roof - 0.12, zi), 0.015, SEAT.darkened(0.08), "z", 2)
 	# Trim walls, wheel-arch humps, C-pillar trim round the opening.
 	for s in [1.0, -1.0]:
 		v.box(Vector3(bx, fy, s * 0.66 - 0.02), Vector3(1.72, Fifi3D.BELT_Y, s * 0.66 + 0.02), TRIM)
 		v.rbox(Vector3(0.96, fy, s * 0.6 - 0.12), Vector3(1.38, fy + 0.2, s * 0.6), 0.07, TRIM.lightened(0.08), "z", 3)
-		v.box(Vector3(1.0, 0.72, s * 0.575), Vector3(1.45, 0.98, s * 0.579), TRIM.darkened(0.2))
-		# Speaker grille on the side trim.
-		v.push_at(Vector3(1.2, 0.85, s * 0.572), Vector3(90, 0, 0))
-		v.cyl(Vector3.ZERO, 0.06, 0.06, 0.01 * s, Color("26252b"), 10)
-		v.pop()
 		v.extrude(PackedVector2Array([Vector2(1.5, Fifi3D.SILL_Y), Vector2(1.79, Fifi3D.SILL_Y), Vector2(1.79, Fifi3D.SILL_Y + 0.12),
 			Vector2(Fifi3D.HINGE.x - 0.01, roof - 0.05), Vector2(Fifi3D.HINGE.x - 0.12, roof - 0.05)]), "z",
 			minf(s * 0.6, s * 0.645), maxf(s * 0.6, s * 0.645), Color("3a3440"))
 		v.box(Vector3(bx, fy, s * 0.6 - 0.02), Vector3(1.5, roof - 0.06, s * 0.6 + 0.02), TRIM)
-	# Headliner with its padded seams, and the rear edge the fringe hangs from.
+	# Headliner and the roof's rear edge.
 	v.box(Vector3(bx, roof - 0.09, -zi), Vector3(Fifi3D.HINGE.x, roof - 0.05, zi), Color("5a534c"))
-	for k in 4:
-		var x := lerpf(bx + 0.1, Fifi3D.HINGE.x - 0.08, k / 3.0)
-		v.box(Vector3(x - 0.004, roof - 0.095, -zi), Vector3(x + 0.004, roof - 0.09, zi), Color("48423c"))
 	v.box(Vector3(Fifi3D.HINGE.x - 0.04, roof - 0.12, -zi), Vector3(Fifi3D.HINGE.x + 0.02, roof - 0.05, zi), PAINT.darkened(0.3))
 
 
-## A plank shelf on the seat back: glasses, cups, spare jars, the kettle,
-## water bottles, a vase of plastic flowers.
-func _shelf(v: Vox) -> void:
-	var sx := Fifi3D.BULKHEAD_X + 0.035
-	var y := 0.82
-	v.box(Vector3(sx, y, -0.66), Vector3(sx + 0.2, y + 0.022, 0.66), WOOD)
-	v.box(Vector3(sx + 0.18, y - 0.03, -0.66), Vector3(sx + 0.2, y + 0.045, 0.66), WOOD.darkened(0.12))
-	for z in [-0.5, 0.0, 0.5]:
-		v.extrude(PackedVector2Array([Vector2(sx, y), Vector2(sx + 0.16, y), Vector2(sx, y - 0.12)]), "z", z - 0.012, z + 0.012,
-			Color("3a3a40"))
-	var top := y + 0.022
-	# Tea glasses stacked upside down in pairs of towers.
-	for t in 2:
-		for k in 4:
-			var at := Vector3(sx + 0.08, top + k * 0.03, -0.6 + t * 0.07)
-			v.use("glass")
-			v.cyl(at, 0.028, 0.022, 0.05, Color(0.86, 0.94, 1.0, 0.45), 8)
-			v.use("solid")
-			v.cyl(at + Vector3(0, 0.0, 0), 0.029, 0.029, 0.004, Color("e8eef2"), 8)
-	# Cups on saucers.
-	for k in 3:
-		var at := Vector3(sx + 0.08, top + k * 0.04, -0.4)
-		v.cyl(at, 0.05, 0.05, 0.008, Color("ebe6dc"), 10)
-		v.cyl(at + Vector3(0, 0.008, 0), 0.025, 0.032, 0.03, Color("f4f1ea"), 10)
-		v.cyl(at + Vector3(0, 0.03, 0), 0.033, 0.033, 0.004, Color("c9a24a"), 10)
-	# Spare jars.
-	for k in 3:
-		var at := Vector3(sx + 0.09, top, -0.26 + k * 0.08)
-		_jar(v, at, [Color("3b2412"), Color("f1ede4"), Color("7a1428")][k], Color("c9a24a"), 0.08)
-	# The kettle.
-	var kt := Vector3(sx + 0.09, top, 0.08)
-	v.push_at(kt)
-	v.lathe([Vector2(0.06, 0.0), Vector2(0.07, 0.03), Vector2(0.065, 0.1), Vector2(0.03, 0.13), Vector2(0.0, 0.135)], 12, METAL)
-	v.pop()
-	v.rod(kt + Vector3(0, 0.06, 0.06), kt + Vector3(0, 0.11, 0.11), 0.01, METAL, 5)
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.008, 0.008), 5), [kt + Vector3(0, 0.13, -0.04), kt + Vector3(0, 0.18, -0.02),
-		kt + Vector3(0, 0.18, 0.02), kt + Vector3(0, 0.13, 0.04)], Color("2a2a30"))
-	# Water bottles with blue caps.
-	for k in 3:
-		var at := Vector3(sx + 0.09, top, 0.24 + k * 0.06)
-		v.use("glass")
-		v.cyl(at, 0.028, 0.028, 0.16, Color(0.8, 0.9, 1.0, 0.45), 8)
-		v.use("solid")
-		v.cyl(at + Vector3(0, 0.02, 0), 0.029, 0.029, 0.05, Color("2a6ab0"), 8)
-		v.cyl(at + Vector3(0, 0.16, 0), 0.012, 0.012, 0.02, Color("2a6ab0"), 6)
-	# Plastic flowers in a little vase.
-	var vase := Vector3(sx + 0.09, top, 0.5)
-	v.cyl(vase, 0.025, 0.035, 0.09, Color("2a8a8a"), 8)
-	for k in 5:
-		var a := TAU * k / 5.0
-		var tip := vase + Vector3(cos(a) * 0.04, 0.17 + (k % 2) * 0.03, sin(a) * 0.05)
-		v.rod(vase + Vector3(0, 0.08, 0), tip, 0.003, Color("3b8a3a"), 4)
-		v.ball(tip, Vector3(0.022, 0.018, 0.022), [Color("e8433a"), Color("f2c230"), Color("f06ab0")][k % 3], 6, 2)
-
-
-## Behind the counter, on the trunk floor: the water jerrycan, a crate of
-## lemons and mangoes, a box of paper cups, a spare gas bottle, the power
-## strip and its cables.
-func _floor_storage(v: Vox) -> void:
-	var fy := Fifi3D.FLOOR_Y + 0.03
-	var j := Vector3(1.05, fy, -0.42)
-	v.rbox(j + Vector3(-0.12, 0, -0.16), j + Vector3(0.12, 0.36, 0.16), 0.03, Color("2f6fb3"), "x", 2)
-	v.box(j + Vector3(-0.04, 0.36, -0.12), j + Vector3(0.04, 0.4, 0.02), Color("2f6fb3"))
-	v.cyl(j + Vector3(0, 0.36, 0.09), 0.03, 0.03, 0.05, Color("f2c230"), 8)
-	var crate := Vector3(1.06, fy, 0.38)
-	v.box(crate + Vector3(-0.14, 0, -0.18), crate + Vector3(0.14, 0.18, 0.18), Color("b88a4a"))
-	for k in 3:
-		v.box(crate + Vector3(-0.145, 0.04 + k * 0.05, -0.185), crate + Vector3(0.145, 0.06 + k * 0.05, 0.185), Color("8a6232"))
-	for k in 8:
-		var col := Color("f2a324") if k % 3 == 0 else Color("e8d84a")
-		var r := 0.045 if k % 3 == 0 else 0.032
-		v.ball(crate + Vector3(-0.09 + (k % 4) * 0.06, 0.2, -0.12 + (k / 4) * 0.14 + (k % 2) * 0.02), Vector3(r, r * 0.85, r), col, 6, 3)
-	var cups := Vector3(1.06, fy, 0.0)
-	v.box(cups + Vector3(-0.1, 0, -0.1), cups + Vector3(0.1, 0.22, 0.1), Color("c8a878"))
-	v.box(cups + Vector3(-0.1, 0.22, -0.1), cups + Vector3(0.1, 0.23, 0.02), Color("b89868"))
-	for k in 3:
-		v.cyl(cups + Vector3(0.0, 0.23, 0.05), 0.03, 0.025, 0.02 + k * 0.03, Color("f4f1ea"), 8)
-	var gas := Vector3(1.45, fy, 0.62)
-	v.cyl(gas, 0.07, 0.07, 0.16, Color("2a6ab0"), 10)
-	v.lathe([Vector2(0.07, 0.16), Vector2(0.03, 0.2)], 10, Color("2a6ab0"))
-	# Power strip on the floor with its cables up to the bulbs and blender.
-	var ps := Vector3(1.2, fy, -0.2)
-	v.box(ps + Vector3(-0.03, 0, -0.12), ps + Vector3(0.03, 0.03, 0.12), Color("f1ede4"))
-	for k in 3:
-		v.box(ps + Vector3(-0.01, 0.03, -0.09 + k * 0.07), ps + Vector3(0.01, 0.032, -0.07 + k * 0.07), Color("2a2a30"))
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.006, 0.006), 4), [ps + Vector3(0, 0.02, 0.1), ps + Vector3(0.1, 0.01, 0.3),
-		Vector3(1.0, Fifi3D.FLOOR_Y + 0.04, 0.66), Vector3(0.9, Fifi3D.ROOF_Y - 0.12, 0.66)], Color("1d1b20"))
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.006, 0.006), 4), [ps + Vector3(0, 0.02, -0.1), ps + Vector3(0.12, 0.01, -0.3),
-		BLENDER_AT + Vector3(-0.12, -0.02, 0.0)], Color("1d1b20"))
-
-
-## Hanging bulbs, charms from the headliner, fringe along its edge, a
-## prayer-bead string, a hand of Fatima with the blue eye.
-func _decor(v: Vox) -> void:
+## Two work bulbs hanging from the headliner on their flex.
+func _bulbs(v: Vox) -> void:
 	var roof := Fifi3D.ROOF_Y
 	for z in [-0.38, 0.38]:
 		v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.004, 0.004), 4), [Vector3(1.3, roof - 0.09, z), Vector3(1.3, 1.25, z)],
 			Color("1d1b20"))
-		v.cyl(Vector3(1.3, 1.235, z), 0.012, 0.012, 0.02, Color("8a8579"), 6)
+		v.cyl(Vector3(1.3, 1.235, z), 0.012, 0.012, 0.02, Color("8a8579"), 8)
 		v.use("glow/bulb")
-		v.ball(Vector3(1.3, 1.2, z), Vector3(0.028, 0.036, 0.028), Color("fff1d6"), 8, 4)
+		v.ball(Vector3(1.3, 1.2, z), Vector3(0.028, 0.036, 0.028), Color("fff1d6"), 10, 5)
 		v.use("solid")
-	# Hand of Fatima and a nazar on a string from the middle of the headliner.
-	var c := Vector3(1.2, roof - 0.09, 0.02)
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.002, 0.002), 3), [c, c + Vector3(0, -0.14, 0)], Color("c9a24a"))
-	v.box(c + Vector3(-0.004, -0.22, -0.03), c + Vector3(0.004, -0.14, 0.03), Color("2a6ab0"))
-	for k in 5:
-		v.box(c + Vector3(-0.004, -0.14, -0.028 + k * 0.012), c + Vector3(0.004, -0.12, -0.02 + k * 0.012), Color("2a6ab0"))
-	v.cyl(c + Vector3(0.004, -0.185, 0), 0.012, 0.012, 0.002, Color("f4f1ea"), 8)
-	v.cyl(c + Vector3(0.006, -0.185, 0), 0.006, 0.006, 0.002, Color("1c1c24"), 6)
-	for k in 6:
-		v.ball(c + Vector3(0, -0.24 - k * 0.018, 0), Vector3(0.008, 0.008, 0.008), Color("2a6ab0") if k % 2 else Color("c9a24a"), 5, 2)
-	# A short fringe of coloured tassels along the roof's rear edge.
-	var fringe := [Color("f2c230"), Color("e8433a"), Color("3bb36a"), Color("2fa4e0"), Color("f06ab0")]
-	var zi := Fifi3D.HALF_W - 0.14
-	for k in 26:
-		var z := lerpf(-zi, zi, k / 25.0)
-		var x := Fifi3D.HINGE.x - 0.005
-		v.box(Vector3(x - 0.003, roof - 0.14, z - 0.007), Vector3(x + 0.003, roof - 0.09, z + 0.007), fringe[k % fringe.size()])
-		v.ball(Vector3(x, roof - 0.146, z), Vector3(0.009, 0.009, 0.009), fringe[(k + 2) % fringe.size()], 5, 2)
 
 
 ## The raised hatch seen from below: painted frame with thickness, the
@@ -590,127 +430,48 @@ func _hatch(v: Vox) -> void:
 	v.box(Vector3(foot.x - 0.02, foot.y - 0.02, -zo), Vector3(foot.x + 0.01, foot.y + 0.01, zo), RUBBER)
 	for z in [-0.45, 0.45]:
 		v.box(Vector3(-0.04, -0.03, z - 0.04), Vector3(0.04, 0.02, z + 0.04), Color("2c2a30"))
-	# A sticker on the inside of the frame.
-	v.poly([p.call(pa + 0.2, -th - 0.009, -0.12), p.call(pa + 0.26, -th - 0.009, -0.12), p.call(pa + 0.26, -th - 0.009, 0.12),
-		p.call(pa + 0.2, -th - 0.009, 0.12)], Color("f4f1ea"), -nn)
 
 
-## LEDs round the opening and along the hatch, fairy lights draped under
-## it, gas struts (their ends move with the hatch, so built in car space).
-func _hatch_lights(v: Vox, hatch: Node3D) -> void:
+## The gas struts from the pillars up to the hatch (their ends move with
+## the hatch, so they're built in car space).
+func _struts(v: Vox, hatch: Node3D) -> void:
 	var xf := hatch.transform
-	var zi := Fifi3D.HALF_W - 0.1
 	var sill := Fifi3D.SILL_Y
-	var roof := Fifi3D.ROOF_Y
-	var loop := [Vector3(1.81, sill + 0.045, -zi), Vector3(1.81, sill + 0.045, zi), Vector3(1.79, sill + 0.13, zi),
-		Vector3(Fifi3D.HINGE.x + 0.02, roof - 0.06, zi - 0.04), Vector3(Fifi3D.HINGE.x + 0.02, roof - 0.06, -zi + 0.04),
-		Vector3(1.79, sill + 0.13, -zi), Vector3(1.81, sill + 0.045, -zi)]
-	var k := _led_run(v, loop, 0, 0.035)
 	var foot := Fifi3D.HATCH_FOOT - Fifi3D.HINGE
 	var along := foot.normalized()
 	var n := Vector2(-along.y, along.x)
-	var e := -n * 0.066
 	var zo := Fifi3D.HALF_W - 0.1
-	var edge := [Vector3(e.x, e.y, -zo), Vector3(foot.x + e.x, foot.y + e.y, -zo), Vector3(foot.x + e.x, foot.y + e.y, zo),
-		Vector3(e.x, e.y, zo)]
-	var pts: Array = []
-	for q in edge:
-		pts.append(xf * (q as Vector3))
-	_led_run(v, pts, k, 0.035)
-	# Fairy lights hanging in a swag across under the hatch.
-	var a: Vector3 = xf * Vector3(foot.x * 0.7 + e.x, foot.y * 0.7 + e.y, -zo + 0.05)
-	var b: Vector3 = xf * Vector3(foot.x * 0.7 + e.x, foot.y * 0.7 + e.y, zo - 0.05)
-	var wire: Array = []
-	for i in 13:
-		var t := i / 12.0
-		wire.append(a.lerp(b, t) + Vector3(0, -0.12 * sin(PI * t), 0))
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.003, 0.003), 3), wire, Color("2a4a2a"), Vector3.RIGHT, false)
-	for i in range(1, 12):
-		var g := i % LED_COLORS.size()
-		v.use("glow/led%d" % g)
-		v.ball(wire[i] + Vector3(0, -0.018, 0), Vector3(0.011, 0.016, 0.011), LED_COLORS[g], 6, 2)
-	v.use("solid")
-	# Gas struts from the pillars up to the hatch.
 	for z in [-zo + 0.03, zo - 0.03]:
 		var low := Vector3(1.7, sill + 0.28, z)
 		var high: Vector3 = xf * Vector3(foot.x * 0.42 - n.x * 0.06, foot.y * 0.42 - n.y * 0.06, z)
 		var mid := low.lerp(high, 0.55)
-		v.rod(low, mid, 0.016, Color("2a2a30"), 6)
-		v.rod(mid, high, 0.008, CHROME, 6)
+		v.rod(low, mid, 0.016, Color("2a2a30"), 8)
+		v.rod(mid, high, 0.008, CHROME, 8)
 		v.cube(low, Vector3(0.03, 0.03, 0.03), Color("2a2a30"))
-
-
-func _led_run(v: Vox, path: Array, start: int, step: float) -> int:
-	var k := start
-	for i in path.size() - 1:
-		var a: Vector3 = path[i]
-		var b: Vector3 = path[i + 1]
-		var n := maxi(1, int(a.distance_to(b) / step))
-		v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.004, 0.004), 3), [a, b], Color("26252b"), Vector3.RIGHT, false)
-		for j in n:
-			var g := posmod(floori(k / 3.0), LED_COLORS.size())
-			v.use("glow/led%d" % g)
-			v.cube(a.lerp(b, j / float(n)), Vector3(0.014, 0.014, 0.014), LED_COLORS[g])
-			k += 1
-	v.use("solid")
-	return k
-
-
-## A little clip-on fan on the side trim, blades turning.
-func _build_fan(v: Vox) -> void:
-	v.box(Vector3(-0.02, -0.12, -0.03), Vector3(0.02, 0.0, 0.03), Color("e8e4dc"))
-	v.cyl(Vector3(0, -0.14, 0), 0.03, 0.03, 0.02, Color("e8e4dc"), 8)
-	v.box(Vector3(-0.03, -0.02, -0.03), Vector3(0.03, 0.02, 0.05), Color("e8e4dc"))
-	for k in 8:
-		var a := TAU * k / 8.0
-		v.rod(Vector3(cos(a) * 0.09, sin(a) * 0.09, 0.07), Vector3(cos(a + 0.4) * 0.09, sin(a + 0.4) * 0.09, 0.07), 0.003,
-			Color("c9ced6"), 3)
-	v.into(_fan, "Body")
-	var blades := Node3D.new()
-	blades.position = Vector3(0, 0, 0.06)
-	_fan.add_child(blades)
-	_fan.move_child(blades, 0)
-	for k in 3:
-		var a := TAU * k / 3.0
-		v.push_at(Vector3.ZERO, Vector3(0, 0, rad_to_deg(a)))
-		v.box(Vector3(0.01, -0.02, -0.003), Vector3(0.08, 0.02, 0.003), Color("5ab0c8"))
-		v.pop()
-	v.cyl(Vector3(0, 0, -0.01), 0.018, 0.018, 0.02, Color("e8e4dc"), 8)
-	v.into(blades, "Blades")
 
 #endregion
 
 
 #region Racks
 
-## Sayed's rail of spare كنكة in three sizes, the ladle, the milk pan and
-## the tongs, on S-hooks. Local space: the rail's middle at the origin on
+## Sayed's rail of spare كنكة in three sizes and the ladle, on S-hooks. Local space: the rail's middle at the origin on
 ## the seat back, hanging toward +x.
 func _rack_hooks(v: Vox) -> void:
-	var half := 0.26
-	v.rod(Vector3(0.03, 0, -half), Vector3(0.03, 0, half), 0.006, CHROME, 6)
+	var half := 0.21
+	v.rod(Vector3(0.03, 0, -half), Vector3(0.03, 0, half), 0.006, CHROME, 8)
 	for z in [-half, half]:
 		v.box(Vector3(0.0, -0.015, z - 0.012), Vector3(0.035, 0.012, z + 0.012), Color("2c2a30"))
-	var items := [[-0.2, 1.0], [-0.08, 0.8], [0.02, 0.62]]
+	var items := [[-0.15, 1.0], [-0.03, 0.8], [0.07, 0.62]]
 	for it in items:
 		var z: float = it[0]
 		var s: float = it[1]
 		_s_hook(v, z)
 		_kanaka_hanging(v, Vector3(0.05, -0.05, z), s)
-	_s_hook(v, 0.1)
-	v.rod(Vector3(0.035, -0.045, 0.1), Vector3(0.035, -0.2, 0.1), 0.004, METAL, 4)
-	v.push_at(Vector3(0.05, -0.23, 0.1), Vector3(0, 0, 90))
+	_s_hook(v, 0.15)
+	v.rod(Vector3(0.035, -0.045, 0.15), Vector3(0.035, -0.2, 0.15), 0.004, METAL, 4)
+	v.push_at(Vector3(0.05, -0.23, 0.15), Vector3(0, 0, 90))
 	v.lathe([Vector2(0.0, -0.012), Vector2(0.03, 0.0), Vector2(0.032, 0.02)], 10, METAL)
 	v.pop()
-	_s_hook(v, 0.17)
-	v.rod(Vector3(0.035, -0.045, 0.17), Vector3(0.035, -0.12, 0.17), 0.006, GRIP, 4)
-	v.push_at(Vector3(0.06, -0.17, 0.17), Vector3(0, 0, 90))
-	v.cyl(Vector3(0, -0.025, 0), 0.045, 0.045, 0.05, METAL_DARK, 12)
-	v.cyl(Vector3(0, 0.024, 0), 0.04, 0.04, 0.002, Color("26221e"), 12)
-	v.pop()
-	_s_hook(v, 0.23)
-	for d in [-0.008, 0.008]:
-		v.rod(Vector3(0.035, -0.045, 0.23), Vector3(0.035, -0.17, 0.23 + d * 3.0), 0.004, METAL, 4)
 
 
 func _s_hook(v: Vox, z: float) -> void:
@@ -730,11 +491,10 @@ func _kanaka_hanging(v: Vox, at: Vector3, s: float) -> void:
 
 ## The lemon squeezer, as it hangs on its hook: two long yellow handles
 ## hinged at the bottom round a round perforated cup with the press dome
-## nested in it, the cup's mouth toward us. A tea strainer and the towel
-## hang beside it, and a net bag of lemons.
+## nested in it, the cup's mouth toward us. A tea strainer hangs beside it.
 func _rack_lemon(v: Vox) -> void:
-	v.rod(Vector3(0.03, 0, -0.14), Vector3(0.03, 0, 0.14), 0.006, CHROME, 6)
-	for z in [-0.14, 0.14]:
+	v.rod(Vector3(0.03, 0, -0.13), Vector3(0.03, 0, 0.09), 0.006, CHROME, 8)
+	for z in [-0.13, 0.09]:
 		v.box(Vector3(0.0, -0.015, z - 0.012), Vector3(0.035, 0.012, z + 0.012), Color("2c2a30"))
 	# The squeezer.
 	var z := -0.07
@@ -775,19 +535,6 @@ func _rack_lemon(v: Vox) -> void:
 	v.lathe([Vector2(0.032, 0.0), Vector2(0.025, 0.015), Vector2(0.0, 0.02)], 12, Color("4a4850"))
 	v.cyl(Vector3(0, -0.003, 0), 0.034, 0.034, 0.005, METAL, 12)
 	v.pop()
-	# The checked towel over the rail's end.
-	var tz := 0.11
-	v.box(Vector3(0.028, -0.2, tz - 0.035), Vector3(0.045, 0.012, tz + 0.035), TOWEL)
-	for k in 5:
-		v.box(Vector3(0.044, -0.19 + k * 0.04, tz - 0.035), Vector3(0.047, -0.175 + k * 0.04, tz + 0.035), Color("c23b2a"))
-	for k in 2:
-		v.box(Vector3(0.044, -0.2, tz - 0.02 + k * 0.03), Vector3(0.047, 0.012, tz - 0.012 + k * 0.03), Color("c23b2a"))
-	# A net bag of lemons hanging off the end.
-	var nz := 0.17
-	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.002, 0.002), 3), [Vector3(0.03, 0, nz), Vector3(0.05, -0.08, nz)], Color("3a8a3a"))
-	for k in 6:
-		var lc := Color("e8d84a") if k % 2 else Color("b8c83a")
-		v.ball(Vector3(0.06, -0.1 - (k / 2) * 0.035, nz - 0.02 + (k % 2) * 0.035), Vector3(0.02, 0.018, 0.018), lc, 6, 3)
 
 
 ## The chalk menu board: wooden frame, dark green board, today's drinks

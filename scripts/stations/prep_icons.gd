@@ -10,9 +10,10 @@ extends RefCounted
 static var _baked := {}
 
 
-## The icon as a texture `px` pixels square, painted once and then reused:
-## drawn live it's dozens of polygons, a draw call each. Null for the frame
-## or two it takes to paint, so callers draw it live meanwhile.
+## The icon as a texture `px` pixels square, painted once (into a little
+## offscreen view that's kept) and then reused: drawn live it's dozens of
+## polygons, a draw call each. Null until it's painted, so callers draw it
+## live meanwhile.
 static func baked(id: String, px: int) -> Texture2D:
 	var key := "%s@%d" % [id, px]
 	if not _baked.has(key):
@@ -34,8 +35,7 @@ static func _bake(id: String, px: int, key: String) -> void:
 	tree.root.add_child.call_deferred(vp)
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
-	_baked[key] = ImageTexture.create_from_image(vp.get_texture().get_image())
-	vp.queue_free()
+	_baked[key] = vp.get_texture()
 
 
 static func draw_icon(ci: CanvasItem, id: String, rect: Rect2) -> void:

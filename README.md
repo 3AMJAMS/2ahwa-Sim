@@ -75,12 +75,16 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
 
 ### Visual style and effects
 The world is **blocky 3D**, built in code: `scripts/vox/vox.gd` bakes boxes, extruded profiles, lathed round things
-(kanakas, glasses, wheels) and swept tubes into one vertex-coloured, flat-shaded mesh per object, so a whole car or
-building is a handful of draw calls. Lamps, lit windows, LEDs and flames use unshaded "glow" materials whose
+(kanakas, glasses, wheels) and swept tubes into one vertex-coloured mesh per object, so a whole car or building is a
+handful of draw calls. Flat faces are flat-shaded; round things get extra sides (`Vox.DETAIL`) and smooth shading so
+they read as round. Lamps, lit windows, LEDs and flames use unshaded "glow" materials whose
 brightness is set per group (`Vox.set_glow`), so they bloom through the `WorldEnvironment` glow. Lighting is real:
-`DayLight3D` moves a sun/moon through the day, streetlights are spot lights after dusk, FIFI's bulbs and LED spill
-are omni lights. To keep the frame light on mid-range phones, busy 2D drawings (the quick bar, the ticket icons)
-are painted once into textures instead of redrawn from polygons each frame. Haptics use `Input.vibrate_handheld()` (add the **VIBRATE** permission in the Android preset).
+`DayLight3D` moves a sun/moon through the day (shadows by day; the faint moonlight casts none). To keep the frame light
+on mid-range phones: the 3D renders at 75% resolution (the 2D UI stays sharp); a real light costs something on every
+pixel it touches, so the road, pavements, garden and buildings sit on their own render layer that the streetlights and
+FIFI's bulb skip, and the lamps' pools and FIFI's pink LED spill are painted onto the ground as glowing discs; in the
+prep view one work bulb lights the trunk and the street lamps' glow is folded into the ambient light; busy 2D drawings
+(the quick bar, the ticket icons) are painted once into textures instead of redrawn from polygons each frame. Haptics use `Input.vibrate_handheld()` (add the **VIBRATE** permission in the Android preset).
 
 ### Project layout
 | Path | What |
@@ -95,7 +99,7 @@ are painted once into textures instead of redrawn from polygons each frame. Hapt
 | `scripts/world/street_vehicle.gd`, `traffic.gd` | Blocky traffic (six kinds, drivers behind tinted glass, winding windows) and its lane logic |
 | `scripts/world/customer.gd`, `customer_queue.gd` | Customers on foot or by car: arrival, order bubble, patience bar, served/angry exits |
 | `scripts/world/sidewalk_furniture.gd`, `sayed_figure.gd`, `street_cat.gd` | Sayed's chair and radio, Sayed sipping his tea, the cat on FIFI's roof |
-| `scripts/stations/prep_rig.gd` | FIFI's tail and trunk up close: bumper, lamps, plate, the hatch from below, counter, shelf, jars, racks, decorations, the prep camera |
+| `scripts/stations/prep_rig.gd` | FIFI's tail and trunk up close: bumper, lamps, plate, the hatch from below, counter, jars, work bulbs, racks, the prep camera (decorations come later) |
 | `scripts/stations/stove3d.gd` | The gas cylinder, flame and كنكة (boiling, foam, pour stream, boil-over), the tea glass or فنجان and everything built in it |
 | `scripts/stations/blender3d.gd` | The blender (heat lights, vents, blades, fruit) and the tall glass it pours into |
 | `scripts/stations/prep_station.gd` | The prep layer: the order, readouts, the quick bar, gestures, the recipe step engine, hints, Sayed's tips, scoring |

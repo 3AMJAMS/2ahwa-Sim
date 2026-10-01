@@ -10,6 +10,12 @@ var environment: Environment
 ## Degrees round the sky the light comes from (turns a little through the day).
 @export var base_yaw := 35.0
 @export var shadows := true
+## Behind FIFI making a drink: after dark the street lamps' sodium glow is
+## folded into the ambient light there instead of costing real lights.
+var prep := false:
+	set(on):
+		prep = on
+		apply()
 
 
 func _ready() -> void:
@@ -46,7 +52,12 @@ func apply() -> void:
 	sun.rotation_degrees = Vector3(pitch, yaw, 0)
 	sun.light_color = warm.lerp(moon, dark)
 	sun.light_energy = lerpf(1.35, 0.5, dark)
+	# Moonlight shadows are faint and still cost a full shadow pass.
+	sun.shadow_enabled = shadows and dark < 0.85
 	if environment:
 		environment.background_color = sky
-		environment.ambient_light_color = Color(0.74, 0.78, 0.88).lerp(Color(0.42, 0.44, 0.74), dark) * amb.lerp(Color.WHITE, 0.5)
+		var ambient := Color(0.74, 0.78, 0.88).lerp(Color(0.42, 0.44, 0.74), dark) * amb.lerp(Color.WHITE, 0.5)
+		if prep:
+			ambient = ambient.lerp(Color(0.8, 0.6, 0.44), 0.5 * dark)
+		environment.ambient_light_color = ambient
 		environment.ambient_light_energy = lerpf(0.8, 1.35, dark)

@@ -1,8 +1,11 @@
 class_name Vox
 extends RefCounted
 ## Builds the game's blocky low-poly meshes: boxes, extruded profiles,
-## lathed round things (kanakas, glasses, wheels) and swept tubes, all
-## flat-shaded with their colour in the vertices. Everything added between
+## lathed round things (kanakas, glasses, wheels) and swept tubes, with
+## their colour in the vertices. Flat faces are flat-shaded; lathed round
+## things are smooth-shaded round their axis and along gentle curves (a
+## sharp turn in the profile, like a lip, stays a crisp edge), and every
+## round thing gets DETAIL times the sides it asks for. Everything added between
 ## two commit() calls merges into one ArrayMesh, one draw call per material,
 ## so a whole car or a whole street costs a handful of draw calls.
 ##
@@ -21,6 +24,9 @@ var _stack: Array[Transform3D] = []
 var _kind := "solid"
 ## kind -> [PackedVector3Array verts, PackedVector3Array normals, PackedColorArray colours]
 var _parts := {}
+
+## Round things get this many times the sides they're built with.
+const DETAIL := 1.5
 
 static var _materials := {}
 static var _glow := {}
@@ -57,6 +63,12 @@ func is_empty() -> bool:
 
 ## A planar convex polygon facing `out` (a direction in local space).
 func poly(pts: Array, col: Color, out: Vector3) -> void:
+	_poly_n(pts, [], col, out)
+
+
+## poly() with a normal per point (local space) for smooth shading; empty
+## `nrms` means flat.
+func _poly_n(pts: Array, nrms: Array, col: Color, out: Vector3) -> void:
 	if pts.size() < 3:
 		return
 	var w: Array = _buf()
@@ -70,11 +82,21 @@ func poly(pts: Array, col: Color, out: Vector3) -> void:
 	if nrm.length_squared() < 1e-16:
 		return
 	nrm = nrm.normalized()
+	var vn: Array[Vector3] = []
+	if not nrms.is_empty():
+		# Normals go through the inverse transpose (balls are scaled).
+		var nb := xf.basis.inverse().transposed()
+		for n: Vector3 in nrms:
+			vn.append((nb * n).normalized())
 	var o := (xf.basis * out)
 	if nrm.dot(o) < 0.0:
 		nrm = -nrm
 		world.reverse()
+		vn.reverse()
 		a = world[0]
+	if vn.is_empty():
+		for i in world.size():
+			vn.append(nrm)
 	# Godot's front faces wind clockwise seen from outside: emit a, c, b.
 	var verts: PackedVector3Array = w[0]
 	var norms: PackedVector3Array = w[1]
@@ -83,8 +105,10 @@ func poly(pts: Array, col: Color, out: Vector3) -> void:
 		verts.append(a)
 		verts.append(world[i + 1])
 		verts.append(world[i])
+		norms.append(vn[0])
+		norms.append(vn[i + 1])
+		norms.append(vn[i])
 		for k in 3:
-			norms.append(nrm)
 			cols.append(col)
 
 
@@ -165,30 +189,61 @@ func extrude(outline: PackedVector2Array, axis: String, a0: float, a1: float, co
 
 ## A surface of revolution round the y axis: `profile` is (radius, y) from
 ## bottom to top. Closes the bottom (and the top if `cap_top`) where the
-## radius isn't zero. `seg` sides.
+## radius isn't zero. `seg` sides (times DETAIL), smooth-shaded.
 func lathe(profile: Array, seg: int, col: Color, cap_top := true, cap_bottom := true, phase := 0.0) -> void:
+	seg = sides(seg)
+	# Each profile segment's outward normal in (radius, y), and at each point
+	# the one to shade with: shared where the profile bends gently, so it
+	# reads as one curve, kept apart at a sharp turn (a lip, a rim).
+	var m := profile.size() - 1
+	var seg_n: Array[Vector2] = []
+	for i in m:
+		var p: Vector2 = profile[i]
+		var q: Vector2 = profile[i + 1]
+		seg_n.append(Vector2(q.y - p.y, -(q.x - p.x)).normalized())
+	var at_start: Array[Vector2] = []
+	var at_end: Array[Vector2] = []
+	for i in m:
+		var n0: Vector2 = seg_n[i]
+		var n1: Vector2 = seg_n[i]
+		if i > 0 and seg_n[i - 1].dot(seg_n[i]) > 0.75:
+			n0 = (seg_n[i - 1] + seg_n[i]).normalized()
+		if i < m - 1 and seg_n[i + 1].dot(seg_n[i]) > 0.75:
+			n1 = (seg_n[i + 1] + seg_n[i]).normalized()
+		at_start.append(n0)
+		at_end.append(n1)
 	for s in seg:
 		var a0 := TAU * s / seg + phase
 		var a1 := TAU * (s + 1) / seg + phase
 		var d0 := Vector3(cos(a0), 0, sin(a0))
 		var d1 := Vector3(cos(a1), 0, sin(a1))
 		var mid := Vector3(cos((a0 + a1) * 0.5), 0, sin((a0 + a1) * 0.5))
-		for i in profile.size() - 1:
+		for i in m:
 			var p: Vector2 = profile[i]
 			var q: Vector2 = profile[i + 1]
+			var np: Vector2 = at_start[i]
+			var nq: Vector2 = at_end[i]
 			var pts: Array = []
-			pts.append(d0 * p.x + Vector3.UP * p.y)
-			pts.append(d1 * p.x + Vector3.UP * p.y)
+			var nrms: Array = []
+			if p.x > 0.0001:
+				pts.append(d0 * p.x + Vector3.UP * p.y)
+				nrms.append(d0 * np.x + Vector3.UP * np.y)
+				pts.append(d1 * p.x + Vector3.UP * p.y)
+				nrms.append(d1 * np.x + Vector3.UP * np.y)
+			else:
+				pts.append(Vector3.UP * p.y)
+				nrms.append(mid * np.x + Vector3.UP * np.y)
 			if q.x > 0.0001:
 				pts.append(d1 * q.x + Vector3.UP * q.y)
+				nrms.append(d1 * nq.x + Vector3.UP * nq.y)
 				pts.append(d0 * q.x + Vector3.UP * q.y)
+				nrms.append(d0 * nq.x + Vector3.UP * nq.y)
 			else:
 				pts.append(Vector3.UP * q.y)
-			if p.x <= 0.0001:
-				pts.remove_at(0)
+				nrms.append(mid * nq.x + Vector3.UP * nq.y)
 			# Outward: away from the axis, tilted by the slope of the profile.
-			var slope := Vector2(q.y - p.y, -(q.x - p.x))
-			poly(pts, col, mid * slope.x + Vector3.UP * slope.y)
+			var sn: Vector2 = seg_n[i]
+			_poly_n(pts, nrms, col, mid * sn.x + Vector3.UP * sn.y)
 	var first: Vector2 = profile[0]
 	var last: Vector2 = profile[profile.size() - 1]
 	if cap_bottom and first.x > 0.0001:
@@ -217,6 +272,7 @@ func rod(a: Vector3, b: Vector3, r: float, col: Color, seg := 6, r_b := -1.0) ->
 
 ## Low-poly ellipsoid.
 func ball(center: Vector3, radii: Vector3, col: Color, seg := 8, rings := 4) -> void:
+	rings = sides(rings)
 	var prof: Array = []
 	for i in rings + 1:
 		var a := -PI * 0.5 + PI * i / rings
@@ -404,6 +460,7 @@ void fragment() {
 
 ## Rounded rectangle outline, counter-clockwise.
 static func round_rect(r: Rect2, rad: float, seg := 2) -> PackedVector2Array:
+	seg = sides(seg)
 	var pts := PackedVector2Array()
 	if rad <= 0.0001:
 		return PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
@@ -419,11 +476,17 @@ static func round_rect(r: Rect2, rad: float, seg := 2) -> PackedVector2Array:
 
 ## Circle (or ellipse) outline, counter-clockwise.
 static func circle(c: Vector2, r: Vector2, seg := 12, phase := 0.0) -> PackedVector2Array:
+	seg = sides(seg)
 	var pts := PackedVector2Array()
 	for i in seg:
 		var a := TAU * i / seg + phase
 		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
 	return pts
+
+
+## How many sides a round thing asked to have `n` gets.
+static func sides(n: int) -> int:
+	return maxi(n, ceili(n * DETAIL))
 
 
 func _buf() -> Array:
