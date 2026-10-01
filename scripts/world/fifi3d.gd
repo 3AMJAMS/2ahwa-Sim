@@ -37,8 +37,9 @@ const HINGE := Vector2(1.42, 1.45)
 ## Closed, the hatch comes down to here (x, y), just over the sill.
 const HATCH_FOOT := Vector2(1.8, 0.7)
 const HATCH_OPEN_DEG := 112.0
-## FIFI's number plate.
-const PLATE_TEXT := "شاي  ١٢٧"
+## FIFI's number plate: the letters spaced apart like a real Egyptian plate
+## (doubled spaces, as the font's spaces are narrow).
+const PLATE_TEXT := "ش  ا  ي    ١٢٧"
 
 ## 0..1, pulsed by WorldHost to invite a tap on the trunk.
 var trunk_glow := 0.0:
@@ -90,7 +91,9 @@ func _ready() -> void:
 	plate.text = PLATE_TEXT
 	plate.font = preload("res://assets/ui/main_theme.tres").default_font
 	plate.font_size = 48
-	plate.pixel_size = 0.0022
+	# Shrink to fit across the plate's 0.48 m white face.
+	var text_w := plate.font.get_string_size(PLATE_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, plate.font_size).x
+	plate.pixel_size = minf(0.0022, 0.42 / maxf(text_w, 1.0))
 	plate.outline_size = 0
 	plate.modulate = Color("1d1f28")
 	plate.position = Vector3(LENGTH * 0.5 + 0.035, 0.34, 0)
