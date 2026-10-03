@@ -30,7 +30,10 @@ const COUNTER_X := Vector2(1.26, 1.8)
 ## Where the kit stands on the counter.
 const GLASS_AT := Vector3(1.6, COUNTER_Y, 0.14)
 const STOVE_AT := Vector3(1.5, COUNTER_Y, -0.24)
+## Where the blender would stand (the juice tiers; FIFI has none).
 const BLENDER_AT := Vector3(1.4, COUNTER_Y, -0.58)
+## Where the kanaka that isn't on the fire rests.
+const IDLE_POT_AT := Vector3(1.34, COUNTER_Y, -0.5)
 ## The jars along the counter's back and left: where each ingredient's
 ## spoonful comes from.
 const JARS := {
@@ -40,6 +43,10 @@ const JARS := {
 	"coffee": Vector3(1.38, COUNTER_Y, 0.5),
 	"karkade": Vector3(1.38, COUNTER_Y, 0.36),
 	"teabag": Vector3(1.4, COUNTER_Y, 0.2),
+	"mint": Vector3(1.7, COUNTER_Y, -0.4),
+	"milk": Vector3(1.47, COUNTER_Y, -0.52),
+	"anise": Vector3(1.36, COUNTER_Y, 0.04),
+	"cinnamon": Vector3(1.6, COUNTER_Y, -0.5),
 	"mango": Vector3(1.36, COUNTER_Y, -0.3),
 }
 ## The rail racks hang under the roof's rear edge, across the top of the
@@ -277,6 +284,10 @@ func _counter(v: Vox) -> void:
 	_tin(v, JARS.coffee, Color("4a2b1b"), Color("c9a24a"))
 	_jar(v, JARS.karkade, Color("7a1428"), Color("c9a24a"), 0.11)
 	_teabag_box(v, JARS.teabag)
+	_mint_glass(v, JARS.mint)
+	_milk_bottle(v, JARS.milk)
+	_jar(v, JARS.anise, Color("8a7a4a"), Color("c9a24a"), 0.1)
+	_cinnamon_jar(v, JARS.cinnamon)
 
 
 func _jar(v: Vox, at: Vector3, fill: Color, lid: Color, h: float) -> void:
@@ -326,6 +337,44 @@ func _teabag_box(v: Vox, at: Vector3) -> void:
 	# Tags of the bags sticking out of the open top.
 	for k in 3:
 		v.box(at + Vector3(-0.01 + k * 0.01, 0.1, -0.03 + k * 0.025), at + Vector3(k * 0.01, 0.13, -0.015 + k * 0.025), Color("c23b2a"))
+
+
+## A glass of water with a bunch of mint standing in it.
+func _mint_glass(v: Vox, at: Vector3) -> void:
+	v.cyl(at + Vector3(0, 0.004, 0), 0.034, 0.038, 0.06, Color(0.62, 0.78, 0.86), 10)
+	for k in 5:
+		var a := TAU * k / 5.0 + 0.3
+		var top := at + Vector3(cos(a) * 0.03, 0.15 + (k % 2) * 0.03, sin(a) * 0.03)
+		v.rod(at + Vector3(cos(a) * 0.01, 0.01, sin(a) * 0.01), top, 0.003, Color("5a7a2a"), 4)
+		for j in 3:
+			var c := at.lerp(top, 0.55 + j * 0.2) + Vector3(cos(a) * 0.012, 0, sin(a) * 0.012)
+			v.ball(c, Vector3(0.016, 0.007, 0.012), Color("3f8a3a") if (k + j) % 2 else Color("4c9a44"), 6, 2)
+	v.use("glass")
+	v.cyl(at, 0.04, 0.044, 0.1, Color(0.86, 0.94, 1.0, 0.3), 10)
+	v.use("solid")
+
+
+## A glass bottle of milk with a blue cap and label.
+func _milk_bottle(v: Vox, at: Vector3) -> void:
+	v.push_at(at)
+	v.lathe([Vector2(0.04, 0.0), Vector2(0.045, 0.02), Vector2(0.045, 0.1), Vector2(0.03, 0.14), Vector2(0.022, 0.165)],
+		12, Color("f6f3ec"))
+	v.cyl(Vector3(0, 0.05, 0), 0.046, 0.046, 0.035, Color("2f6fb3"), 12)
+	v.cyl(Vector3(0, 0.163, 0), 0.025, 0.025, 0.022, Color("2f6fb3"), 10)
+	v.pop()
+
+
+## A jar of cinnamon sticks standing up out of it.
+func _cinnamon_jar(v: Vox, at: Vector3) -> void:
+	for k in 6:
+		var a := TAU * k / 6.0
+		var foot := at + Vector3(cos(a) * 0.018, 0.005, sin(a) * 0.018)
+		v.rod(foot, foot + Vector3(cos(a) * 0.012, 0.15 + (k % 3) * 0.015, sin(a) * 0.012), 0.007,
+			Color("9a5a2c") if k % 2 else Color("8a4e24"), 6)
+	v.use("glass")
+	v.cyl(at, 0.045, 0.045, 0.09, Color(0.86, 0.94, 1.0, 0.3), 10)
+	v.use("solid")
+	v.box(at + Vector3(0.043, 0.03, -0.024), at + Vector3(0.047, 0.06, 0.024), Color("f1ede4"))
 
 
 func _trunk(v: Vox) -> void:

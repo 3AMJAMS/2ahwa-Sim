@@ -236,13 +236,32 @@ func _body_profile(top: Array, wheels: Array, r: float, sill := 0.3) -> PackedVe
 	return out
 
 
+## A wheel whose centre is `z` across: a black tyre with rounded shoulders
+## and a bulging sidewall, a steel wheel set into it and a chrome hubcap,
+## on the outer side. Callers put the outer face flush with the body side
+## (wheel_z) so the tyre reads below the sill and in the arch.
 func _wheel(v: Vox, x: float, z: float, r: float, w := 0.2) -> void:
 	var s := signf(z)
+	var h := w * 0.5
 	v.push_at(Vector3(x, r, z), Vector3(90, 0, 0))
-	v.cyl(Vector3(0, -w * 0.5, 0), r, r, w, TYRE, 10)
-	v.cyl(Vector3(0, -w * 0.5 - 0.005 if s < 0 else w * 0.5 - 0.02, 0), r * 0.58, r * 0.58, 0.025, RIM, 8)
-	v.cyl(Vector3(0, -w * 0.5 - 0.01 if s < 0 else w * 0.5 - 0.005, 0), r * 0.25, r * 0.25, 0.015, CHROME, 6)
+	v.lathe([Vector2(r * 0.6, -h), Vector2(r * 0.88, -h), Vector2(r * 0.97, -h + w * 0.14), Vector2(r, -h + w * 0.32),
+		Vector2(r, h - w * 0.32), Vector2(r * 0.97, h - w * 0.14), Vector2(r * 0.88, h), Vector2(r * 0.6, h)], 14, TYRE)
+	# Local y runs along +z here: the outer face is +h on the +z side.
+	if s > 0:
+		v.cyl(Vector3(0, h - 0.012, 0), r * 0.6, r * 0.6, 0.014, RIM.darkened(0.15), 14)
+		v.cyl(Vector3(0, h - 0.006, 0), r * 0.48, r * 0.46, 0.012, RIM, 14)
+		v.cyl(Vector3(0, h - 0.002, 0), r * 0.24, r * 0.2, 0.012, CHROME, 10)
+	else:
+		v.cyl(Vector3(0, -h - 0.002, 0), r * 0.6, r * 0.6, 0.014, RIM.darkened(0.15), 14)
+		v.cyl(Vector3(0, -h - 0.006, 0), r * 0.46, r * 0.48, 0.012, RIM, 14)
+		v.cyl(Vector3(0, -h - 0.01, 0), r * 0.2, r * 0.24, 0.012, CHROME, 10)
 	v.pop()
+
+
+## Across-position for a wheel `w` wide whose outer face sits flush with a
+## body side at `half_w`.
+static func wheel_z(half_w: float, w := 0.2) -> float:
+	return half_w - w * 0.5 + 0.004
 
 
 ## An open cabin behind glass: roof, pillars, windscreen, rear screen, side
@@ -357,6 +376,14 @@ func _shadow(v: Vox, half: float, w: float) -> void:
 	v.box(Vector3(-half + 0.1, 0.004, -w + 0.05), Vector3(half - 0.1, 0.007, w - 0.05), Color("2c2d33"))
 
 
+## True when [x0, x1] misses every wheel arch's span along the car.
+func _clear_of(x0: float, x1: float, arches: Array) -> bool:
+	for a: Vector2 in arches:
+		if x1 > a.x and x0 < a.y:
+			return false
+	return true
+
+
 func _mirror(v: Vox, x: float, y: float, w: float) -> void:
 	for s in [-1.0, 1.0]:
 		v.box(Vector3(x - 0.04, y, s * w - 0.02), Vector3(x + 0.04, y + 0.03, s * (w + 0.1)), PLASTIC)
@@ -376,17 +403,21 @@ func _saloon(v: Vox, pane: Vox) -> void:
 	var prof := _body_profile(top, [-1.35, 1.35], 0.31)
 	v.extrude(prof, "z", -w, w, _paint)
 	for x in [-1.35, 1.35]:
-		for z in [w - 0.12, -w + 0.12]:
+		for z in [wheel_z(w), -wheel_z(w)]:
 			_wheel(v, x, z, 0.31)
 	_cabin(v, pane, Vector2(-1.0, 1.5), Vector2(-0.35, 0.9), 0.88, 1.45, 0.72, 0.02)
 	_roof = 1.45
-	# Sills, the waist crease, door shut lines and handles.
+	# Sills (between the arches, so they don't cross the wheels), the waist
+	# crease, door shut lines and handles.
+	var arches := [Vector2(-1.35 - 0.37, -1.35 + 0.37), Vector2(1.35 - 0.37, 1.35 + 0.37)]
 	for s in [-1.0, 1.0]:
 		var z: float = s * w
-		v.box(Vector3(-2.0, 0.3, z - s * 0.01), Vector3(2.0, 0.37, z + s * 0.012), _paint.darkened(0.35))
+		for seg in [Vector2(-2.0, arches[0].x), Vector2(arches[0].y, arches[1].x), Vector2(arches[1].y, 2.0)]:
+			v.box(Vector3(seg.x, 0.3, z - s * 0.01), Vector3(seg.y, 0.37, z + s * 0.012), _paint.darkened(0.35))
 		v.box(Vector3(-2.15, 0.7, z - s * 0.005), Vector3(2.15, 0.72, z + s * 0.008), _paint.lightened(0.2))
 		for dx in [-1.02, 0.06, 1.25]:
-			v.box(Vector3(dx - 0.006, 0.38, z - s * 0.004), Vector3(dx + 0.006, 0.87, z + s * 0.006), _paint.darkened(0.4))
+			var foot := 0.38 if _clear_of(dx, dx, arches) else 0.7
+			v.box(Vector3(dx - 0.006, foot, z - s * 0.004), Vector3(dx + 0.006, 0.87, z + s * 0.006), _paint.darkened(0.4))
 		for hx in [-0.62, 0.72]:
 			v.box(Vector3(hx - 0.1, 0.77, z), Vector3(hx + 0.1, 0.8, z + s * 0.025), CHROME.darkened(0.1))
 	_mirror(v, -0.95, 0.92, w)
@@ -394,13 +425,14 @@ func _saloon(v: Vox, pane: Vox) -> void:
 		# Two rows of black-and-white checks along the flanks, and the roof sign.
 		for s in [-1.0, 1.0]:
 			var z: float = s * (w + 0.004)
-			for k in 22:
+			# Big enough to stay checks at the street camera's distance.
+			for k in 14:
 				for row in 2:
-					if (k + row) % 2 == 0:
-						var x0 := lerpf(-2.1, 2.1, k / 22.0)
-						var x1 := lerpf(-2.1, 2.1, (k + 1) / 22.0)
-						var y0 := 0.5 + row * 0.06
-						v.box(Vector3(x0, y0, z - s * 0.004), Vector3(x1, y0 + 0.06, z + s * 0.003), Color("1e1e22"))
+					var x0 := lerpf(-2.1, 2.1, k / 14.0)
+					var x1 := lerpf(-2.1, 2.1, (k + 1) / 14.0)
+					if (k + row) % 2 == 0 and _clear_of(x0, x1, arches):
+						var y0 := 0.48 + row * 0.1
+						v.box(Vector3(x0, y0, z - s * 0.004), Vector3(x1, y0 + 0.1, z + s * 0.003), Color("1e1e22"))
 		v.rbox(Vector3(0.1, 1.46, -0.26), Vector3(0.5, 1.62, 0.26), 0.04, Color("f2d24a"), "x", 1)
 		v.use("glow/sign")
 		v.box(Vector3(0.14, 1.5, 0.26), Vector3(0.46, 1.58, 0.265), Color("fff2b0"))
@@ -431,7 +463,7 @@ func _microbus(v: Vox, pane: Vox) -> void:
 	_cabin(v, pane, Vector2(-2.2, cab_x), Vector2(-1.75, cab_x), 1.1, 1.98, 0.82, -1.45, false, 0.85)
 	_roof = 2.3
 	for x in [-1.6, 1.5]:
-		for z in [w - 0.12, -w + 0.12]:
+		for z in [wheel_z(w), -wheel_z(w)]:
 			_wheel(v, x, z, 0.32)
 	for s in [-1.0, 1.0]:
 		var z: float = s * (w + 0.004)
@@ -446,7 +478,8 @@ func _microbus(v: Vox, pane: Vox) -> void:
 		v.box(Vector3(-2.38, 1.02, z - s * 0.005), Vector3(2.38, 1.12, z + s * 0.004), _accent)
 		v.box(Vector3(-2.38, 0.9, z - s * 0.005), Vector3(2.38, 0.94, z + s * 0.004), _accent.darkened(0.25))
 		for x in [-1.2, 0.4, 1.4]:
-			v.box(Vector3(x - 0.006, 0.36, z - s * 0.004), Vector3(x + 0.006, 1.86, z + s * 0.006), _paint.darkened(0.3))
+			var foot := 0.36 if _clear_of(x, x, [Vector2(-1.97, -1.23), Vector2(1.13, 1.87)]) else 0.7
+			v.box(Vector3(x - 0.006, foot, z - s * 0.004), Vector3(x + 0.006, 1.86, z + s * 0.006), _paint.darkened(0.3))
 		v.box(Vector3(-0.35, 0.3, z - s * 0.01), Vector3(0.4, 0.36, z + s * 0.03), PLASTIC)
 	_mirror(v, -2.0, 1.25, w)
 	# Roof rack with rails and a roped bundle of luggage.
@@ -473,7 +506,7 @@ func _pickup(v: Vox, pane: Vox) -> void:
 	var top := [Vector2(2.5, 0.72), Vector2(2.45, 0.76), Vector2(-2.3, 0.78), Vector2(-2.5, 0.7), Vector2(-2.47, 0.4)]
 	v.extrude(_body_profile(top, [-1.55, 1.5], 0.33, 0.35), "z", -w, w, _paint)
 	for x in [-1.55, 1.5]:
-		for z in [w - 0.12, -w + 0.12]:
+		for z in [wheel_z(w), -wheel_z(w)]:
 			_wheel(v, x, z, 0.33)
 	# Cab over the front half.
 	v.extrude(PackedVector2Array([Vector2(0.15, 0.76), Vector2(-1.3, 0.76), Vector2(-1.3, 1.1), Vector2(0.15, 1.1)]), "z", -w, w, _paint)
@@ -490,7 +523,9 @@ func _pickup(v: Vox, pane: Vox) -> void:
 	v.box(Vector3(front - 0.02, 0.76, -w), Vector3(front + 0.04, 1.14, w), _paint.darkened(0.1))
 	for s in [-1.0, 1.0]:
 		v.box(Vector3(front, 1.04, s * w - 0.01), Vector3(back, 1.07, s * w + 0.01), _paint.lightened(0.2))
-		v.box(Vector3(-2.3, 0.35, s * w - 0.01), Vector3(2.3, 0.42, s * w + s * 0.012), _paint.darkened(0.35))
+		var p_arches := [Vector2(-1.55 - 0.39, -1.55 + 0.39), Vector2(1.5 - 0.39, 1.5 + 0.39)]
+		for seg in [Vector2(-2.3, p_arches[0].x), Vector2(p_arches[0].y, p_arches[1].x), Vector2(p_arches[1].y, 2.3)]:
+			v.box(Vector3(seg.x, 0.35, s * w - 0.01), Vector3(seg.y, 0.42, s * w + s * 0.012), _paint.darkened(0.35))
 	for k in 9:
 		var row := floori(k / 3.0)
 		var x := lerpf(back - 0.4, front + 0.4, (k % 3) / 2.0) + (0.15 if row == 1 else 0.0)

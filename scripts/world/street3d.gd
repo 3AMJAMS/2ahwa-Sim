@@ -67,7 +67,6 @@ var lamps_lit := true:
 			light.visible = on and light.light_energy > 0.2
 var _lamp_lights: Array[SpotLight3D] = []
 var _pool_mat := Street3D.pool_material()
-var _moths: Array[CPUParticles3D] = []
 var _rng := RandomNumberGenerator.new()
 
 
@@ -79,9 +78,13 @@ func _ready() -> void:
 	_rng.seed = 1127
 	var v := Vox.new()
 	_road(v)
-	v.into(self, "Road").layers = GROUND_LAYER
+	var road := v.into(self, "Road")
 	_kerbs_and_pavements(v)
-	v.into(self, "Pavements").layers = GROUND_LAYER
+	var pave := v.into(self, "Pavements")
+	# Flat ground: on the layer lamps skip, and it never casts a shadow.
+	for flat: MeshInstance3D in [road, pave]:
+		flat.layers = GROUND_LAYER
+		flat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_garden(v)
 	v.into(self, "Garden").layers = GROUND_LAYER
 	var x := X_MIN
@@ -107,8 +110,6 @@ func set_time(darkness: float) -> void:
 	for light in _lamp_lights:
 		light.light_energy = 12.0 * darkness
 		light.visible = darkness > 0.02 and lamps_lit
-	for m in _moths:
-		m.emitting = darkness > 0.5
 
 
 #region Road
@@ -218,21 +219,22 @@ func _garden(v: Vox) -> void:
 	v.box(Vector3(X_MIN, 0.0, z0), Vector3(X_MAX, 0.55, z0 + 0.3), Color("d8ccb4"))
 	v.box(Vector3(X_MIN, 0.55, z0 - 0.03), Vector3(X_MAX, 0.62, z0 + 0.33), Color("e8e0d0"))
 	v.box(Vector3(X_MIN, 0.0, z0 - 0.01), Vector3(X_MAX, 0.12, z0 + 0.31), Color("a89c88"))
+	# (Bars every 26 cm: half as many as before, for the frame rate.)
 	var x := X_MIN + 0.1
 	while x < X_MAX:
-		if int(round(x / 0.13)) % 23 == 0:
+		if int(round(x / 0.26)) % 12 == 0:
 			v.box(Vector3(x - 0.14, 0.0, z0 - 0.04), Vector3(x + 0.14, 1.55, z0 + 0.34), Color("d8ccb4"))
 			v.box(Vector3(x - 0.17, 1.55, z0 - 0.07), Vector3(x + 0.17, 1.63, z0 + 0.37), Color("e8e0d0"))
 			v.cube(Vector3(x, 1.7, z0 + 0.15), Vector3(0.14, 0.14, 0.14), Color("e8e0d0"))
 		else:
 			v.box(Vector3(x - 0.012, 0.62, z0 + 0.13), Vector3(x + 0.012, 1.4, z0 + 0.17), Color("2e3a34"))
 			v.cube(Vector3(x, 1.43, z0 + 0.15), Vector3(0.04, 0.06, 0.04), Color("2e3a34"))
-		x += 0.13
+		x += 0.26
 	for y in [0.75, 1.3]:
 		v.box(Vector3(X_MIN, y, z0 + 0.12), Vector3(X_MAX, y + 0.03, z0 + 0.18), Color("2e3a34"))
 	# Grass and earth beyond, bushes along the wall, a few trees.
 	v.box(Vector3(X_MIN, -0.3, z0 + 0.3), Vector3(X_MAX, 0.1, z0 + 9.0), Color("5a7a3a"))
-	for k in 60:
+	for k in 30:
 		var gx := _rng.randf_range(X_MIN, X_MAX)
 		var gz := _rng.randf_range(z0 + 0.5, z0 + 8.5)
 		v.box(Vector3(gx, 0.1, gz), Vector3(gx + _rng.randf_range(0.4, 1.2), 0.106, gz + _rng.randf_range(0.3, 0.8)),
@@ -240,8 +242,8 @@ func _garden(v: Vox) -> void:
 	var bx := X_MIN
 	while bx < X_MAX:
 		var r := _rng.randf_range(0.35, 0.6)
-		v.ball(Vector3(bx, 0.3 + r * 0.6, z0 + 0.75), Vector3(r, r * 0.9, r), Color("3e6a2e") if _rng.randf() < 0.6 else Color("4a7a34"), 7, 3)
-		bx += _rng.randf_range(0.7, 1.3)
+		v.ball(Vector3(bx, 0.3 + r * 0.6, z0 + 0.75), Vector3(r, r * 0.9, r), Color("3e6a2e") if _rng.randf() < 0.6 else Color("4a7a34"), 6, 2)
+		bx += _rng.randf_range(1.1, 1.8)
 	for t in [Vector2(-2.5, 11.0), Vector2(6.0, 10.2), Vector2(14.0, 11.5), Vector2(-10.0, 10.5), Vector2(22.0, 10.0),
 			Vector2(1.5, 14.0), Vector2(10.0, 15.0)]:
 		_tree(v, Vector3(t.x, 0.1, t.y), _rng.randf_range(0.9, 1.25))
@@ -251,10 +253,10 @@ func _tree(v: Vox, at: Vector3, s: float) -> void:
 	v.cyl(at, 0.16 * s, 0.11 * s, 2.2 * s, Color("5a3a24"), 6)
 	v.rod(at + Vector3(0, 1.6 * s, 0), at + Vector3(0.5 * s, 2.3 * s, 0.2 * s), 0.06 * s, Color("5a3a24"), 5)
 	var greens := [Color("2f5a26"), Color("3a6a2c"), Color("457a32"), Color("2a4e22")]
-	for k in 7:
-		var off := Vector3(_rng.randf_range(-0.8, 0.8), _rng.randf_range(2.2, 3.4), _rng.randf_range(-0.8, 0.8)) * s
-		var r := _rng.randf_range(0.6, 0.95) * s
-		v.ball(at + off, Vector3(r, r * 0.85, r), greens[k % greens.size()], 7, 4)
+	for k in 5:
+		var off := Vector3(_rng.randf_range(-0.7, 0.7), _rng.randf_range(2.3, 3.3), _rng.randf_range(-0.7, 0.7)) * s
+		var r := _rng.randf_range(0.7, 1.0) * s
+		v.ball(at + off, Vector3(r, r * 0.85, r), greens[k % greens.size()], 6, 3)
 
 #endregion
 
@@ -315,11 +317,12 @@ func _shopfronts(v: Vox, x0: float, x1: float, f: float, h: float, index: int) -
 				var sy := 0.5 + s * 0.65
 				v.box(Vector3(a + 0.1, sy, f - 1.75), Vector3(b - 0.1, sy + 0.04, f - 1.45), Color("6a5040"))
 				var gx := a + 0.15
-				while gx < b - 0.25:
+				while gx < b - 0.4:
 					var gc := Color(["c8322b", "f2d24a", "2a6ab0", "3b8a5a", "e07a2a", "f1ede4", "8a3a8a"][_rng.randi() % 7])
-					var gh := _rng.randf_range(0.15, 0.4)
-					v.box(Vector3(gx, sy + 0.04, f - 1.7), Vector3(gx + 0.16, sy + 0.04 + gh, f - 1.52), gc)
-					gx += _rng.randf_range(0.18, 0.3)
+					var gw := _rng.randf_range(0.4, 0.8)
+					var gh := _rng.randf_range(0.18, 0.38)
+					v.box(Vector3(gx, sy + 0.04, f - 1.7), Vector3(minf(gx + gw, b - 0.15), sy + 0.04 + gh, f - 1.52), gc)
+					gx += gw + 0.06
 			v.box(Vector3(a + 0.3, 0.0, f - 0.9), Vector3(b - 0.8, 0.95, f - 0.5), Color("7a5a3a"))
 			v.box(Vector3(a + 0.25, 0.95, f - 0.95), Vector3(b - 0.75, 1.0, f - 0.45), Color("9a7a5a"))
 			# Warm light spilling from inside at night.
@@ -346,8 +349,8 @@ func _shopfronts(v: Vox, x0: float, x1: float, f: float, h: float, index: int) -
 			v.box(Vector3(a, 0.0, f - 0.05), Vector3(b, door_top, f + 0.04), Color("8a8e96"))
 			var sy := 0.1
 			while sy < door_top:
-				v.box(Vector3(a, sy, f + 0.04), Vector3(b, sy + 0.03, f + 0.06), Color("6e727a"))
-				sy += 0.14
+				v.box(Vector3(a, sy, f + 0.04), Vector3(b, sy + 0.05, f + 0.06), Color("6e727a"))
+				sy += 0.28
 			v.box(Vector3((a + b) * 0.5 - 0.05, 0.05, f + 0.06), Vector3((a + b) * 0.5 + 0.05, 0.18, f + 0.1), Color("c9a24a"))
 			v.box(Vector3(a, door_top, f - 0.05), Vector3(b, door_top + 0.25, f + 0.12), Color("7a7e86"))
 			# Graffiti and old posters.
@@ -400,16 +403,13 @@ func _window(v: Vox, cx: float, y0: float, f: float, balcony: bool, wall: Color)
 	else:
 		v.box(Vector3(cx - w * 0.5, sill, f - 0.12), Vector3(cx + w * 0.5, sill + h, f - 0.1), Color("2a2e3a"))
 	v.box(Vector3(cx - 0.02, sill, f - 0.1), Vector3(cx + 0.02, sill + h, f - 0.05), wall.lightened(0.3))
-	# Wooden louvred shutters, one or both folded back.
+	# Wooden shutters, one or both folded back.
 	var shutter := Color(["6a4a2a", "3a5a3a", "5a3a2a", "2a4a5a", "7a6a4a"][_rng.randi() % 5])
 	for side in [-1.0, 1.0]:
 		if _rng.randf() < 0.6:
 			var sx: float = cx + side * (w * 0.5 + 0.28)
 			v.box(Vector3(sx - 0.27, sill, f), Vector3(sx + 0.27, sill + h, f + 0.05), shutter)
-			var ly := sill + 0.1
-			while ly < sill + h - 0.1:
-				v.box(Vector3(sx - 0.24, ly, f + 0.05), Vector3(sx + 0.24, ly + 0.04, f + 0.07), shutter.darkened(0.25))
-				ly += 0.12
+			v.box(Vector3(sx - 0.22, sill + 0.1, f + 0.05), Vector3(sx + 0.22, sill + h - 0.1, f + 0.06), shutter.darkened(0.2))
 	if balcony:
 		var bw := w + 0.9
 		v.box(Vector3(cx - bw * 0.5, y0 - 0.02, f), Vector3(cx + bw * 0.5, y0 + 0.12, f + 0.9), wall.lightened(0.1))
@@ -499,30 +499,6 @@ func _streetlight(v: Vox, at: Vector2, reach: float) -> void:
 	pool.material_override = _pool_mat
 	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(pool)
-	var moths := CPUParticles3D.new()
-	moths.position = head + Vector3(0, -0.2, reach * 0.18)
-	moths.amount = 6
-	moths.lifetime = 1.8
-	moths.preprocess = 2.0
-	var q := QuadMesh.new()
-	q.size = Vector2(0.03, 0.03)
-	var mm := StandardMaterial3D.new()
-	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mm.albedo_color = Color(2.2, 2.0, 1.6)
-	mm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	q.material = mm
-	moths.mesh = q
-	moths.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	moths.emission_sphere_radius = 0.3
-	moths.gravity = Vector3.ZERO
-	moths.spread = 180.0
-	moths.initial_velocity_min = 0.3
-	moths.initial_velocity_max = 0.7
-	moths.orbit_velocity_min = 0.6
-	moths.orbit_velocity_max = 1.3
-	moths.emitting = false
-	add_child(moths)
-	_moths.append(moths)
 
 
 
@@ -543,7 +519,7 @@ static func pool_material() -> StandardMaterial3D:
 ## brightness falling off to nothing at the edge. It follows the street's
 ## levels (road, kerbs, pavements) and stops at the shopfronts.
 static func pool_mesh(centre: Vector2, radius: float, core := 1.0) -> ArrayMesh:
-	var cell := 0.3
+	var cell := 0.5
 	var zs: Array[float] = []
 	var z := centre.y - radius
 	while z < centre.y + radius:

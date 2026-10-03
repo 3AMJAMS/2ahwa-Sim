@@ -15,6 +15,7 @@ extends RefCounted
 ##
 ## Materials, by the name picked with use():
 ##   "solid"        lit, vertex colour
+##   "shiny"        lit, polished (brass, steel): tighter, brighter highlights
 ##   "glass"        lit, see-through (vertex alpha)
 ##   "glow/<name>"  unshaded, vertex colour × that group's brightness, so
 ##                  lamps, lit windows and LEDs bloom; set_glow() drives them.
@@ -404,6 +405,14 @@ static func material(kind: String) -> Material:
 		s.roughness = 0.82
 		s.metallic_specular = 0.3
 		m = s
+	elif kind == "shiny":
+		var sh := StandardMaterial3D.new()
+		sh.vertex_color_use_as_albedo = true
+		sh.vertex_color_is_srgb = not _linear_colors
+		sh.roughness = 0.3
+		sh.metallic = 0.25
+		sh.metallic_specular = 0.9
+		m = sh
 	elif kind == "glass":
 		var g := StandardMaterial3D.new()
 		g.vertex_color_use_as_albedo = true

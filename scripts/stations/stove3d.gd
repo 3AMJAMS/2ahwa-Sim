@@ -1,12 +1,13 @@
 class_name Stove3D
 extends Station3D
 ## The hot station in blocks: a red gas cylinder with its burner and a
-## hammered كنكة on the flame, and beside it the tea glass on its saucer
-## (or a coffee فنجان). HeatGauge feeds `heat` and calls ignite()/pour()/
+## كنكة on the flame (a plain steel one for water and milk, a brass one with
+## a turned wooden handle for Turkish coffee; the other waits on the
+## counter), and beside it the tea glass on its saucer (or a coffee فنجان). HeatGauge feeds `heat` and calls ignite()/pour()/
 ## boil_over(); PrepStation calls the building steps (sugar, leaves, bag,
-## stir, the held pour). Tea made in the glass: the kanaka only boils water;
-## sugar and leaves go in the glass and the water takes the tea's colour as
-## it steeps and is stirred.
+## stir, the held pour). Tea made in the glass: the kanaka only boils water
+## (or milk); sugar and leaves go in the glass and the water takes the
+## tea's colour as it steeps and is stirred.
 
 enum Pour { PERFECT, LUKEWARM, TOO_HOT }
 
@@ -18,6 +19,11 @@ const RING := AT + Vector3(0, 0.35, 0)
 const K_PROFILE := [Vector2(0.064, 0.0), Vector2(0.071, 0.006), Vector2(0.076, 0.02), Vector2(0.077, 0.056),
 	Vector2(0.057, 0.108), Vector2(0.059, 0.124), Vector2(0.072, 0.145)]
 const K_RIM := 0.145
+## The brass coffee kanaka: a base ring, a belly that narrows to a waist
+## and flares to a rolled lip (radius, height).
+const C_PROFILE := [Vector2(0.066, 0.0), Vector2(0.07, 0.003), Vector2(0.07, 0.014), Vector2(0.066, 0.017),
+	Vector2(0.069, 0.03), Vector2(0.067, 0.055), Vector2(0.061, 0.08), Vector2(0.055, 0.103), Vector2(0.055, 0.117),
+	Vector2(0.059, 0.133), Vector2(0.064, 0.145)]
 ## The spout tip; pours pivot on it so the stream stays put.
 const SPOUT := Vector3(0.0, 0.15, 0.093)
 const REST_PIVOT := RING + SPOUT
@@ -40,12 +46,15 @@ const METAL_DARK := Color("6f7682")
 const GRIP := Color("5a3620")
 const CYLINDER := Color("b8452f")
 const BRASS := Color("c9a24a")
+const POT_BRASS := Color("d6b363")
+const EBONY := Color("1f1b1a")
 const IRON := Color("2c2a30")
 const SAUCER := Color("ebe6dc")
 const GOLD := Color("c9a24a")
 const BURNT := Color("1e0f08")
 const FOAM_BURNT := Color("4a3020")
 const WATER := Color(0.78, 0.86, 0.94)
+const MILK := Color("f2ede2")
 const SUGAR := Color("f4f1ea")
 ## Height of the sugar layer per spoon.
 const SUGAR_PER_SPOON := 0.011
@@ -82,12 +91,17 @@ var pour_flow := 0.0
 var show_flow := false
 ## What's gone into the kanaka (coffee, karkade, tea): tints the water.
 var pot_grounds := 0.0
+## The mint sprig in the glass (شاي بالنعناع).
+var mint := 0.0
 
 var _liquid := Color("9c3d16")
 var _foam := Color("dcb88a")
 var _leaf := Color("2e1b0e")
 var _cup := false
-var _pot_water := false
+## What the kanaka boils when the drink is built in the glass: "water",
+## "milk", or "" (the drink itself brews in the kanaka).
+var _pot_base := ""
+var _brass := false
 var _sugar_layer := 1.0
 var _swirl_t := 0.0
 var _on_burner := true
@@ -95,6 +109,11 @@ var _pour_kind := Pour.PERFECT
 
 var _pot := Node3D.new()
 var _pot_body := Node3D.new()
+var _pot_mi := MeshInstance3D.new()
+var _idle_pot := MeshInstance3D.new()
+var _steel_mesh: ArrayMesh
+var _brass_mesh: ArrayMesh
+var _mint_node := Node3D.new()
 var _pot_surface := MeshInstance3D.new()
 var _pot_foam := MeshInstance3D.new()
 var _drips: Array[MeshInstance3D] = []
@@ -203,7 +222,10 @@ func set_look(look: Dictionary) -> void:
 	_foam = Color(look.get("foam", "#dcb88a"))
 	_leaf = Color(look["leaves"]) if look.has("leaves") else Color("2e1b0e")
 	_cup = look.get("vessel", "glass") == "cup"
-	_pot_water = look.get("pot", "") == "water"
+	_pot_base = look.get("pot", "")
+	_brass = look.get("kanaka", "") == "brass"
+	_pot_mi.mesh = _brass_mesh if _brass else _steel_mesh
+	_idle_pot.mesh = _steel_mesh if _brass else _brass_mesh
 	_sugar_layer = float(look.get("sugar_layer", 1.0))
 	_glass_node.visible = not _cup
 	_cup_node.visible = _cup
@@ -211,7 +233,12 @@ func set_look(look: Dictionary) -> void:
 
 ## True when the tea is built in the glass and the kanaka just boils water.
 func builds_in_glass() -> bool:
-	return _pot_water and not _cup
+	return _pot_base != "" and not _cup
+
+
+## What the glass starts from before the tea steeps into it.
+func _base_color() -> Color:
+	return MILK if _pot_base == "milk" else WATER
 
 
 ## Kanaka back on a cold ring, full; glass empty.
@@ -235,6 +262,7 @@ func reset() -> void:
 	sugar_spoons = 0
 	sugar_melt = 0.0
 	leaves = 0.0
+	mint = 0.0
 	sugar_on_top = false
 	steep_top = 0.0
 	steep_bottom = 0.0
@@ -328,12 +356,20 @@ func add_leaves() -> void:
 	create_tween().tween_property(self, "leaves", 1.0, 0.45)
 
 
-## Coffee, karkade or tea into the kanaka's water.
+## Coffee, karkade, tea, anise, cinnamon or milk into the kanaka.
 func add_to_pot(what: String) -> void:
-	var col := {"coffee": Color("3a2014"), "karkade": Color("7a1428"), "tea": Color("2e1b0e")}.get(what, _leaf) as Color
+	var col := {"coffee": Color("3a2014"), "karkade": Color("7a1428"), "tea": Color("2e1b0e"), "anise": Color("8a7a4a"),
+		"cinnamon": Color("8a4e24"), "milk": MILK}.get(what, _leaf) as Color
 	var from: Vector3 = PrepRig.JARS.get(what, PrepRig.JARS.tea) + Vector3(0, 0.13, 0)
 	await _spoonful(from, _pot_mouth(), col, 16)
 	create_tween().tween_property(self, "pot_grounds", 1.0, 0.5)
+
+
+## A sprig of mint into the glass, standing against its side.
+func add_mint() -> void:
+	await _spoonful(PrepRig.JARS.mint + Vector3(0, 0.16, 0), GLASS + Vector3(0, SAUCER_H + G_H + 0.06, 0),
+		Color("3f8a3a"), 8)
+	create_tween().tween_property(self, "mint", 1.0, 0.35)
 
 
 ## Dunk the bag once: in it goes (the first time), down and up, and a cloud
@@ -465,11 +501,14 @@ func _update() -> void:
 	# What's in the kanaka.
 	var liquid := _liquid.darkened(0.3)
 	var foam := _foam
-	if _pot_water:
+	if _pot_base == "water":
 		liquid = WATER.darkened(0.35).lerp(Color("2e1b0e"), pot_grounds * 0.7)
 		foam = WATER.lightened(0.4)
+	elif _pot_base == "milk":
+		liquid = MILK.darkened(0.08)
+		foam = MILK.lightened(0.3)
 	liquid = liquid.lerp(BURNT, burn)
-	foam = foam.lerp(FOAM_BURNT if not _pot_water else Color("8a8078"), burn)
+	foam = foam.lerp(FOAM_BURNT if _pot_base != "water" else Color("8a8078"), burn)
 	var cover := smoothstep(42.0, 66.0, heat)
 	var upright := clampf(1.0 - absf(pot_tilt) / 0.35, 0.0, 1.0) * pot_level
 	_pot_mat.albedo_color = liquid.lerp(foam, cover * 0.7)
@@ -479,7 +518,7 @@ func _update() -> void:
 	var r := _k_radius(surf_y)
 	_pot_surface.scale = Vector3(r, 1, r)
 	var rise := smoothstep(58.0, 82.0, heat) * 0.035 + _spill() * 0.02
-	var foamy := not _pot_water or heat > 60.0
+	var foamy := _pot_base != "water" or heat > 60.0
 	_pot_foam.visible = upright > 0.01 and rise > 0.002 and foamy
 	_foam_mat.albedo_color = foam.lightened(0.1)
 	_pot_foam.position.y = surf_y
@@ -536,10 +575,12 @@ func _update_glass(drink: Color) -> void:
 	var top_col := drink
 	if builds_in_glass():
 		var tea := _brew_color(_pour_kind)
-		bottom_col = WATER.lerp(tea, steep_bottom)
-		top_col = WATER.lerp(tea, steep_top)
-		bottom_col.a = lerpf(0.3, 0.92, steep_bottom)
-		top_col.a = lerpf(0.3, 0.92, steep_top)
+		var base := _base_color()
+		bottom_col = base.lerp(tea, steep_bottom)
+		top_col = base.lerp(tea, steep_top)
+		var clear := 0.3 if _pot_base == "water" else 0.92
+		bottom_col.a = lerpf(clear, 0.92, steep_bottom)
+		top_col.a = lerpf(clear, 0.92, steep_top)
 	else:
 		bottom_col.a = 0.92
 		top_col = drink.lerp(_foam.lightened(0.3), glass_foam * 0.6)
@@ -568,6 +609,10 @@ func _update_glass(drink: Color) -> void:
 		var a := i * 2.4 + _swirl_t * 0.6 * swirl
 		var rr := 0.012 + float((i * 7) % 5) * 0.005
 		b.position = Vector3(cos(a) * rr, leaf_base + bed_h + 0.003 + lift, sin(a) * rr)
+	# The mint sprig rides up with the water.
+	_mint_node.visible = mint > 0.0
+	_mint_node.position = Vector3(0.012, floor_y + maxf(top_y - floor_y - 0.06, 0.0) * 0.6, 0.01)
+	_mint_node.scale = Vector3.ONE * maxf(mint, 0.01)
 	# The tea bag.
 	_bag.visible = bag > 0.0
 	var bag_y := lerpf(G_H + 0.05, floor_y + 0.035, bag) - bag_dip * 0.02
@@ -608,7 +653,9 @@ func _update_stream(color: Color) -> void:
 	var end := _stream_end()
 	var p1 := p0 + Vector3(0, -0.01, 0.03)
 	var w := 0.011 * stream
-	var col := Color(color.darkened(0.05), 0.9) if not builds_in_glass() else Color(0.62, 0.78, 0.92, 0.85)
+	var col := Color(color.darkened(0.05), 0.9)
+	if builds_in_glass():
+		col = Color(0.62, 0.78, 0.92, 0.85) if _pot_base == "water" else Color(MILK, 0.95)
 	_stream_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	_stream_mesh.surface_set_color(col)
 	var n := 10
@@ -656,9 +703,10 @@ func _pot_mouth() -> Vector3:
 
 
 func _k_radius(y: float) -> float:
-	for i in K_PROFILE.size() - 1:
-		var a: Vector2 = K_PROFILE[i]
-		var b: Vector2 = K_PROFILE[i + 1]
+	var prof: Array = C_PROFILE if _brass else K_PROFILE
+	for i in prof.size() - 1:
+		var a: Vector2 = prof[i]
+		var b: Vector2 = prof[i + 1]
 		if y >= a.y and y <= b.y:
 			return lerpf(a.x, b.x, (y - a.y) / maxf(b.y - a.y, 0.0001)) - 0.004
 	return 0.06
@@ -670,7 +718,7 @@ func _spill() -> float:
 
 func _served_color(kind: Pour) -> Color:
 	if builds_in_glass():
-		return WATER
+		return _base_color()
 	return _brew_color(kind)
 
 
@@ -766,33 +814,17 @@ func _build_pot(v: Vox) -> void:
 	add_child(_pot)
 	_pot.add_child(_pot_body)
 	_pot_body.position = -SPOUT
-	# Hammered body: the outer wall, the dark inside, the flared lip.
-	v.lathe(K_PROFILE, 14, METAL, false)
-	var inner: Array = []
-	for i in range(K_PROFILE.size() - 1, -1, -1):
-		var p: Vector2 = K_PROFILE[i]
-		inner.append(Vector2(p.x - 0.004, maxf(p.y, 0.004)))
-	v.lathe(inner, 14, Color("3a302a"), false, true)
-	# Dimples and an engraved band.
-	for k in 20:
-		var a := k * 2.39
-		var y := 0.02 + float((k * 31) % 80) / 1000.0
-		var r := _k_profile_r(y) + 0.001
-		v.cube(Vector3(cos(a) * r, y, sin(a) * r), Vector3(0.008, 0.008, 0.008), METAL.lightened(0.15) if k % 2 else METAL_DARK)
-	v.cyl(Vector3(0, 0.07, 0), 0.0775, 0.0775, 0.006, METAL_DARK, 14)
-	# Spout, pinched out of the lip toward +z.
-	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z)], METAL, Vector3.UP)
-	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z), Vector3(0.0, K_RIM - 0.02, 0.07)],
-		METAL_DARK, Vector3(-1, 0, 0.3))
-	v.poly([Vector3(0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z), Vector3(0.0, K_RIM - 0.02, 0.07)],
-		METAL_DARK, Vector3(1, 0, 0.3))
-	# Long handle toward -z with a wooden grip, riveted at the neck.
-	v.rod(Vector3(0, 0.1, -0.06), Vector3(0, 0.125, -0.2), 0.008, METAL_DARK, 6)
-	v.rod(Vector3(0, 0.123, -0.19), Vector3(0, 0.145, -0.32), 0.014, GRIP, 6)
-	v.ball(Vector3(0, 0.146, -0.322), Vector3(0.015, 0.015, 0.015), GRIP, 6, 3)
-	for y in [0.095, 0.108]:
-		v.cube(Vector3(0, y, -0.062), Vector3(0.008, 0.006, 0.006), Color("e6e9ee"))
-	v.into(_pot_body, "Body")
+	_build_steel_kanaka(v)
+	_steel_mesh = v.commit()
+	_build_brass_kanaka(v)
+	_brass_mesh = v.commit()
+	_pot_mi.mesh = _steel_mesh
+	_pot_body.add_child(_pot_mi)
+	# The other kanaka waits on the counter, handle to the back.
+	_idle_pot.mesh = _brass_mesh
+	_idle_pot.position = PrepRig.IDLE_POT_AT
+	_idle_pot.rotation_degrees.y = 90.0
+	add_child(_idle_pot)
 	# The drink's surface, the foam, spill drips (all resized each frame).
 	v.use("solid").cyl(Vector3.ZERO, 1.0, 1.0, 0.002, Color.WHITE, 14)
 	_pot_surface.mesh = v.commit()
@@ -815,6 +847,84 @@ func _build_pot(v: Vox) -> void:
 		d.rotation.y = a
 		_pot_body.add_child(d)
 		_drips.append(d)
+
+
+## The tea kanaka: plain polished steel, a flared lip pinched into a
+## spout, a long handle with a wooden grip riveted at the neck.
+func _build_steel_kanaka(v: Vox) -> void:
+	v.use("shiny")
+	v.lathe(K_PROFILE, 14, METAL, false)
+	v.cyl(Vector3(0, K_RIM - 0.003, 0), _k_profile_r(K_RIM) + 0.002, _k_profile_r(K_RIM) + 0.002, 0.005, METAL.lightened(0.1), 14)
+	v.use("solid")
+	var inner: Array = []
+	for i in range(K_PROFILE.size() - 1, -1, -1):
+		var p: Vector2 = K_PROFILE[i]
+		inner.append(Vector2(p.x - 0.004, maxf(p.y, 0.004)))
+	v.lathe(inner, 14, Color("3a302a"), false, true)
+	# Spout, pinched out of the lip toward +z.
+	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z)], METAL, Vector3.UP)
+	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z), Vector3(0.0, K_RIM - 0.02, 0.07)],
+		METAL_DARK, Vector3(-1, 0, 0.3))
+	v.poly([Vector3(0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z), Vector3(0.0, K_RIM - 0.02, 0.07)],
+		METAL_DARK, Vector3(1, 0, 0.3))
+	# Long handle toward -z with a wooden grip, riveted at the neck.
+	v.rod(Vector3(0, 0.1, -0.06), Vector3(0, 0.125, -0.2), 0.008, METAL_DARK, 8)
+	v.rod(Vector3(0, 0.123, -0.19), Vector3(0, 0.145, -0.32), 0.014, GRIP, 8)
+	v.ball(Vector3(0, 0.146, -0.322), Vector3(0.015, 0.015, 0.015), GRIP, 8, 3)
+	for y in [0.095, 0.108]:
+		v.cube(Vector3(0, y, -0.062), Vector3(0.008, 0.006, 0.006), Color("e6e9ee"))
+
+
+## The coffee kanaka (as in Sayed's photo): polished brass on a base ring,
+## a belly narrowing to a waist and flaring to a rolled lip with a pinched
+## spout; a silver bracket and a brass collar hold a long black turned
+## wooden handle with a ring at its end.
+func _build_brass_kanaka(v: Vox) -> void:
+	v.use("shiny")
+	v.lathe(C_PROFILE, 16, POT_BRASS, false)
+	# Rolled lip, and the groove above the base ring.
+	v.cyl(Vector3(0, K_RIM - 0.004, 0), 0.0655, 0.0655, 0.006, POT_BRASS.lightened(0.12), 16)
+	v.cyl(Vector3(0, 0.0145, 0), 0.0685, 0.0685, 0.0015, POT_BRASS.darkened(0.3), 16)
+	v.use("solid")
+	var inner: Array = []
+	for i in range(C_PROFILE.size() - 1, -1, -1):
+		var p: Vector2 = C_PROFILE[i]
+		inner.append(Vector2(p.x - 0.003, maxf(p.y, 0.004)))
+	v.lathe(inner, 16, POT_BRASS.darkened(0.45), false, true)
+	# A small spout pinched out of the lip toward +z.
+	v.use("shiny")
+	var tip := Vector3(0.0, K_RIM + 0.003, 0.084)
+	v.poly([Vector3(-0.018, K_RIM, 0.06), Vector3(0.018, K_RIM, 0.06), tip], POT_BRASS.lightened(0.08), Vector3.UP)
+	v.poly([Vector3(-0.018, K_RIM, 0.06), tip, Vector3(0.0, K_RIM - 0.016, 0.062)], POT_BRASS, Vector3(-1, 0, 0.3))
+	v.poly([Vector3(0.018, K_RIM, 0.06), tip, Vector3(0.0, K_RIM - 0.016, 0.062)], POT_BRASS, Vector3(1, 0, 0.3))
+	v.use("solid")
+	# Silver bracket on the waist with its two rivets.
+	v.box(Vector3(-0.012, 0.088, -0.059), Vector3(0.012, 0.118, -0.053), Color("c9ced6"))
+	for y in [0.095, 0.111]:
+		v.cyl(Vector3(0, y, -0.06), 0.003, 0.003, 0.002, Color("e6e9ee"), 6)
+	# Brass collar, then the wooden handle rising away from the pot.
+	var a := Vector3(0, 0.103, -0.058)
+	var b := Vector3(0, 0.116, -0.1)
+	v.use("shiny")
+	v.rod(a, b, 0.011, POT_BRASS, 12, 0.012)
+	v.rod(b - (b - a).normalized() * 0.006, b, 0.0128, POT_BRASS.lightened(0.15), 12)
+	v.use("solid")
+	var end := Vector3(0, 0.162, -0.31)
+	var dir := (end - b).normalized()
+	v.push(Transform3D(Vox._basis_up(dir), b))
+	var len := b.distance_to(end)
+	v.lathe([Vector2(0.0, 0.0), Vector2(0.011, 0.0), Vector2(0.012, 0.012), Vector2(0.0105, 0.02), Vector2(0.013, 0.03),
+		Vector2(0.016, len * 0.45), Vector2(0.0155, len * 0.85), Vector2(0.013, len * 0.97), Vector2(0.0, len)], 12, EBONY)
+	v.pop()
+	# The hanging ring through the handle's end.
+	var ring: Array = []
+	var side := Vector3.RIGHT
+	var up := dir.cross(side).normalized()
+	var centre := end + dir * 0.006
+	for k in 13:
+		var t := TAU * k / 12.0
+		ring.append(centre + (dir * cos(t) + up * sin(t)) * 0.012)
+	v.sweep(Vox.circle(Vector2.ZERO, Vector2(0.0018, 0.0018), 5), ring, Color("c9ced6"), side, false)
 
 
 func _k_profile_r(y: float) -> float:
@@ -863,6 +973,18 @@ func _build_glass(v: Vox) -> void:
 	v.cyl(Vector3.ZERO, 0.014, 0.014, 0.002, Color("3a2a1c"), 8)
 	_crater.mesh = v.commit()
 	_glass_node.add_child(_crater)
+	# A sprig of mint: a stem leaning out over the rim, paired leaves.
+	var stem_top := Vector3(0.02, 0.16, -0.012)
+	v.rod(Vector3.ZERO, stem_top, 0.0025, Color("5a7a2a"), 5)
+	for j in 4:
+		var c := Vector3.ZERO.lerp(stem_top, 0.35 + j * 0.2)
+		for sd in [-1.0, 1.0]:
+			v.ball(c + Vector3(0.0, 0.0, sd * 0.012), Vector3(0.006, 0.004, 0.012 - j * 0.0015),
+				Color("3f8a3a") if (j + int(sd)) % 2 else Color("4c9a44"), 6, 2)
+	v.ball(stem_top + Vector3(0.002, 0.006, 0), Vector3(0.007, 0.009, 0.006), Color("5aa64e"), 6, 2)
+	v.into(_mint_node, "Sprig")
+	_glass_node.add_child(_mint_node)
+	_mint_node.visible = false
 	# The glass itself: thick foot, walls, rim; pressed facets on the lower half.
 	v.use("glass")
 	v.push_at(Vector3(0, SAUCER_H, 0))

@@ -5,6 +5,10 @@
     { "id": "coffee", "name_key": "ING_COFFEE" },
     { "id": "karkade", "name_key": "ING_KARKADE" },
     { "id": "mango", "name_key": "ING_MANGO" },
+    { "id": "mint", "name_key": "ING_MINT" },
+    { "id": "milk", "name_key": "ING_MILK" },
+    { "id": "anise", "name_key": "ING_ANISE" },
+    { "id": "cinnamon", "name_key": "ING_CINNAMON" },
     { "id": "ice", "name_key": "ING_ICE" },
     { "id": "sugar", "name_key": "ING_SUGAR" }
   ],

@@ -15,8 +15,10 @@ Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH
 
 Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → the camera moves behind her into the
 trunk → make the order with the quick bar of ingredients and gestures on the kit (شاي كشري، فتلة، على مية بيضا،
-قهوة تركي، كركديه; the iced ones — كركديه ساقع, شاي ساقع — are brewed then get ice cubes) → back to the street
-to hand it over. Everything is blocky 3D (voxel-style low-poly) built in code. FIFI's menu is hot drinks only for now; fruit drinks come at higher tiers.
+شاي بالنعناع، شاي بلبن، قهوة تركي، كركديه، ينسون، قرفة، قرفة باللبن; the iced ones — كركديه ساقع, شاي ساقع — are
+brewed then get ice cubes) → back to the street to hand it over. Everything is blocky 3D (voxel-style low-poly) built
+in code. FIFI's menu is hot drinks only (there's no blender in her trunk); the fruit juices stay in the data as
+placeholders for the later tiers.
 The first order is always شاي كشري, then orders rotate at random.
 
 Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
@@ -37,13 +39,13 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   once it's made, **tap the customer to serve it** (the cup goes in through the car window, then they drive off). Tips are paid on serving and shrink the longer they waited;
   customers who run out of patience walk off. Space/Enter opens the trunk on desktop.
 - **Make it with the quick bar and your fingers.** Along the bottom is a dock of ingredients, always in the
-  same order (سكر، شاي، فتلة، بن، كركديه، مانجا، تلج — only what today's menu uses). Tap one (or its jar on the
-  counter) to add it now. On the kit: **tap the كنكة** to light the fire and again to take it off; **hold** to pour
-  gently; **swipe down on the glass** to dunk a tea bag; **circle round the glass** to stir; **tap the blender** to
-  start it. Do the drink's steps in order (in `menu_items.json`); doing something before its time shakes the view and
+  same order (سكر، شاي، فتلة، بن، كركديه، نعناع، لبن، ينسون، قرفة، تلج — only what today's menu uses; more than
+  seven wrap onto a second row). Tap one (or its jar on the counter) to add it now. On the kit: **tap the كنكة** to
+  light the fire and again to take it off; **hold** to pour gently; **swipe down on the glass** to dunk a tea bag;
+  **circle round the glass** to stir; at the juice tiers, **tap the blender** to start it. Do the drink's steps in order (in `menu_items.json`); doing something before its time shakes the view and
   takes 20% off the tip (down to half). Wait a moment and Sayed hints at what's next.
 - **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
-  explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
+  explains the stove, each new kind of step (mint, milk…) and, at the juice tiers, the blender the first time. "تخطّي الشرح" turns it off for that save.
 - **Sugar by the spoon.** Every tea and coffee order comes with a sugar grade (on the ticket and in the shout):
   tea is سادة / مظبوط / زيادة (0 / 2 / 3 spoons; على مية بيضا packs the same spoons into a thicker layer); Turkish coffee also has عالريحة and مانو, and each tap is half a
   spoon (سادة 0, عالريحة ½, مظبوط 1, مانو 1½, زيادة 2). Tap the sugar once per spoon (the count shows on the slot),
@@ -56,7 +58,11 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
     down the side of the glass** — holding speeds the flow up, and if the meter hits red the stream punches
     through the sugar and the tea darkens at once (quality docked). Poured gently the water stays clear over the
     sugar; stirring darkens it gradually.
-  - **قهوة تركي:** the sugar goes into the كنكة with the coffee before it goes on the fire.
+  - **شاي بالنعناع:** like كشري, with a sprig of mint into the glass before the water.
+  - **شاي بلبن:** milk boils in the كنكة instead of water (it rises fast); pour it, dunk a tea bag, stir.
+- **Brewed in the كنكة:** **قهوة تركي** (the coffee and its sugar go in before it goes on the fire, in the brass
+  coffee كنكة), **كركديه**, **ينسون** and **قرفة** (sugar in the glass first), **قرفة باللبن** (cinnamon boiled in
+  milk). Tea water and milk boil in the plain steel kanaka; the other one waits on the counter.
 - **Hot orders — tap the كنكة** when the foam (الوش) rises over its rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
@@ -79,12 +85,15 @@ The world is **blocky 3D**, built in code: `scripts/vox/vox.gd` bakes boxes, ext
 handful of draw calls. Flat faces are flat-shaded; round things get extra sides (`Vox.DETAIL`) and smooth shading so
 they read as round. Lamps, lit windows, LEDs and flames use unshaded "glow" materials whose
 brightness is set per group (`Vox.set_glow`), so they bloom through the `WorldEnvironment` glow. Lighting is real:
-`DayLight3D` moves a sun/moon through the day (shadows by day; the faint moonlight casts none). To keep the frame light
-on mid-range phones: the 3D renders at 75% resolution (the 2D UI stays sharp); a real light costs something on every
+`DayLight3D` moves a sun/moon through the day (hard shadows by day; the faint moonlight casts none). To keep the frame
+light on mid-range phones: lighting is worked out per vertex, not per pixel (`force_vertex_shading`: on flat-shaded
+blocks it looks the same and costs far less); the 3D renders at 75% resolution (the 2D UI stays sharp); flat ground
+casts no shadows; a real light costs something on every
 pixel it touches, so the road, pavements, garden and buildings sit on their own render layer that the streetlights and
 FIFI's bulb skip, and the lamps' pools and FIFI's pink LED spill are painted onto the ground as glowing discs; in the
 prep view one work bulb lights the trunk and the street lamps' glow is folded into the ambient light; busy 2D drawings
-(the quick bar, the ticket icons) are painted once into textures instead of redrawn from polygons each frame. Haptics use `Input.vibrate_handheld()` (add the **VIBRATE** permission in the Android preset).
+(the quick bar, the ticket icons) are painted once into textures instead of redrawn from polygons each frame. **Testing
+FPS on a phone:** press and hold the day/clock/money line for a second to show or hide a frame-rate readout. Haptics use `Input.vibrate_handheld()` (add the **VIBRATE** permission in the Android preset).
 
 ### Project layout
 | Path | What |
@@ -100,8 +109,9 @@ prep view one work bulb lights the trunk and the street lamps' glow is folded in
 | `scripts/world/customer.gd`, `customer_queue.gd` | Customers on foot or by car: arrival, order bubble, patience bar, served/angry exits |
 | `scripts/world/sidewalk_furniture.gd`, `sayed_figure.gd`, `street_cat.gd` | Sayed's chair and radio, Sayed sipping his tea, the cat on FIFI's roof |
 | `scripts/stations/prep_rig.gd` | FIFI's tail and trunk up close: bumper, lamps, plate, the hatch from below, counter, jars, work bulbs, racks, the prep camera (decorations come later) |
-| `scripts/stations/stove3d.gd` | The gas cylinder, flame and كنكة (boiling, foam, pour stream, boil-over), the tea glass or فنجان and everything built in it |
-| `scripts/stations/blender3d.gd` | The blender (heat lights, vents, blades, fruit) and the tall glass it pours into |
+| `scripts/stations/stove3d.gd` | The gas cylinder, flame and the two كنكة (steel for water and milk, brass with a wooden handle for coffee; boiling, foam, pour stream, boil-over), the tea glass or فنجان and everything built in it (sugar, leaves, the bag, mint) |
+| `scripts/stations/blender3d.gd` | The blender for the juice tiers (heat lights, vents, blades, fruit) and the tall glass it pours into; not built in FIFI |
+| `scripts/ui/fps_meter.gd` | The frame-rate readout for testing (hold the money line) |
 | `scripts/stations/prep_station.gd` | The prep layer: the order, readouts, the quick bar, gestures, the recipe step engine, hints, Sayed's tips, scoring |
 | `scripts/stations/quick_bar.gd`, `prep_icons.gd` | The ingredient dock and its procedural icons |
 | `scripts/stations/heat_gauge.gd`, `blend_gauge.gd` | Brew timing and scoring (tap in the green; hold for turbo without tripping the motor) |

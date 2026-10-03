@@ -48,6 +48,14 @@ static func draw_icon(ci: CanvasItem, id: String, rect: Rect2) -> void:
 			_coffee(ci, o, s)
 		"karkade":
 			_karkade(ci, o, s)
+		"mint":
+			_mint(ci, o, s)
+		"milk":
+			_milk(ci, o, s)
+		"anise":
+			_anise(ci, o, s)
+		"cinnamon":
+			_cinnamon(ci, o, s)
 		"mango":
 			_mango(ci, o, s)
 		"ice":
@@ -167,6 +175,102 @@ static func _karkade(ci: CanvasItem, o: Vector2, s: float) -> void:
 	ci.draw_polyline(_arc(o + Vector2(0, 3) * s, Vector2(41, 5) * s, 0.0, PI), wicker.lightened(0.2), 1.2 * s, true)
 	for p in [Vector2(-40, 38), Vector2(36, 40)]:
 		_calyx(ci, o + p * s, 4.5 * s, p.x, tones[1])
+
+
+## A bunch of fresh mint: stems of paired, crinkled leaves tied with string.
+static func _mint(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 40) * s, Vector2(30, 6) * s)
+	var greens := [Color("3f8a3a"), Color("4c9a44"), Color("357a32")]
+	var stems := [[Vector2(-6, 38), Vector2(-18, -30)], [Vector2(0, 38), Vector2(2, -40)], [Vector2(6, 38), Vector2(20, -28)]]
+	for k in stems.size():
+		var a: Vector2 = stems[k][0]
+		var b: Vector2 = stems[k][1]
+		ci.draw_line(o + a * s, o + b * s, Color("5a7a2a"), 2.4 * s, true)
+		for j in 4:
+			var t := 0.25 + j * 0.22
+			var at := a.lerp(b, t)
+			var dir := (b - a).normalized()
+			var side := dir.orthogonal()
+			var r := (13.0 - j * 2.0) * s
+			for sd in [-1.0, 1.0]:
+				var c: Vector2 = o + (at + side * sd * 9.0 - dir * 2.0) * s
+				_leaf(ci, c, r, (side * sd).angle() - 0.4 * sd, greens[(k + j) % greens.size()])
+		_leaf(ci, o + (b + (b - a).normalized() * 4.0) * s, 9.0 * s, (b - a).angle(), greens[k % greens.size()].lightened(0.1))
+	# The string round the stems.
+	ci.draw_line(o + Vector2(-10, 26) * s, o + Vector2(10, 26) * s, Color("e8dcc6"), 3.0 * s, true)
+	ci.draw_line(o + Vector2(-9, 30) * s, o + Vector2(9, 30) * s, Color("e8dcc6"), 2.0 * s, true)
+
+
+## A glass milk bottle with a blue cap and a paper label.
+static func _milk(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 41) * s, Vector2(26, 6) * s)
+	var body := PackedVector2Array()
+	for p in [Vector2(-22, 40), Vector2(22, 40), Vector2(24, 4), Vector2(14, -18), Vector2(11, -30), Vector2(-11, -30),
+			Vector2(-14, -18), Vector2(-24, 4)]:
+		body.append(o + p * s)
+	ci.draw_colored_polygon(body, Color("f6f3ec"))
+	ci.draw_polyline(body + PackedVector2Array([body[0]]), Color("c9ccd2"), 2.0 * s, true)
+	# Shading down one side, a highlight down the other.
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(12, 40) * s, o + Vector2(22, 40) * s, o + Vector2(24, 4) * s,
+		o + Vector2(14, -18) * s, o + Vector2(8, -18) * s, o + Vector2(14, 4) * s]), Color(0.75, 0.78, 0.84, 0.45))
+	ci.draw_line(o + Vector2(-16, 32) * s, o + Vector2(-17, 4) * s, Color(1, 1, 1, 0.9), 3.0 * s, true)
+	# Cap with ridges.
+	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-13, -42) * s, Vector2(26, 13) * s), 3.0 * s), Color("2f6fb3"))
+	for k in 5:
+		var x := -10.0 + k * 5.0
+		ci.draw_line(o + Vector2(x, -41) * s, o + Vector2(x, -31) * s, Color("24578e"), 1.4 * s)
+	# Label with a drop.
+	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-20, 8) * s, Vector2(40, 20) * s), 3.0 * s), Color("2f6fb3"))
+	ci.draw_colored_polygon(_ellipse(o + Vector2(0, 20) * s, Vector2(5, 5) * s, 0.0, 12), Color.WHITE)
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(0, 11) * s, o + Vector2(-4.5, 18) * s, o + Vector2(4.5, 18) * s]),
+		Color.WHITE)
+
+
+## Aniseed heaped in a little wooden bowl, a few seeds spilled beside it.
+static func _anise(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 38) * s, Vector2(40, 7) * s)
+	var wood := Color("a0703e")
+	var bowl := PackedVector2Array()
+	for i in 17:
+		var a := PI * i / 16.0
+		bowl.append(o + Vector2(cos(a) * 38, 6 + sin(a) * 28) * s)
+	ci.draw_colored_polygon(bowl, wood)
+	ci.draw_polyline(_arc(o + Vector2(0, 6) * s, Vector2(38, 28) * s, 0.15, PI - 0.15), wood.darkened(0.25), 2.0 * s, true)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 23
+	var tones := [Color("8a7a4a"), Color("a08c56"), Color("6e6038"), Color("b4a06a")]
+	for i in 70:
+		var t := float(i) / 70.0
+		var x := rng.randf_range(-34, 34) * (1.0 - t * 0.5)
+		var y := 6.0 - (1.0 - absf(x) / 38.0) * 18.0 * (0.4 + t * 0.6) + rng.randf_range(-2, 2)
+		ci.draw_colored_polygon(_ellipse(o + Vector2(x, y) * s, Vector2(3.0, 1.3) * s, rng.randf() * PI, 6),
+			tones[i % tones.size()])
+	ci.draw_polyline(_arc(o + Vector2(0, 6) * s, Vector2(39, 4) * s, 0.0, PI), wood.darkened(0.35), 3.0 * s, true)
+	for p in [Vector2(-40, 36), Vector2(-33, 40), Vector2(38, 38)]:
+		ci.draw_colored_polygon(_ellipse(o + p * s, Vector2(3.0, 1.3) * s, p.x, 6), tones[0])
+
+
+## A bundle of cinnamon quills tied with string.
+static func _cinnamon(ci: CanvasItem, o: Vector2, s: float) -> void:
+	_shadow(ci, o + Vector2(0, 38) * s, Vector2(40, 7) * s)
+	var bark := [Color("9a5a2c"), Color("8a4e24"), Color("a8653a"), Color("7e4520")]
+	var quills := [[Vector2(-36, 24), Vector2(30, -20)], [Vector2(-30, 32), Vector2(36, -12)], [Vector2(-38, 12), Vector2(26, -30)],
+		[Vector2(-26, 36), Vector2(40, -2)]]
+	for k in quills.size():
+		var a: Vector2 = quills[k][0]
+		var b: Vector2 = quills[k][1]
+		var d := (b - a).normalized().orthogonal() * 6.0
+		var col: Color = bark[k]
+		ci.draw_colored_polygon(PackedVector2Array([o + (a + d) * s, o + (b + d) * s, o + (b - d) * s, o + (a - d) * s]), col)
+		ci.draw_line(o + (a + d * 0.4) * s, o + (b + d * 0.4) * s, col.lightened(0.18), 1.6 * s, true)
+		# The rolled end: a spiral of bark.
+		ci.draw_colored_polygon(_ellipse(o + b * s, Vector2(6.0, 6.0) * s, 0.0, 14), col.darkened(0.2))
+		ci.draw_polyline(_arc(o + b * s, Vector2(4.0, 4.0) * s, 0.0, TAU * 0.8, 14), col.lightened(0.25), 1.4 * s, true)
+		ci.draw_polyline(_arc(o + b * s, Vector2(2.0, 2.0) * s, 1.0, TAU * 0.7 + 1.0, 10), col.lightened(0.25), 1.2 * s, true)
+	# String round the middle.
+	for k in 2:
+		var c := o + Vector2(0 + k * 4, 6 - k * 2) * s
+		ci.draw_line(c + Vector2(-8, -12) * s, c + Vector2(8, 12) * s, Color("e8dcc6"), 2.4 * s, true)
 
 
 ## Two ripe mangoes with a leaf.

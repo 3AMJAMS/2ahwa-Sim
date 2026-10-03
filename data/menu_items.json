@@ -128,7 +128,8 @@
       "look": {
         "liquid": "#3a2014",
         "foam": "#a0724a",
-        "vessel": "cup"
+        "vessel": "cup",
+        "kanaka": "brass"
       },
       "sugar": {
         "sada": 0,
@@ -173,6 +174,189 @@
         "karkade",
         "boil",
         "pour"
+      ]
+    },
+    {
+      "id": "tea_mint",
+      "name_key": "PREP_TEA_MINT",
+      "name_ar": "شاي بالنعناع",
+      "station": "heat",
+      "ingredients": [
+        "mint",
+        "tea"
+      ],
+      "shout_keys": [
+        "SHOUT_MINT_1",
+        "SHOUT_MINT_2",
+        "SHOUT_MINT_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 9,
+      "prep_time_sec": 12,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#94471a",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "tea_leaves",
+        "mint",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "tea_milk",
+      "name_key": "PREP_TEA_MILK",
+      "name_ar": "شاي بلبن",
+      "station": "heat",
+      "ingredients": [
+        "milk",
+        "teabag"
+      ],
+      "shout_keys": [
+        "SHOUT_MILK_TEA_1",
+        "SHOUT_MILK_TEA_2",
+        "SHOUT_MILK_TEA_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 12,
+      "prep_time_sec": 13,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#c08a5a",
+        "foam": "#efe2cf",
+        "vessel": "glass",
+        "pot": "milk"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "milk_pot",
+        "boil",
+        "pour",
+        "teabag",
+        "stir"
+      ]
+    },
+    {
+      "id": "anise",
+      "name_key": "PREP_ANISE",
+      "name_ar": "ينسون",
+      "station": "heat",
+      "ingredients": [
+        "anise"
+      ],
+      "shout_keys": [
+        "SHOUT_ANISE_1",
+        "SHOUT_ANISE_2",
+        "SHOUT_ANISE_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 8,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "look": {
+        "liquid": "#c49a52",
+        "foam": "#e6d3a0",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "anise",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "cinnamon",
+      "name_key": "PREP_CINNAMON",
+      "name_ar": "قرفة",
+      "station": "heat",
+      "ingredients": [
+        "cinnamon"
+      ],
+      "shout_keys": [
+        "SHOUT_CINNAMON_1",
+        "SHOUT_CINNAMON_2",
+        "SHOUT_CINNAMON_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 8,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "look": {
+        "liquid": "#8e4a22",
+        "foam": "#c98e5e",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "cinnamon",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "cinnamon_milk",
+      "name_key": "PREP_CINNAMON_MILK",
+      "name_ar": "قرفة باللبن",
+      "station": "heat",
+      "ingredients": [
+        "cinnamon",
+        "milk"
+      ],
+      "shout_keys": [
+        "SHOUT_CINNAMON_MILK_1",
+        "SHOUT_CINNAMON_MILK_2",
+        "SHOUT_CINNAMON_MILK_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 12,
+      "prep_time_sec": 13,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#cfa27a",
+        "foam": "#f0e4d2",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "milk_pot",
+        "cinnamon",
+        "boil",
+        "pour",
+        "stir"
       ]
     },
     {

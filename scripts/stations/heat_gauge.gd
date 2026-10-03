@@ -32,6 +32,8 @@ var heat := 0.0
 ## The kanaka holds plain water (tea made in the glass): the prompts talk
 ## about the water boiling rather than the foam rising.
 var water := false
+## Milk boils in the kanaka (شاي بلبن, قرفة باللبن): it's the milk rising.
+var milk := false
 ## The player pours it themselves (شاي على مية بيضا): a tap in time lifts the
 ## kanaka over the glass and reports; PrepStation runs the pour.
 var manual_pour := false
@@ -175,7 +177,7 @@ func _refresh() -> void:
 		if heat < green_min:
 			status_label.text = tr("PREP_WATER_WAITING" if water else "PREP_WAITING")
 		elif heat <= green_max:
-			status_label.text = tr("PREP_WATER_BOILING" if water else "PREP_WOSH_RISING")
+			status_label.text = tr("PREP_WATER_BOILING" if water else ("PREP_MILK_RISING" if milk else "PREP_WOSH_RISING"))
 		else:
 			status_label.text = tr("PREP_TOO_HOT")
 	elif state == State.IDLE:

@@ -48,6 +48,7 @@ var status_label: Label
 var blend_bar: ProgressBar
 var motor_bar: ProgressBar
 var hold_label: Label
+## Null until a blender drink is ordered (PrepStation builds it then).
 var blender: Blender3D
 
 
@@ -99,7 +100,8 @@ func reset() -> void:
 	holding = false
 	_run_id += 1
 	set_process(false)
-	blender.reset()
+	if blender:
+		blender.reset()
 	_refresh()
 
 
@@ -178,6 +180,8 @@ func _finish() -> void:
 func _refresh() -> void:
 	blend_bar.value = progress
 	motor_bar.value = motor_heat
+	if blender == null:
+		return
 	if motor_heat >= motor_red_min:
 		_motor_fill.bg_color = COLOR_MOTOR_RED
 	elif motor_heat >= motor_warn_min:

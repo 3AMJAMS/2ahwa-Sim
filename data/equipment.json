@@ -11,10 +11,11 @@
     {
       "id": "blend_basic",
       "slot": "blend",
-      "tier": 0,
+      "tier": 2,
       "name_ar": "خلاط بسيط",
       "cost_egp": 0,
-      "unlocked": true
+      "unlocked": true,
+      "note": "Juice drinks come with the juice tiers; FIFI is hot drinks only."
     },
     {
       "id": "espresso_none",
@@ -30,7 +31,7 @@
       "slot": "espresso",
       "tier": 1,
       "name_ar": "آلة إسبريسو",
-      "cost_egp": 3000,
+      "cost_egp": 1200,
       "unlocked": false,
       "requires": "espresso_none"
     }

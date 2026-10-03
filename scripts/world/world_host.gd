@@ -8,6 +8,8 @@ extends Node3D
 signal trunk_tapped
 ## Five quick taps on the day/clock/money line: the hidden "start over".
 signal reset_requested
+## Holding the day/clock/money line for a second: show or hide the FPS meter.
+signal fps_toggle_requested
 
 ## Screen pixels per metre (the old 2D street's scale: a tile is 128 px wide).
 const PX_PER_M := 150.85
@@ -40,6 +42,8 @@ var _daylight := DayLight3D.new()
 var _pulse_t := 0.0
 var _wallet_taps := 0
 var _wallet_tap_at := 0
+## When the finger went down on the money line (-1 when it's up or used).
+var _wallet_hold_at := -1
 
 
 func _ready() -> void:
@@ -109,6 +113,9 @@ func _build_overlay() -> void:
 
 func _process(delta: float) -> void:
 	_pulse_t += delta
+	if _wallet_hold_at >= 0 and Time.get_ticks_msec() - _wallet_hold_at > 900:
+		_wallet_hold_at = -1
+		fps_toggle_requested.emit()
 	fifi.trunk_glow = (0.3 + 0.7 * (sin(_pulse_t * 3.0) * 0.5 + 0.5)) if interactive and visible else 0.0
 
 
@@ -235,9 +242,13 @@ func _update_wallet() -> void:
 
 
 func _on_wallet_input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if not event.pressed:
+		_wallet_hold_at = -1
 		return
 	var now := Time.get_ticks_msec()
+	_wallet_hold_at = now
 	_wallet_taps = _wallet_taps + 1 if now - _wallet_tap_at < 600 else 1
 	_wallet_tap_at = now
 	if _wallet_taps >= 5:

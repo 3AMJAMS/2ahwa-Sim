@@ -2,7 +2,8 @@ class_name QuickBar
 extends Control
 ## The ingredient dock along the bottom of the prep station: one slot per
 ## ingredient, always in the same order (sugar, tea, tea bags, coffee,
-## karkade, mango, ice), so the thumb learns where each lives. Tapping a
+## karkade, mint, milk, anise, cinnamon, mango, ice), so the thumb learns
+## where each lives; more than seven slots wrap onto a second row. Tapping a
 ## slot adds that ingredient now; PrepStation decides whether it was the
 ## right moment. Slots can show a count (spoons of sugar), flash green or
 ## red, and pulse when Sayed hints at what's next.
@@ -13,9 +14,15 @@ extends Control
 
 signal slot_pressed(id: String)
 
-const ORDER := ["sugar", "tea", "teabag", "coffee", "karkade", "mango", "ice"]
+const ORDER := ["sugar", "tea", "teabag", "coffee", "karkade", "mint", "milk", "anise", "cinnamon", "mango", "ice"]
 const NAMES := {"sugar": "ING_SUGAR_SHORT", "tea": "ING_TEA", "teabag": "ING_TEABAG", "coffee": "ING_COFFEE",
-	"karkade": "ING_KARKADE", "mango": "ING_MANGO", "ice": "ING_ICE"}
+	"karkade": "ING_KARKADE", "mint": "ING_MINT", "milk": "ING_MILK", "anise": "ING_ANISE", "cinnamon": "ING_CINNAMON",
+	"mango": "ING_MANGO", "ice": "ING_ICE"}
+## Slots that still fit on one row.
+const ROW_MAX := 7
+## Height of the dock for one row and for two.
+const HEIGHT_ONE_ROW := 266.0
+const HEIGHT_TWO_ROWS := 430.0
 const WOOD := Color("7a4e2c")
 const WOOD_DARK := Color("4a2e1a")
 const PAPER := Color("f6ecd6")
@@ -103,13 +110,27 @@ func has_slot(id: String) -> bool:
 	return id in _ids
 
 
+func rows() -> int:
+	return 1 if _ids.size() <= ROW_MAX else 2
+
+
+## How tall the dock wants to be for its slots.
+func wanted_height() -> float:
+	return HEIGHT_ONE_ROW if rows() == 1 else HEIGHT_TWO_ROWS
+
+
 func _rect(i: int) -> Rect2:
 	var n := maxi(_ids.size(), 1)
+	var r := rows()
+	var cols := ceili(n / float(r))
+	var row := i / cols
+	var col := i % cols
+	var in_row := cols if row < r - 1 else n - cols * (r - 1)
 	var pad := 14.0
-	var w := minf((size.x - pad * 2.0) / n, 190.0)
-	var total := w * n
-	var x0 := (size.x - total) * 0.5
-	return Rect2(Vector2(x0 + w * i + 5.0, 30.0), Vector2(w - 10.0, size.y - 52.0))
+	var w := minf((size.x - pad * 2.0) / cols, 190.0)
+	var x0 := (size.x - w * in_row) * 0.5
+	var row_h := (size.y - 40.0) / r
+	return Rect2(Vector2(x0 + w * col + 5.0, 26.0 + row * row_h), Vector2(w - 10.0, row_h - 12.0))
 
 
 func _process(delta: float) -> void:

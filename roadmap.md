@@ -128,6 +128,14 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
   - **Lag:** measured at the Galaxy A70's resolution, a frame now costs about a third of what it did (night street ≈451 → ≈135 ms, prep ≈780 → ≈237 ms on the test machine's software renderer). What was slow, and the fix: real-time lights (each one costs on every pixel it touches, and the road and pavements fill the screen) — the ground is now on its own render layer the streetlights and FIFI's bulb skip, the lamps' pools and FIFI's pink LED spill are painted on as glowing discs, the trunk has one work bulb, and in the prep view the street lamps' glow is folded into the ambient light; full-resolution 3D — now 75% (the UI stays sharp); shadows — a 2048 map, and none from the faint moon. The stove was also re-creating its bubble and steam particles every frame
   - **Prep station simplified:** the صلّي على النبي sticker, the other stickers and flag, the hand of Fatima and blue-eye charm, the tassel fringe, the fairy lights and LED strips in the trunk, the clip-on fan, the shelf of glasses, cups, kettle, bottles and flowers, the floor storage (jerrycan, fruit crate, paper cups, spare gas, power strip and cables), the rag and spoons, the milk pan, tongs, towel and net of lemons are gone. Left: the tail (lamps, plate, rounded bumper), the hatch and its struts, the counter with the kit and the jars, two work bulbs, the rail of kanakas and the ladle, the lemon squeezer and strainer, and the menu board
   - **More polygons:** every round thing (kanakas, glasses, the gas cylinder, jars, wheels, poles, trees and bushes, the bumper's corners) gets 1.5× the sides, and lathed shapes are smooth-shaded so they read as round instead of faceted
+- **More hot drinks, two كنكة, better tyres, frame rate (3 Oct).**
+  - **No blender in FIFI:** her menu is hot drinks; the blender is only built when a juice order comes up at the later tiers, so in FIFI it costs nothing. The cold juices (mango) stay in the data as placeholders for those tiers; the iced karkade and iced tea (brewed, then ice) stay
+  - **Five new hot drinks, four new ingredients (نعناع، لبن، ينسون، قرفة):** شاي بالنعناع (a mint sprig in the glass), شاي بلبن (milk boiled in the كنكة, then a tea bag dunked), ينسون and قرفة (boiled in the كنكة, sugar in the glass), قرفة باللبن (cinnamon boiled in milk). Each has its shouts, icon, jar on the counter, hint and Sayed's first-time tip. The quick bar wraps onto a second row past seven slots
+  - **Two كنكة:** the tea water and the milk boil in a plain polished steel kanaka (the dents are gone); Turkish coffee is made in a brass one modelled on Sayed's photo: a base ring, a belly narrowing to a waist and flaring to a rolled lip, a pinched spout, a silver bracket with rivets, a brass collar, a long black turned wooden handle with a ring at its end. The one not in use waits on the counter
+  - **Espresso machine** (the WAHSH tier upgrade) down from 3,000 to 1,200 EGP — about a week of good days rather than three
+  - **Tyres:** the wheels sat inside the body with a big grey rim covering the black, and the sill and the taxi's checks ran straight across the arches. Now: a black tyre with rounded shoulders flush with the body, a steel wheel and chrome hubcap, the sill and checks stop at the arches, and the taxi's checks are big enough to stay checks at the street camera's distance (they were turning into a jagged black zig-zag)
+  - **Frame rate:** lighting is worked out per vertex instead of per pixel (on flat-shaded blocks it looks the same): about a third off the frame on the test machine at the A70's resolution. Detail traded away (people untouched): half the garden railing bars, fewer and simpler bushes and trees, shop goods in blocks, plain shutters, fewer shutter ribs, no moths, coarser painted lamp pools, fewer LED cubes on FIFI; flat ground casts no shadows and the shadows are hard (cheaper, and no dotted noise). The scene went from ≈145k to ≈100k triangles
+  - **FPS readout for testing:** hold the day/clock/money line for a second to show or hide it
 
 **Later (from the Sep 30 batches):**
 - **Cat animations:** jumping down off FIFI, walking the pavement, sitting, stretching, grooming, rubbing round customers' legs, curling up under the chair, begging at the ice box; customers who stop to pet it
@@ -135,7 +143,9 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
 - **Blocky interiors for later venues** (WAHSH, the kiosk, the ahwa) and more street variety per venue (Downtown façades, a mosque, a kiosk, a juice shop)
 - **Prep station decorations, done properly** (removed on 1 Oct to keep it plain): stickers, charms, fringe, fairy lights and LED strips in the trunk, a shelf of glasses and cups, the kit stored on the floor
 - **Rounder people:** customers, Sayed and the drivers are still built from boxes; round heads, limbs and hands would be the next step up in polygons
-- **Graphics setting** (render scale, shadows on/off) if some phones still struggle
+- **Graphics setting** (render scale, shadows on/off) if some phones still struggle; the FPS readout is there to find out
+- **The menu grows over the first week** instead of all twelve drinks on day one (a new drink or two each day, with Sayed introducing it)
+- **More hot drinks to consider:** سحلب (milk, sahlab powder, nuts on top), حلبة, جنزبيل, نسكافيه باللبن, كاكاو
 - **Card rework follow-ups:** two or three glasses in parallel at higher tiers; the recipe-memory idea (hints that fade as you learn) is **dropped** because staff take over Sayed's work at higher tiers
 
 **Remaining:** shisha coal-rotation station, "ask to repeat", day-start/day-end time-lapse, GameAnalytics, device/aspect-ratio pass
@@ -242,7 +252,7 @@ All the places Sayed opens sit under one **beverages chain** (name TBD), each br
 ## Store Upgrades
 | Category | FIFI | WAHSH | Fixed venues |
 |---|---|---|---|
-| Equipment | Basic burner+blender | Dual burner, upgraded blender | Bigger رملة, espresso machine |
+| Equipment | Gas burner, a steel and a brass كنكة (no blender: hot drinks only) | Dual burner, espresso machine (1,200 EGP) | Bigger رملة; blender and juicers at the juice tiers |
 | Snacks | Small chip rack | Chip+noodle rack | Full snack cooler |
 | Décor | LED strips lining the trunk (red, purple, yellow); later: stickers and signs on the hatch underside | Neon signs + less-local, more modern décor, stools | Marble tables, mashrabiya |
 | Seating | Sayed's lawn chair only; upgrade: two monobloc plastic chairs round a woven-look plastic stool table on the pavement | More plastic chairs and stools | Full ahwa seating |

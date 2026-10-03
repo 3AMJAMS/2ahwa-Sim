@@ -493,7 +493,7 @@ func _led_run(v: Vox, path: Array, start: int) -> int:
 	for i in path.size() - 1:
 		var a: Vector3 = path[i]
 		var b: Vector3 = path[i + 1]
-		var n := maxi(1, int(a.distance_to(b) / 0.05))
+		var n := maxi(1, int(a.distance_to(b) / 0.08))
 		for j in n:
 			var g := posmod(floori(k / 3.0), LED_COLORS.size())
 			v.use("glow/led%d" % g)
