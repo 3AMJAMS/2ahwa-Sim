@@ -136,12 +136,17 @@ Full loop (order→prepare→shisha→serve) + day bookends. Isometric grid + Y-
   - **Tyres:** the wheels sat inside the body with a big grey rim covering the black, and the sill and the taxi's checks ran straight across the arches. Now: a black tyre with rounded shoulders flush with the body, a steel wheel and chrome hubcap, the sill and checks stop at the arches, and the taxi's checks are big enough to stay checks at the street camera's distance (they were turning into a jagged black zig-zag)
   - **Frame rate:** lighting is worked out per vertex instead of per pixel (on flat-shaded blocks it looks the same): about a third off the frame on the test machine at the A70's resolution. Detail traded away (people untouched): half the garden railing bars, fewer and simpler bushes and trees, shop goods in blocks, plain shutters, fewer shutter ribs, no moths, coarser painted lamp pools, fewer LED cubes on FIFI; flat ground casts no shadows and the shadows are hard (cheaper, and no dotted noise). The scene went from ≈145k to ≈100k triangles
   - **FPS readout for testing:** hold the day/clock/money line for a second to show or hide it
+- **Livelier people, the microbus's front (3 Oct).**
+  - **Customers stop staring at the camera:** they stand three-quarters on to the trunk and pass the wait doing something: checking their phone or watch, arms crossed, hands on hips, scratching their head, stretching, tapping a foot when they're getting impatient, or chatting with whoever's next to them (both turn to face each other, one gesturing). Their eyes wander: a passing car, the cat on the roof, the shops across the road, the garden, Sayed, the trunk. When a new customer orders the others glance over; when their drink is ready they look at the trunk and wave; served, they sip from the glass as they go
+  - **Sayed** in his chair sips his tea, nods along to the radio, fans himself with the towel, stretches, and glances at each new customer. Tap him and he raises his glass with a line (أهلاً يا باشا!، اشرب شاي ومتشيلش هم ...); tap the sleeping cat and it wakes up and looks round
+  - **Microbus front:** a flat upright face with a short bonnet like a real Toyota HiAce, the lamps flush with it, instead of the sloping wedge
 
 **Later (from the Sep 30 batches):**
 - **Cat animations:** jumping down off FIFI, walking the pavement, sitting, stretching, grooming, rubbing round customers' legs, curling up under the chair, begging at the ice box; customers who stop to pet it
 - **Sayed's portrait** in the tutorial bubble and the day receipt redrawn from his blocky 3D figure
 - **Blocky interiors for later venues** (WAHSH, the kiosk, the ahwa) and more street variety per venue (Downtown façades, a mosque, a kiosk, a juice shop)
 - **Prep station decorations, done properly** (removed on 1 Oct to keep it plain): stickers, charms, fringe, fairy lights and LED strips in the trunk, a shelf of glasses and cups, the kit stored on the floor
+- **More reactions:** customers pointing at the menu board, reacting to a honk or a near miss, kids tugging at their parent, Sayed calling out to regulars by name
 - **Rounder people:** customers, Sayed and the drivers are still built from boxes; round heads, limbs and hands would be the next step up in polygons
 - **Graphics setting** (render scale, shadows on/off) if some phones still struggle; the FPS readout is there to find out
 - **The menu grows over the first week** instead of all twelve drinks on day one (a new drink or two each day, with Sayed introducing it)

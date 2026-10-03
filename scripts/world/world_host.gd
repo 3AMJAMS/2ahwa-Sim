@@ -64,6 +64,8 @@ func _ready() -> void:
 	queue.traffic = _traffic
 	queue.host = self
 	add_child(queue)
+	# Sayed looks round at whoever's just walked up.
+	queue.customer_ordered.connect(func(c: Customer) -> void: _furniture.sayed.glance(c.head_point(), 3.0))
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.rotation_degrees = Vector3(-30, 45, 0)
@@ -137,6 +139,11 @@ func trunk_screen_rect() -> Rect2:
 	return screen_rect_of(fifi.global_transform * fifi.trunk_aabb())
 
 
+## Sayed's head in his chair (world space), for people to look at.
+func sayed_head() -> Vector3:
+	return _furniture.sayed.global_position + Vector3(0, 1.1, 0)
+
+
 ## Where drinks leave the trunk (world space).
 func trunk_mouth() -> Vector3:
 	return fifi.global_transform * fifi.trunk_mouth()
@@ -199,7 +206,7 @@ func _relight() -> void:
 
 
 ## Taps on the street: the nearest customer or car under the finger, else
-## the trunk.
+## the trunk; Sayed raises his glass and says something, the cat wakes.
 func _unhandled_input(event: InputEvent) -> void:
 	if not interactive or not visible:
 		return
@@ -220,9 +227,49 @@ func _unhandled_input(event: InputEvent) -> void:
 	if best and (trunk == null or best_d <= from.distance_to(trunk) + 0.6):
 		get_viewport().set_input_as_handled()
 		best.tapped.emit()
-	elif trunk != null:
+		return
+	if trunk != null:
 		get_viewport().set_input_as_handled()
 		trunk_tapped.emit()
+		return
+	var sayed := AABB(_furniture.sayed.global_position + Vector3(-0.4, 0.0, -0.4), Vector3(0.8, 1.35, 0.8))
+	if sayed.intersects_ray(from, dir) != null:
+		get_viewport().set_input_as_handled()
+		_furniture.sayed.cheers()
+		_say(tr("SAYED_LINE_%d" % (randi() % 6 + 1)), sayed_head() + Vector3(0, 0.35, 0))
+		return
+	var cat_at: Vector3 = fifi.global_transform * fifi.roof_spot()
+	if AABB(cat_at + Vector3(-0.35, -0.05, -0.35), Vector3(0.7, 0.35, 0.7)).intersects_ray(from, dir) != null:
+		get_viewport().set_input_as_handled()
+		_cat.poke()
+
+
+## A speech bubble over a world point that fades after a couple of seconds.
+func _say(text: String, at: Vector3) -> void:
+	var bubble := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("f6ecd6")
+	style.border_color = Color("7a5a2e")
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(18)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	bubble.add_theme_stylebox_override("panel", style)
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_color_override("font_color", Color("3a2412"))
+	bubble.add_child(label)
+	ui.add_child(bubble)
+	bubble.reset_size()
+	bubble.position = screen_point(at) - Vector2(bubble.size.x * 0.5, bubble.size.y)
+	var t := create_tween()
+	t.tween_interval(2.2)
+	t.tween_property(bubble, "modulate:a", 0.0, 0.4)
+	t.tween_callback(bubble.queue_free)
 
 
 ## A quick bounce on the wallet whenever the money changes.

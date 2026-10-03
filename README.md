@@ -22,6 +22,8 @@ placeholders for the later tiers.
 The first order is always شاي كشري, then orders rotate at random.
 
 Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
+Customers keep busy while they wait (phone, watch, chatting with each other, looking round at cars, the cat and the
+shops) instead of staring at the camera; tap Sayed for a line or the cat to wake it.
 First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
 
 ## Play it

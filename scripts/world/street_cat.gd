@@ -161,6 +161,12 @@ func _process(delta: float) -> void:
 	_tip.rotation.y = _flick * 0.9 + sin(_t * 1.1) * 0.1
 
 
+## Tapped: wakes up now (if it isn't already).
+func poke() -> void:
+	if not _busy:
+		_wake_up()
+
+
 ## Lifts its head, looks round, blinks, maybe yawns, and settles back.
 func _wake_up() -> void:
 	_busy = true

@@ -452,15 +452,17 @@ func _microbus(v: Vox, pane: Vox) -> void:
 	# Passenger box: solid, with its windows, the sliding door and a stripe.
 	var top := [Vector2(2.38, 1.0), Vector2(2.3, 1.98), Vector2(cab_x, 1.98), Vector2(cab_x, 1.1)]
 	v.extrude(_body_profile(top, [1.5], 0.32), "z", -w, w, _paint)
-	# Cab: lower body forward of the box, then an open cab behind glass.
-	var nose := PackedVector2Array([Vector2(cab_x, 0.3), Vector2(-2.3, 0.3), Vector2(-2.4, 0.75), Vector2(-2.3, 1.1), Vector2(cab_x, 1.1)])
+	# Cab: a flat, upright front (lamps and grille sit flush on it), a short
+	# sloping bonnet up to a big windscreen, the front wheel arch.
+	var nose_x := -2.37
 	var cab_prof := PackedVector2Array([Vector2(cab_x + 0.01, 0.3)])
 	for k in 9:
 		var a := PI * k / 8.0
 		cab_prof.append(Vector2(-1.6 + cos(a) * 0.37, 0.32 + sin(a) * 0.35))
-	cab_prof.append_array([Vector2(-2.3, 0.3), Vector2(-2.4, 0.75), Vector2(-2.3, 1.1), Vector2(cab_x + 0.01, 1.1)])
+	cab_prof.append_array([Vector2(nose_x + 0.05, 0.3), Vector2(nose_x, 0.38), Vector2(nose_x, 0.92), Vector2(nose_x + 0.06, 1.0),
+		Vector2(-2.12, 1.1), Vector2(cab_x + 0.01, 1.1)])
 	v.extrude(cab_prof, "z", -w, w, _paint)
-	_cabin(v, pane, Vector2(-2.2, cab_x), Vector2(-1.75, cab_x), 1.1, 1.98, 0.82, -1.45, false, 0.85)
+	_cabin(v, pane, Vector2(-2.12, cab_x), Vector2(-1.82, cab_x), 1.1, 1.98, 0.82, -1.45, false, 0.85)
 	_roof = 2.3
 	for x in [-1.6, 1.5]:
 		for z in [wheel_z(w), -wheel_z(w)]:
@@ -475,8 +477,8 @@ func _microbus(v: Vox, pane: Vox) -> void:
 				var hx: float = lerpf(win[0], win[1], _rng.randf_range(0.3, 0.7))
 				v.box(Vector3(hx - 0.1, 1.42, z - s * 0.2), Vector3(hx + 0.1, 1.66, z - s * 0.01),
 					Color(VoxPerson.SKINS[_rng.randi() % VoxPerson.SKINS.size()]).darkened(0.35))
-		v.box(Vector3(-2.38, 1.02, z - s * 0.005), Vector3(2.38, 1.12, z + s * 0.004), _accent)
-		v.box(Vector3(-2.38, 0.9, z - s * 0.005), Vector3(2.38, 0.94, z + s * 0.004), _accent.darkened(0.25))
+		v.box(Vector3(-2.3, 1.02, z - s * 0.005), Vector3(2.38, 1.08, z + s * 0.004), _accent)
+		v.box(Vector3(-2.32, 0.88, z - s * 0.005), Vector3(2.38, 0.92, z + s * 0.004), _accent.darkened(0.25))
 		for x in [-1.2, 0.4, 1.4]:
 			var foot := 0.36 if _clear_of(x, x, [Vector2(-1.97, -1.23), Vector2(1.13, 1.87)]) else 0.7
 			v.box(Vector3(x - 0.006, foot, z - s * 0.004), Vector3(x + 0.006, 1.86, z + s * 0.006), _paint.darkened(0.3))
@@ -496,7 +498,7 @@ func _microbus(v: Vox, pane: Vox) -> void:
 		v.box(Vector3(2.38, 0.9, z - 0.015), Vector3(2.42, 1.98, z + 0.015), PLASTIC)
 	for k in 6:
 		v.box(Vector3(2.38, 1.0 + k * 0.17, -0.62), Vector3(2.42, 1.02 + k * 0.17, -0.4), PLASTIC)
-	_ends(v, half + 0.03, w, 0.72, 0.36, Color("d8d8d4"), Color("c8322b"))
+	_ends(v, half, w, 0.72, 0.36, Color("d8d8d4"), Color("c8322b"))
 
 
 func _pickup(v: Vox, pane: Vox) -> void:

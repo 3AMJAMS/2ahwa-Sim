@@ -11,6 +11,13 @@ extends Node3D
 ## Walkers are a random VoxPerson (skin tone, build, outfit, hair, things
 ## they carry); the speech bubble and patience bar ride on the street's
 ## overlay, pinned over the head or the car roof.
+##
+## While they wait, walkers stand turned to FIFI's trunk and keep busy: every
+## few seconds they pick something to do (check a phone or a watch, cross
+## their arms, tap a foot as patience runs out, chat with whoever's next to
+## them, look at a passing car, the cat on the roof or the shops across the
+## road), glance over when someone else is served, wave when their drink is
+## ready, and sip it as they walk off.
 
 signal ordered
 signal tapped
@@ -52,6 +59,13 @@ var _bar := Control.new()
 var _bubble := PanelContainer.new()
 var _bubble_label := Label.new()
 var _yaw := 0.0
+## What they're looking at (world point), for how much longer, and when
+## they next change what they're doing.
+var _look_at := Vector3.ZERO
+var _looking := false
+var _glance_left := 0.0
+var _act_left := 0.0
+var _body_yaw := 0.0
 
 
 ## A walker heading for `stand_at`, entering the pavement at `from_u`.
@@ -132,14 +146,144 @@ func _process(delta: float) -> void:
 				if patience <= 0.0:
 					leave(true)
 			if person:
-				# Shift from foot to foot; more impatient, more fidgety.
+				_think(delta)
 				person.idle(delta, 1.0 - patience / patience_max)
-				_turn_to(deg_to_rad(15.0), delta)
+				_turn_to(_body_yaw, delta * 0.35)
+				person.look_yaw = wrapf(_angle_to(_look_at) - _yaw, -PI, PI) if _looking else 0.0
 			_bar.queue_redraw()
 		State.LEAVING:
 			if vehicle == null and _walk(delta):
 				queue_free()
 	_pin_overlay()
+
+
+## Picks what to do next while waiting, weighted by how they feel.
+func _think(delta: float) -> void:
+	_glance_left -= delta
+	_act_left -= delta
+	if _glance_left > 0.0:
+		return
+	_body_yaw = _stance()
+	if drink_ready:
+		# Their drink's in Sayed's hand: eyes on the trunk, a wave now and then.
+		_look(_trunk())
+		if _act_left <= 0.0:
+			person.activity = "wave" if person.activity != "wave" else ""
+			_act_left = 1.6 if person.activity == "wave" else 2.5
+		return
+	if _act_left > 0.0:
+		return
+	_act_left = _rng.randf_range(2.5, 6.0)
+	var u := 1.0 - patience / patience_max
+	var mate := _neighbour()
+	var car := _nearest_car()
+	var options := [
+		["", "trunk", 3.0 + (3.0 if being_made else 0.0)],
+		["phone", "down", 2.0 if u < 0.75 else 0.3],
+		["", "car", 1.5 if car else 0.0],
+		["", "cat", 0.5],
+		["", "shops", 1.0],
+		["", "garden", 1.2],
+		["", "sayed", 0.8],
+		["chat", "mate", 2.5 if mate else 0.0],
+		["arms_crossed", "trunk", 1.0 + 2.0 * u],
+		["watch", "down", 3.0 * u],
+		["tap_foot", "trunk", 3.0 * u],
+		["hips", "trunk", 0.8],
+		["scratch", "shops", 0.4],
+		["stretch", "", 0.3 * (1.0 - u)],
+	]
+	var total := 0.0
+	for o in options:
+		total += float(o[2])
+	var roll := _rng.randf() * total
+	for o in options:
+		roll -= float(o[2])
+		if roll <= 0.0:
+			person.activity = o[0]
+			person.look_pitch = 0.0
+			match o[1]:
+				"trunk":
+					_look(_trunk())
+				"down":
+					_looking = false
+				"car":
+					_look(car.global_position + Vector3(0, 0.8, 0))
+				"cat":
+					_look(host.fifi.global_transform * host.fifi.roof_spot() if host else _trunk())
+					person.look_pitch = -0.25
+				"shops":
+					_look(Vector3(global_position.x + _rng.randf_range(-4.0, 4.0), 2.5, Street3D.FACADE_Z))
+				"garden":
+					# Over their shoulder at the garden and the people passing.
+					_look(global_position + Vector3(_rng.randf_range(-3.0, 3.0), 1.2, 4.0))
+				"sayed":
+					_look(host.sayed_head() if host and host.has_method("sayed_head") else _trunk())
+				"mate":
+					_look(mate.global_position + Vector3(0, 1.4, 0))
+					# Half turn toward them.
+					_body_yaw = lerp_angle(_body_yaw, _angle_to(mate.global_position), 0.6)
+				_:
+					_looking = false
+			return
+
+
+## Look over at something for a moment (someone else being served).
+func glance(at: Vector3, secs := 1.5) -> void:
+	if state != State.WAITING or person == null:
+		return
+	_look(at)
+	_glance_left = secs
+	person.activity = ""
+	_act_left = 0.0
+
+
+func _look(at: Vector3) -> void:
+	_look_at = at
+	_looking = true
+
+
+## How they stand while waiting: turned to the trunk, but opened up toward
+## the street camera (three-quarters), so the player sees more than backs.
+func _stance() -> float:
+	var trunk := _angle_to(_trunk())
+	var a := PI * 0.75
+	var b := -PI * 0.25
+	var side := a if absf(wrapf(trunk - a, -PI, PI)) < absf(wrapf(trunk - b, -PI, PI)) else b
+	return lerp_angle(trunk, side, 0.55)
+
+
+func _angle_to(at: Vector3) -> float:
+	var d := at - global_position
+	return atan2(d.x, d.z)
+
+
+func _trunk() -> Vector3:
+	return host.trunk_mouth() if host else global_position + Vector3(-1, 1, -1)
+
+
+## Another walker waiting close by, to chat with.
+func _neighbour() -> Customer:
+	for c in get_parent().get_children():
+		if c != self and c is Customer and c.person and c.state == State.WAITING \
+				and c.global_position.distance_to(global_position) < 1.6:
+			return c
+	return null
+
+
+func _nearest_car() -> Node3D:
+	var traffic: Node = get_parent().get("traffic")
+	if traffic == null:
+		return null
+	var best: Node3D = null
+	var best_d := 9.0
+	for v in traffic.get_children():
+		if v is StreetVehicle:
+			var d: float = (v as Node3D).global_position.distance_to(global_position)
+			if d < best_d:
+				best_d = d
+				best = v
+	return best
 
 
 ## Keeps the bubble and the bar over the head (or the car roof).
@@ -204,6 +348,13 @@ func serve() -> void:
 	_bar.visible = false
 	_show_bubble(tr("CUST_THANKS_%d" % (_rng.randi() % 3 + 1)), 1.4)
 	_set_mood(1.0)
+	if person:
+		person.activity = "sip"
+		person.look_yaw = 0.0
+	# The others glance over.
+	for c in get_parent().get_children():
+		if c != self and c is Customer:
+			(c as Customer).glance(global_position + Vector3(0, 1.2, 0), _rng.randf_range(1.0, 2.0))
 	if vehicle:
 		state = State.LEAVING
 		vehicle.drive_off(_rng.randf() < 0.5, 1.2)
@@ -216,6 +367,8 @@ func leave(angry: bool) -> void:
 	if state == State.LEAVING:
 		return
 	_bar.visible = false
+	if person:
+		person.activity = ""
 	if angry:
 		_set_mood(-1.0)
 		_show_bubble(tr("CUST_ANGRY_%d" % (_rng.randi() % 2 + 1)), 1.4)

@@ -41,6 +41,14 @@ var arms: Array[Node3D] = []
 var legs: Array[Node3D] = []
 ## A child walking alongside, holding the hand (mothers sometimes bring one).
 var companion: VoxPerson
+## What they're doing while standing about ("" just waiting; "phone",
+## "watch", "arms_crossed", "hips", "scratch", "stretch", "wave", "chat",
+## "tap_foot", "sip"); idle() blends the arms and legs into it.
+var activity := ""
+## Where the head is turned, relative to the body (radians; + is to their
+## left), and tipped (+ looks down). idle() eases the head there.
+var look_yaw := 0.0
+var look_pitch := 0.0
 
 var _rng := RandomNumberGenerator.new()
 var _parts := {}
@@ -106,7 +114,18 @@ func walk(delta: float, speed := 1.0) -> void:
 		legs[0].rotation.x = swing
 		legs[1].rotation.x = -swing
 	arms[0].rotation.x = -swing * 0.8
-	arms[1].rotation.x = swing * 0.8
+	arms[0].rotation.z = 0.0
+	if activity == "sip":
+		# Walking off with the drink: held up, now and then to the lips.
+		var lift := 0.5 + 0.5 * maxf(0.0, sin(_t * 0.9))
+		arms[1].rotation.x = lerpf(-0.9, -1.75, lift)
+		arms[1].rotation.z = 0.3
+		head.rotation.x = -0.2 * lift
+	else:
+		arms[1].rotation.x = swing * 0.8
+		arms[1].rotation.z = 0.0
+		head.rotation.x = lerpf(head.rotation.x, 0.0, minf(1.0, delta * 4.0))
+	head.rotation.y = lerp_angle(head.rotation.y, look_yaw * 0.5, minf(1.0, delta * 3.0))
 	rig.position.y = absf(cos(stride)) * 0.03
 	rig.rotation.z = sin(stride) * 0.03
 	if companion:
@@ -114,19 +133,64 @@ func walk(delta: float, speed := 1.0) -> void:
 
 
 ## Standing about: weight shifts from foot to foot, faster the more
-## impatient (`urgency` 0..1); a glance at the trunk now and then.
+## impatient (`urgency` 0..1); the head eases toward look_yaw/look_pitch
+## and the arms and legs into the current `activity`.
 func idle(delta: float, urgency := 0.0) -> void:
 	_t += delta
 	var k := 1.5 + 3.0 * urgency
 	rig.position.y = -absf(sin(_t * (2.0 + 5.0 * urgency))) * (0.004 + 0.012 * urgency)
 	rig.rotation.z = sin(_t * k) * 0.02 * (0.3 + urgency)
+	# [left arm (x, z), right arm (x, z), right leg x] for the activity.
+	var al := Vector2(sin(_t * k * 0.7) * 0.05 * urgency, 0.0)
+	var ar := Vector2(-al.x, 0.0)
+	var leg_r := 0.0
+	var nod := 0.0
+	match activity:
+		"phone":
+			ar = Vector2(-1.25 + sin(_t * 9.0) * 0.03, 0.35)
+			nod = 0.42
+		"watch":
+			al = Vector2(-1.15, -0.45)
+			nod = 0.4
+		"arms_crossed":
+			al = Vector2(-0.75, 0.75)
+			ar = Vector2(-0.75, -0.75)
+		"hips":
+			al = Vector2(0.15, -0.55)
+			ar = Vector2(0.15, 0.55)
+		"scratch":
+			ar = Vector2(-2.75, 0.45 + sin(_t * 14.0) * 0.08)
+			nod = 0.15
+		"stretch":
+			al = Vector2(-2.9, -0.2)
+			ar = Vector2(-2.9, 0.2)
+			nod = -0.3
+		"wave":
+			ar = Vector2(-2.65, 0.25 + sin(_t * 11.0) * 0.35)
+		"chat":
+			ar = Vector2(-0.45 - 0.35 * maxf(0.0, sin(_t * 2.3)), 0.2)
+			nod = 0.08 * sin(_t * 5.0)
+		"tap_foot":
+			leg_r = -0.18 * absf(sin(_t * 7.0))
+			al = Vector2(0.1, -0.5)
+			ar = Vector2(0.1, 0.5)
+		"sip":
+			ar = Vector2(-1.75, 0.3)
+			nod = -0.2
+	var e := minf(1.0, delta * 6.0)
+	if arms.size() == 2:
+		arms[0].rotation.x = lerpf(arms[0].rotation.x, al.x, e)
+		arms[0].rotation.z = lerpf(arms[0].rotation.z, al.y, e)
+		arms[1].rotation.x = lerpf(arms[1].rotation.x, ar.x, e)
+		arms[1].rotation.z = lerpf(arms[1].rotation.z, ar.y, e)
 	if legs.size() == 2:
 		legs[0].rotation.x = lerpf(legs[0].rotation.x, 0.0, minf(1.0, delta * 8.0))
-		legs[1].rotation.x = lerpf(legs[1].rotation.x, 0.0, minf(1.0, delta * 8.0))
-	for a in arms:
-		a.rotation.x = lerpf(a.rotation.x, sin(_t * k * 0.7) * 0.05 * urgency, minf(1.0, delta * 6.0))
-	head.rotation.y = sin(_t * 0.37) * 0.35 + sin(_t * 1.3) * 0.05
+		legs[1].rotation.x = lerpf(legs[1].rotation.x, leg_r, minf(1.0, delta * 12.0))
+	var e_head := minf(1.0, delta * 4.0)
+	head.rotation.y = lerp_angle(head.rotation.y, clampf(look_yaw, -1.2, 1.2) + sin(_t * 1.3) * 0.04, e_head)
+	head.rotation.x = lerpf(head.rotation.x, look_pitch + nod, e_head)
 	if companion:
+		companion.look_yaw = sin(_t * 0.4) * 0.6
 		companion.idle(delta, urgency * 0.5)
 
 
