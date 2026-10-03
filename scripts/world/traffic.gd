@@ -1,11 +1,10 @@
 class_name Traffic
-extends Node2D
+extends Node3D
 ## Passing traffic on the four-lane road. Each moving lane feeds its own
 ## stream of taxis, saloons, microbuses, pickups, tuk-tuks and delivery
 ## scooters, sometimes in little bunches. Vehicles keep their distance: one
 ## that catches a slower one brakes and follows it instead of driving through
-## it. Y-sorted so nearer lanes pass in front of farther ones; WorldHost keeps
-## it behind FIFI.
+## it.
 
 ## Moving lanes (tile rows) and their direction: the two nearer lanes run the
 ## way FIFI faces (-u), the far lane comes the other way.
@@ -30,7 +29,6 @@ var _t := 0.0
 
 
 func _ready() -> void:
-	y_sort_enabled = true
 	_rng.randomize()
 
 

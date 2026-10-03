@@ -51,6 +51,7 @@ class Ticket extends Control:
 	var customer: Customer
 	var _t := 0.0
 	var _name := Label.new()
+	var _sugar := Label.new()
 
 	func _ready() -> void:
 		custom_minimum_size = Vector2(176, 150)
@@ -58,14 +59,24 @@ class Ticket extends Control:
 		pivot_offset = Vector2(88, 0)
 		var item := GameData.get_menu_item(customer.item_id)
 		_name.text = tr(item.get("name_key", customer.item_id))
-		_name.add_theme_font_size_override("font_size", 24)
+		_name.add_theme_font_size_override("font_size", 24 if _name.text.length() <= 10 else 19)
 		_name.add_theme_color_override("font_color", Color("3a2412"))
 		_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_name.mouse_filter = MOUSE_FILTER_IGNORE
 		_name.set_anchors_and_offsets_preset(PRESET_TOP_WIDE)
-		_name.offset_top = 88
-		_name.offset_bottom = 120
+		_name.offset_top = 70
+		_name.offset_bottom = 100
 		add_child(_name)
+		# The sugar grade, written under the drink like on a real order pad.
+		_sugar.text = GameData.sugar_name(customer.sugar)
+		_sugar.add_theme_font_size_override("font_size", 22)
+		_sugar.add_theme_color_override("font_color", Color("9c3d16"))
+		_sugar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_sugar.mouse_filter = MOUSE_FILTER_IGNORE
+		_sugar.set_anchors_and_offsets_preset(PRESET_TOP_WIDE)
+		_sugar.offset_top = 96
+		_sugar.offset_bottom = 122
+		add_child(_sugar)
 
 	func pop_in() -> void:
 		scale = Vector2(1, 0)
@@ -110,7 +121,12 @@ class Ticket extends Control:
 		var item := GameData.get_menu_item(customer.item_id)
 		var needs: Array = item.get("ingredients", [])
 		var icon: String = needs[0] if not needs.is_empty() else "tea"
-		PrepIcons.draw_icon(self, icon, Rect2(w * 0.5 - 38, 18, 76, 70))
+		var spot := Rect2(w * 0.5 - 27, 18, 54, 54)
+		var tex := PrepIcons.baked(icon, 108)
+		if tex:
+			draw_texture_rect(tex, spot, false)
+		else:
+			PrepIcons.draw_icon(self, icon, spot)
 		# Patience bar, or the state once it's being made / ready.
 		var bar := Rect2(14, h - 26, w - 28, 10)
 		draw_rect(bar, Color(0, 0, 0, 0.15))

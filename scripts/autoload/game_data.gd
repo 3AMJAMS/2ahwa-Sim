@@ -14,6 +14,9 @@ var venues: Array = []            # index == venue tier id
 ## What the player picks from at the prep station, in display order.
 var ingredients: Array = []       # [{id, name_key}]
 var tools: Array = []             # [{id, name_key, station}]
+## Sugar grades from least to most sweet: [{id, name_key}]. Each drink lists
+## the grades it can be ordered with and how many spoons each takes.
+var sugar_grades: Array = []
 
 
 func _ready() -> void:
@@ -27,6 +30,7 @@ func _ready() -> void:
 	venues = _load_list(VENUES_PATH, "venues")
 	ingredients = _load_list(PREP_ITEMS_PATH, "ingredients")
 	tools = _load_list(PREP_ITEMS_PATH, "tools")
+	sugar_grades = _load_list(PREP_ITEMS_PATH, "sugar_grades")
 
 
 func get_menu_item(id: String) -> Dictionary:
@@ -56,6 +60,49 @@ func menu_ingredients() -> Array:
 			for ing in item.get("ingredients", []):
 				used[ing] = true
 	return ingredients.filter(func(e: Dictionary) -> bool: return used.has(e.id))
+
+
+## A random sugar grade the drink can be ordered with ("" if it has none).
+func pick_sugar(item_id: String, rng: RandomNumberGenerator) -> String:
+	var grades: Dictionary = get_menu_item(item_id).get("sugar", {})
+	if grades.is_empty():
+		return ""
+	var keys := grades.keys()
+	return keys[rng.randi() % keys.size()]
+
+
+func sugar_name(grade: String) -> String:
+	for g in sugar_grades:
+		if g.id == grade:
+			return tr(g.name_key)
+	return ""
+
+
+## Taps of the sugar spoon a grade takes for this drink (a tap is half a
+## spoon where the drink's "sugar_unit" is "half", as for Turkish coffee).
+func sugar_taps(item_id: String, grade: String) -> int:
+	return int(get_menu_item(item_id).get("sugar", {}).get(grade, 0))
+
+
+## "مظبوط = معلقتين" style reminder of what a grade means for this drink.
+func sugar_hint(item_id: String, grade: String) -> String:
+	var taps := sugar_taps(item_id, grade)
+	var half: bool = get_menu_item(item_id).get("sugar_unit", "") == "half"
+	var spoons := taps * 0.5 if half else float(taps)
+	var amount := tr("SUGAR_NONE")
+	if spoons > 0.0:
+		var whole := int(spoons)
+		var text := ""
+		if whole == 1:
+			text = tr("SUGAR_ONE_SPOON")
+		elif whole == 2:
+			text = tr("SUGAR_TWO_SPOONS")
+		elif whole > 2:
+			text = tr("SUGAR_N_SPOONS").format({"n": ar_digits(whole)})
+		if spoons - whole > 0.0:
+			text = tr("SUGAR_HALF_SPOON") if whole == 0 else tr("SUGAR_AND_HALF").format({"spoons": text})
+		amount = text
+	return "%s = %s" % [sugar_name(grade), amount]
 
 
 ## The tool a station's drinks are made with ("heat" → the stove).

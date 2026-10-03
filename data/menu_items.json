@@ -17,12 +17,95 @@
       "base_price_egp": 8,
       "prep_time_sec": 12,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#9c3d16",
         "foam": "#dcb88a",
         "vessel": "glass",
-        "leaves": "#2e1b0e"
+        "pot": "water"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "tea_leaves",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "tea_fatla",
+      "name_key": "PREP_TEA_FATLA",
+      "name_ar": "شاي فتلة",
+      "station": "heat",
+      "ingredients": [
+        "teabag"
+      ],
+      "shout_keys": [
+        "SHOUT_FATLA_1",
+        "SHOUT_FATLA_2",
+        "SHOUT_FATLA_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 7,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "boil",
+        "pour",
+        "teabag",
+        "stir"
+      ],
+      "look": {
+        "liquid": "#a4441a",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water"
+      }
+    },
+    {
+      "id": "tea_white",
+      "name_key": "PREP_TEA_WHITE",
+      "name_ar": "شاي على مية بيضا",
+      "station": "heat",
+      "ingredients": [
+        "tea"
+      ],
+      "shout_keys": [
+        "SHOUT_WHITE_1",
+        "SHOUT_WHITE_2",
+        "SHOUT_WHITE_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 10,
+      "prep_time_sec": 12,
+      "difficulty": 3,
+      "sugar": {
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "tea_leaves",
+        "sugar",
+        "boil",
+        "pour_gentle",
+        "stir"
+      ],
+      "look": {
+        "liquid": "#8f3812",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water",
+        "sugar_layer": 2.0
       }
     },
     {
@@ -42,12 +125,28 @@
       "base_price_egp": 10,
       "prep_time_sec": 10,
       "difficulty": 2,
-      "sugar_grade": null,
       "look": {
         "liquid": "#3a2014",
         "foam": "#a0724a",
-        "vessel": "cup"
-      }
+        "vessel": "cup",
+        "kanaka": "brass"
+      },
+      "sugar": {
+        "sada": 0,
+        "riha": 1,
+        "mazboot": 2,
+        "mano": 3,
+        "ziyada": 4
+      },
+      "sugar_unit": "half",
+      "steps": [
+        [
+          "coffee",
+          "sugar_pot"
+        ],
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "karkade_hot",
@@ -66,12 +165,199 @@
       "base_price_egp": 8,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#8e1330",
         "foam": "#c9566e",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "karkade",
+        "boil",
+        "pour"
+      ]
+    },
+    {
+      "id": "tea_mint",
+      "name_key": "PREP_TEA_MINT",
+      "name_ar": "شاي بالنعناع",
+      "station": "heat",
+      "ingredients": [
+        "mint",
+        "tea"
+      ],
+      "shout_keys": [
+        "SHOUT_MINT_1",
+        "SHOUT_MINT_2",
+        "SHOUT_MINT_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 9,
+      "prep_time_sec": 12,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#94471a",
+        "foam": "#dcb88a",
+        "vessel": "glass",
+        "pot": "water"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "tea_leaves",
+        "mint",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "tea_milk",
+      "name_key": "PREP_TEA_MILK",
+      "name_ar": "شاي بلبن",
+      "station": "heat",
+      "ingredients": [
+        "milk",
+        "teabag"
+      ],
+      "shout_keys": [
+        "SHOUT_MILK_TEA_1",
+        "SHOUT_MILK_TEA_2",
+        "SHOUT_MILK_TEA_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 12,
+      "prep_time_sec": 13,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#c08a5a",
+        "foam": "#efe2cf",
+        "vessel": "glass",
+        "pot": "milk"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "milk_pot",
+        "boil",
+        "pour",
+        "teabag",
+        "stir"
+      ]
+    },
+    {
+      "id": "anise",
+      "name_key": "PREP_ANISE",
+      "name_ar": "ينسون",
+      "station": "heat",
+      "ingredients": [
+        "anise"
+      ],
+      "shout_keys": [
+        "SHOUT_ANISE_1",
+        "SHOUT_ANISE_2",
+        "SHOUT_ANISE_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 8,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "look": {
+        "liquid": "#c49a52",
+        "foam": "#e6d3a0",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "anise",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "cinnamon",
+      "name_key": "PREP_CINNAMON",
+      "name_ar": "قرفة",
+      "station": "heat",
+      "ingredients": [
+        "cinnamon"
+      ],
+      "shout_keys": [
+        "SHOUT_CINNAMON_1",
+        "SHOUT_CINNAMON_2",
+        "SHOUT_CINNAMON_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 8,
+      "prep_time_sec": 11,
+      "difficulty": 1,
+      "look": {
+        "liquid": "#8e4a22",
+        "foam": "#c98e5e",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "cinnamon",
+        "boil",
+        "pour",
+        "stir"
+      ]
+    },
+    {
+      "id": "cinnamon_milk",
+      "name_key": "PREP_CINNAMON_MILK",
+      "name_ar": "قرفة باللبن",
+      "station": "heat",
+      "ingredients": [
+        "cinnamon",
+        "milk"
+      ],
+      "shout_keys": [
+        "SHOUT_CINNAMON_MILK_1",
+        "SHOUT_CINNAMON_MILK_2",
+        "SHOUT_CINNAMON_MILK_3"
+      ],
+      "unlock_tier": 0,
+      "base_price_egp": 12,
+      "prep_time_sec": 13,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#cfa27a",
+        "foam": "#f0e4d2",
+        "vessel": "glass"
+      },
+      "sugar": {
+        "sada": 0,
+        "mazboot": 2,
+        "ziyada": 3
+      },
+      "steps": [
+        "sugar",
+        "milk_pot",
+        "cinnamon",
+        "boil",
+        "pour",
+        "stir"
+      ]
     },
     {
       "id": "karkade_cold",
@@ -93,12 +379,16 @@
       "base_price_egp": 12,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#a3183a",
         "foam": "#c9566e",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "karkade",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "iced_tea",
@@ -120,12 +410,16 @@
       "base_price_egp": 10,
       "prep_time_sec": 11,
       "difficulty": 1,
-      "sugar_grade": null,
       "look": {
         "liquid": "#b5651d",
         "foam": "#d9a066",
         "vessel": "glass"
-      }
+      },
+      "steps": [
+        "tea_pot",
+        "boil",
+        "pour"
+      ]
     },
     {
       "id": "mango_juice",
@@ -147,12 +441,15 @@
       "base_price_egp": 15,
       "prep_time_sec": 11,
       "difficulty": 2,
-      "sugar_grade": null,
       "look": {
         "liquid": "#f2a324",
         "bits": "#f7c64f",
         "ice": false
-      }
+      },
+      "steps": [
+        "mango",
+        "blend"
+      ]
     }
   ]
 }

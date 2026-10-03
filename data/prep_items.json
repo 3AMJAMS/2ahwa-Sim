@@ -1,10 +1,23 @@
 {
   "ingredients": [
     { "id": "tea", "name_key": "ING_TEA" },
+    { "id": "teabag", "name_key": "ING_TEABAG" },
     { "id": "coffee", "name_key": "ING_COFFEE" },
     { "id": "karkade", "name_key": "ING_KARKADE" },
     { "id": "mango", "name_key": "ING_MANGO" },
-    { "id": "ice", "name_key": "ING_ICE" }
+    { "id": "mint", "name_key": "ING_MINT" },
+    { "id": "milk", "name_key": "ING_MILK" },
+    { "id": "anise", "name_key": "ING_ANISE" },
+    { "id": "cinnamon", "name_key": "ING_CINNAMON" },
+    { "id": "ice", "name_key": "ING_ICE" },
+    { "id": "sugar", "name_key": "ING_SUGAR" }
+  ],
+  "sugar_grades": [
+    { "id": "sada", "name_key": "SUGAR_SADA" },
+    { "id": "riha", "name_key": "SUGAR_RIHA" },
+    { "id": "mazboot", "name_key": "SUGAR_MAZBOOT" },
+    { "id": "mano", "name_key": "SUGAR_MANO" },
+    { "id": "ziyada", "name_key": "SUGAR_ZIYADA" }
   ],
   "tools": [
     { "id": "stove", "name_key": "TOOL_STOVE", "station": "heat" },

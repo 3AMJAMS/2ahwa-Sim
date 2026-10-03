@@ -13,14 +13,25 @@ An Egyptian-Arabic ahwa/bartending-style game. You play as **سيد (Sayed)**, s
 ## Status
 Phase 0 (Foundation) — premise, art style, engine, vehicle names (FIFI + WAHSH), and launch platform locked.
 
-Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → fade to the flat prep station →
-pick the ingredients from the tray → pick the tool (the كنكة on the fire or the blender) → make the order
-(شاي كشري, قهوة تركي, كركديه; the iced ones — كركديه ساقع, شاي ساقع — are brewed then get ice cubes) →
-fade back to the street and hand it over. FIFI's menu is hot drinks only for now; fruit drinks come at higher tiers.
+Phase 1 (Core Minigame) — in progress. Playable loop: tap FIFI's trunk → the camera moves behind her into the
+trunk → make the order with the quick bar of ingredients and gestures on the kit (شاي كشري، فتلة، على مية بيضا،
+شاي بالنعناع، شاي بلبن، قهوة تركي، كركديه، ينسون، قرفة، قرفة باللبن; the iced ones — كركديه ساقع, شاي ساقع — are
+brewed then get ice cubes) → back to the street to hand it over. Everything is blocky 3D (voxel-style low-poly) built
+in code. FIFI's menu is hot drinks only (there's no blender in her trunk); the fruit juices stay in the data as
+placeholders for the later tiers.
 The first order is always شاي كشري, then orders rotate at random.
 
 Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
+Customers keep busy while they wait (phone, watch, chatting with each other, looking round at cars, the cat and the
+shops) instead of staring at the camera; tap Sayed for a line or the cat to wake it.
 First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
+
+## Play it
+- **Web / iPhone:** https://3amjams.github.io/2ahwa-Sim/ (built and published by `.github/workflows/web.yml` on every
+  merge to `main`; one-time setup: repo Settings → Pages → Source: **GitHub Actions**). On iPhone open it in Safari,
+  then Share → **Add to Home Screen**: it installs like an app, full screen, with its own icon. (A native iOS app
+  needs a Mac with Xcode and a paid Apple developer account, so the web app is the iOS route for now.)
+- **Android:** install the APK (export preset "Android", arm64).
 
 ## Running Phase 1
 Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
@@ -29,52 +40,86 @@ Open the folder in Godot 4.3+ and press Play (`scenes/main.tscn`).
   patience bar. **Tap the trunk** (makes whoever is most impatient), the ticket, or the customer to make an order;
   once it's made, **tap the customer to serve it** (the cup goes in through the car window, then they drive off). Tips are paid on serving and shrink the longer they waited;
   customers who run out of patience walk off. Space/Enter opens the trunk on desktop.
-- **Pick what goes in it** from the tray at the bottom — شاي, بن, كركديه — then **pick the tool** (الكنكة).
-  Iced drinks then ask for ice: **tap the ice card once per cube** and watch them drop into the glass. Each wrong pick shakes
-  the car and takes 20% off the tip (down to half).
+- **Make it with the quick bar and your fingers.** Along the bottom is a dock of ingredients, always in the
+  same order (سكر، شاي، فتلة، بن، كركديه، نعناع، لبن، ينسون، قرفة، تلج — only what today's menu uses; more than
+  seven wrap onto a second row). Tap one (or its jar on the counter) to add it now. On the kit: **tap the كنكة** to
+  light the fire and again to take it off; **hold** to pour gently; **swipe down on the glass** to dunk a tea bag;
+  **circle round the glass** to stir; at the juice tiers, **tap the blender** to start it. Do the drink's steps in order (in `menu_items.json`); doing something before its time shakes the view and
+  takes 20% off the tip (down to half). Wait a moment and Sayed hints at what's next.
 - **Sayed's tutorial** runs on a new save: he walks you round the street, through your first order, and
-  explains the stove and the blender the first time you use each. "تخطّي الشرح" turns it off for that save.
-- **Hot orders — tap the stove** when the foam (الوش) rises over the كنكة's rim and the side bar turns green (65–85%):
+  explains the stove, each new kind of step (mint, milk…) and, at the juice tiers, the blender the first time. "تخطّي الشرح" turns it off for that save.
+- **Sugar by the spoon.** Every tea and coffee order comes with a sugar grade (on the ticket and in the shout):
+  tea is سادة / مظبوط / زيادة (0 / 2 / 3 spoons; على مية بيضا packs the same spoons into a thicker layer); Turkish coffee also has عالريحة and مانو, and each tap is half a
+  spoon (سادة 0, عالريحة ½, مظبوط 1, مانو 1½, زيادة 2). Tap the sugar once per spoon (the count shows on the slot),
+  then carry on with the next thing; each spoon off the order takes a quarter off the drink's quality.
+- **Tea is built in the glass**, the Egyptian way:
+  - **شاي كشري:** sugar first, then the loose tea on top, then boil water in the كنكة and pour it over (it darkens
+    from the leaves up), then **stir** (four circles round the glass) until the sugar's gone and it's one colour.
+  - **شاي فتلة:** sugar, boiling water, then **dunk the tea bag** three times (the colour clouds down from it), stir.
+  - **شاي على مية بيضا:** tea at the bottom under a thick layer of sugar; boil the water, then **hold to pour it
+    down the side of the glass** — holding speeds the flow up, and if the meter hits red the stream punches
+    through the sugar and the tea darkens at once (quality docked). Poured gently the water stays clear over the
+    sugar; stirring darkens it gradually.
+  - **شاي بالنعناع:** like كشري, with a sprig of mint into the glass before the water.
+  - **شاي بلبن:** milk boils in the كنكة instead of water (it rises fast); pour it, dunk a tea bag, stir.
+- **Brewed in the كنكة:** **قهوة تركي** (the coffee and its sugar go in before it goes on the fire, in the brass
+  coffee كنكة), **كركديه**, **ينسون** and **قرفة** (sugar in the glass first), **قرفة باللبن** (cinnamon boiled in
+  milk). Tea water and milk boil in the plain steel kanaka; the other one waits on the counter.
+- **Hot orders — tap the كنكة** when the foam (الوش) rises over its rim and the side bar turns green (65–85%):
   Sayed takes it off the fire and pours it into the glass. A perfect brew pays full tips; outside the
   green pays half; leaving it on until the bar tops out boils it over and burns the tea.
 - **Blended orders (later tiers) — the blender runs by itself.** Press and hold (or hold Space) for turbo: it finishes faster
   and pays more, but heats the motor. Let go when the lights and the thin bar turn red — stay in the red
   too long and the thermal cut-out trips: the motor stops until it cools, so the drink comes out later
   and tips drop.
-- **The day doesn't end by itself.** The clock starts at 4 pm and runs 1 game minute per real second, through
-  sunset and night (the sodium streetlights and LED strips come on) and round again. Tap **🏠 روّح** to go home:
-  you see the day's takings, the day number goes up and the next day starts at 4 pm.
+- **A shift is 15 minutes.** The clock starts at 4 pm and runs through sunset (about 4 minutes in) and night
+  (the sodium streetlights and LED strips come on) to 4 am, when Sayed packs up by himself (an order being made is
+  handed over first). Tap **روّح** to go home earlier. Either way you see the day's takings, the day number goes up
+  and the next day starts at 4 pm. The day ends on a dawn screen with Sayed's receipt for the day (orders
+  served, customers lost, the takings, a "خالص" stamp) and a **يوم جديد** button.
+- **Sayed's racks are movable.** Tap **رتّب** in the prep station's corner, slide the rail of kanakas or the lemon-squeezer
+  rack across the top of the opening, or the chalk menu board over the hatch, then خلاص. Positions are kept in the save.
 - Progress (money, day) is saved to `user://save.tres` on day end, on purchase, and when the app is paused/closed.
 
-### Visual effects
-The project uses Godot's built-in effects, so run it with the **Mobile** (or Forward+) renderer to see them:
-HDR 2D + glow (`rendering/viewport/hdr_2d`, `WorldEnvironment` in `scenes/main.tscn`), `PointLight2D` streetlights,
-`CPUParticles2D` moths/dust, and shaders in `shaders/` (heat haze over the stove, screen vignette).
-Anything that should glow is drawn with a colour brighter than white (`StationArt.hdr()`).
-Haptics use `Input.vibrate_handheld()`: add the **VIBRATE** permission when you set up the Android export preset.
+### Visual style and effects
+The world is **blocky 3D**, built in code: `scripts/vox/vox.gd` bakes boxes, extruded profiles, lathed round things
+(kanakas, glasses, wheels) and swept tubes into one vertex-coloured mesh per object, so a whole car or building is a
+handful of draw calls. Flat faces are flat-shaded; round things get extra sides (`Vox.DETAIL`) and smooth shading so
+they read as round. Lamps, lit windows, LEDs and flames use unshaded "glow" materials whose
+brightness is set per group (`Vox.set_glow`), so they bloom through the `WorldEnvironment` glow. Lighting is real:
+`DayLight3D` moves a sun/moon through the day (hard shadows by day; the faint moonlight casts none). To keep the frame
+light on mid-range phones: lighting is worked out per vertex, not per pixel (`force_vertex_shading`: on flat-shaded
+blocks it looks the same and costs far less); the 3D renders at 75% resolution (the 2D UI stays sharp); flat ground
+casts no shadows; a real light costs something on every
+pixel it touches, so the road, pavements, garden and buildings sit on their own render layer that the streetlights and
+FIFI's bulb skip, and the lamps' pools and FIFI's pink LED spill are painted onto the ground as glowing discs; in the
+prep view one work bulb lights the trunk and the street lamps' glow is folded into the ambient light; busy 2D drawings
+(the quick bar, the ticket icons) are painted once into textures instead of redrawn from polygons each frame. **Testing
+FPS on a phone:** press and hold the day/clock/money line for a second to show or hide a frame-rate readout. Haptics use `Input.vibrate_handheld()` (add the **VIBRATE** permission in the Android preset).
 
 ### Project layout
 | Path | What |
 |---|---|
-| `scripts/main.gd` | WORLD ↔ PREP state machine + fades |
-| `scripts/stations/heat_gauge.gd` | Hot brew timing + scoring (tap in the green zone) |
-| `scripts/stations/kanaka_stove.gd` | Stove art: gas ring, كنكة, boiling/foam, pour into a glass or فنجان, boil-over |
-| `scripts/stations/blend_gauge.gd` | Cold blender timing + scoring (hold for turbo, don't overheat the motor) |
-| `scripts/stations/blender_view.gd` | Blender art: chunks blending down, vortex, motor lights/smoke, pour, cut-out |
-| `scripts/stations/trunk_backdrop.gd` | The prep screen's car: raised hatch, trunk interior + supply rack, LED strips, rear panel, lamps, plate, bumper, road and tyres below |
-| `scripts/stations/sky_art.gd` | The prep station's static sky: clouds rolled per day, sun on its arc, stars, the moon in its phase for the game day |
-| `scripts/stations/side_scenery.gd` | The street around the prep panel on wider/taller screens (buildings, road, painted kerb, pavement, streetlights) |
-| `scripts/world/traffic.gd`, `street_vehicle.gd` | Passing traffic at FIFI's scale (taxis, saloons, microbuses, pickups, tuk-tuks, scooters) that keeps its distance in lane |
-| `scripts/world/customer.gd`, `customer_queue.gd` | Customers: drive-bys (pull in behind or beside FIFI, window down, order, drive off) and walkers (animated walk cycle), shouting the order, patience, served/angry exits |
-| `scripts/ui/ticket_rail.gd` | Order tickets along the top of the street view |
-| `scripts/world/sidewalk_furniture.gd` | Sayed's folding lawn chair, his tea and his radio on the pavement (customer seating comes later as an upgrade) |
-| `scripts/stations/station_art.gd` | Shared drawing kit for the station art (scene scaling, counter, glows, particles) |
-| `scripts/stations/prep_station.gd` | Runs an order: ingredients → tool → gauge, pays tips (docked for wrong picks), tutorial hooks |
-| `scripts/stations/prep_picker.gd`, `pick_card.gd`, `prep_icons.gd` | The pick tray, its cards, and their procedural icons (ingredients and tools) |
-| `scripts/autoload/tutorial.gd`, `scripts/ui/` | Sayed's tutorial: plays each walkthrough once (`tutorials_seen` in the save); coach overlay with spotlight shader, speech bubble, portrait and pointing hand |
-| `scripts/world/` | Isometric street (four-lane road, painted kerbs, pavements, Cairo streetlights) + placeholder FIFI (procedural yellow Fiat 127-style hatchback, hatch up with the kit in the trunk, LED strips, fruit ice box on the pavement; swap for art later) |
-| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy`, `DayClock` (time of day, sky and lighting), `Tutorial` |
-| `data/*.json` | Menu (each drink's `ingredients` and its colours under `look`), pickable ingredients/tools (`prep_items.json`), equipment/upgrades, venue tiers — edit these, not scripts, to tune |
+| `scripts/main.gd` | Street ↔ prep state machine, fades, serving (the cup flies to the hand or car window), tips |
+| `scripts/vox/vox.gd` | The block-mesh builder: boxes, rounded boxes, extrusions, lathes, rods, balls, sweeps; materials (solid, glass, glow groups) |
+| `scripts/vox/vox_person.gd` | Blocky people: the look generator (skin tones, builds, outfits, hair, headwear, faces, things they carry), jointed parts, walk/idle/raise-arm, moods; Sayed's look |
+| `scripts/world/world_host.gd` | The street view: iso camera, overlay (labels, bubbles), taps by ray, entering/leaving the prep view |
+| `scripts/world/street3d.gd` | Road, kerbs, pavements, garden, shops and flats, streetlights with light pools, street furniture |
+| `scripts/world/day_light3d.gd` | Sun, moon, sky and ambient light through the day |
+| `scripts/world/fifi3d.gd` | FIFI: the Fiat 127, her trunk kit, hatch, LED strips, bulbs, ice box, the tap glow |
+| `scripts/world/street_vehicle.gd`, `traffic.gd` | Blocky traffic (six kinds, drivers behind tinted glass, winding windows) and its lane logic |
+| `scripts/world/customer.gd`, `customer_queue.gd` | Customers on foot or by car: arrival, order bubble, patience bar, served/angry exits |
+| `scripts/world/sidewalk_furniture.gd`, `sayed_figure.gd`, `street_cat.gd` | Sayed's chair and radio, Sayed sipping his tea, the cat on FIFI's roof |
+| `scripts/stations/prep_rig.gd` | FIFI's tail and trunk up close: bumper, lamps, plate, the hatch from below, counter, jars, work bulbs, racks, the prep camera (decorations come later) |
+| `scripts/stations/stove3d.gd` | The gas cylinder, flame and the two كنكة (steel for water and milk, brass with a wooden handle for coffee; boiling, foam, pour stream, boil-over), the tea glass or فنجان and everything built in it (sugar, leaves, the bag, mint) |
+| `scripts/stations/blender3d.gd` | The blender for the juice tiers (heat lights, vents, blades, fruit) and the tall glass it pours into; not built in FIFI |
+| `scripts/ui/fps_meter.gd` | The frame-rate readout for testing (hold the money line) |
+| `scripts/stations/prep_station.gd` | The prep layer: the order, readouts, the quick bar, gestures, the recipe step engine, hints, Sayed's tips, scoring |
+| `scripts/stations/quick_bar.gd`, `prep_icons.gd` | The ingredient dock and its procedural icons |
+| `scripts/stations/heat_gauge.gd`, `blend_gauge.gd` | Brew timing and scoring (tap in the green; hold for turbo without tripping the motor) |
+| `scripts/ui/` | Ticket rail, Sayed's tutorial overlay (spotlight, speech bubble, portrait, pointing hand), the dawn day receipt |
+| `scripts/autoload/` | `GameData` (JSON content), `SaveSystem`, `Economy`, `DayClock` (time of day), `Tutorial` |
+| `data/*.json` | Menu (each drink's `steps` and colours under `look`), ingredients, equipment/upgrades, venue tiers — edit these, not scripts, to tune |
 | `localization/ar_EG.csv` | All UI strings as translation keys |
 | `assets/fonts/` | Cairo (OFL) — Arabic + Latin subsets |
 
