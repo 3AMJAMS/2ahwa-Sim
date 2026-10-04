@@ -10,6 +10,8 @@ var environment: Environment
 ## Degrees round the sky the light comes from (turns a little through the day).
 @export var base_yaw := 35.0
 @export var shadows := true
+## Ambient energy behind FIFI at full dark (the street's is 1.35).
+const PREP_NIGHT_AMBIENT := 0.8
 ## Behind FIFI making a drink: after dark the street lamps' sodium glow is
 ## folded into the ambient light there instead of costing real lights.
 var prep := false:
@@ -54,10 +56,17 @@ func apply() -> void:
 	sun.light_energy = lerpf(1.35, 0.5, dark)
 	# Moonlight shadows are faint and still cost a full shadow pass.
 	sun.shadow_enabled = shadows and dark < 0.85
+	# Behind FIFI the view is a couple of metres deep: spending the shadow
+	# map on that alone keeps the trunk's rounded edges free of acne.
+	sun.directional_shadow_max_distance = 14.0 if prep else 60.0
 	if environment:
 		environment.background_color = sky
 		var ambient := Color(0.74, 0.78, 0.88).lerp(Color(0.42, 0.44, 0.74), dark) * amb.lerp(Color.WHITE, 0.5)
+		var energy := lerpf(0.8, 1.35, dark)
 		if prep:
+			# The work bulb is lit per pixel in there: keep the night fill low
+			# so its warm pool reads against a dimmer trunk and street.
 			ambient = ambient.lerp(Color(0.8, 0.6, 0.44), 0.5 * dark)
+			energy = lerpf(0.8, PREP_NIGHT_AMBIENT, dark)
 		environment.ambient_light_color = ambient
-		environment.ambient_light_energy = lerpf(0.8, 1.35, dark)
+		environment.ambient_light_energy = energy

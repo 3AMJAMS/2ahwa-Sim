@@ -24,6 +24,8 @@ The first order is always شاي كشري, then orders rotate at random.
 Phase 2 (Station Loop) — in progress: customers, order tickets, patience, serving and tips on the street.
 Customers keep busy while they wait (phone, watch, chatting with each other, looking round at cars, the cat and the
 shops) instead of staring at the camera; tap Sayed for a line or the cat to wake it.
+Lighting is per-pixel on everything near the camera and per-vertex on the big flat street surfaces, which keeps the warm
+bulb light in FIFI's trunk affordable on mid-range phones.
 First launch plays Sayed's tutorial (street, first order, each tool the first time it's used).
 
 ## Play it

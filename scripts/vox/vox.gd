@@ -14,20 +14,32 @@ extends RefCounted
 ## the winding from the direction a face should face, so callers never do.
 ##
 ## Materials, by the name picked with use():
-##   "solid"        lit, vertex colour
+##   "solid"        lit, vertex colour, matte (no specular: per pixel that
+##                  highlight was the dearest part of the whole frame)
 ##   "shiny"        lit, polished (brass, steel): tighter, brighter highlights
 ##   "glass"        lit, see-through (vertex alpha)
 ##   "glow/<name>"  unshaded, vertex colour × that group's brightness, so
 ##                  lamps, lit windows and LEDs bloom; set_glow() drives them.
+##
+## Lit kinds shade per pixel (soft bulb falloff, highlights on metal) unless
+## `vertex_lit` is set when they're baked: then they shade per vertex, which
+## costs next to nothing and, on big flat faces lit by the sun, looks the
+## same. That's for the screen-filling street (road, pavements, buildings).
+## Chrome needs no specular at all: chrome() bakes a sky-and-street
+## reflection into the vertex colours of a plain "solid" part.
 
 var xf := Transform3D.IDENTITY
 var _stack: Array[Transform3D] = []
 var _kind := "solid"
 ## kind -> [PackedVector3Array verts, PackedVector3Array normals, PackedColorArray colours]
 var _parts := {}
+## Bake the lit kinds per-vertex-shaded (see above). Stays set across commits.
+var vertex_lit := false
 
 ## Round things get this many times the sides they're built with.
 const DETAIL := 1.5
+## Suffix of a lit kind's per-vertex-shaded twin ("solid@v").
+const VERTEX_LIT := "@v"
 
 static var _materials := {}
 static var _glow := {}
@@ -286,14 +298,16 @@ func ball(center: Vector3, radii: Vector3, col: Color, seg := 8, rings := 4) -> 
 ## Sweeps a 2D cross-section along a path of points (tube frames, bumpers
 ## wrapping round corners, cables). The section's x runs sideways, y along
 ## `up` (projected off the path direction). Capped at both ends.
-func sweep(section: PackedVector2Array, path: Array, col: Color, up := Vector3.UP, caps := true) -> void:
+func sweep(section: PackedVector2Array, path: Array, col: Color, up := Vector3.UP, caps := true, closed := false) -> void:
 	var n := path.size()
 	if n < 2:
 		return
 	var rings: Array = []
 	for i in n:
 		var t: Vector3
-		if i == 0:
+		if closed:
+			t = ((path[i] - path[(i + n - 1) % n]).normalized() + (path[(i + 1) % n] - path[i]).normalized()).normalized()
+		elif i == 0:
 			t = (path[1] - path[0]).normalized()
 		elif i == n - 1:
 			t = (path[n - 1] - path[n - 2]).normalized()
@@ -306,8 +320,8 @@ func sweep(section: PackedVector2Array, path: Array, col: Color, up := Vector3.U
 		var s := t.cross(u).normalized()
 		# Stretch the joint so the tube keeps its thickness round a bend.
 		var k := 1.0
-		if i > 0 and i < n - 1:
-			var prev: Vector3 = path[i - 1]
+		if closed or (i > 0 and i < n - 1):
+			var prev: Vector3 = path[(i + n - 1) % n]
 			var here: Vector3 = path[i]
 			k = 1.0 / maxf((here - prev).normalized().dot(t), 0.35)
 		var ring: Array = []
@@ -315,9 +329,9 @@ func sweep(section: PackedVector2Array, path: Array, col: Color, up := Vector3.U
 			ring.append(path[i] + s * p.x * k + u * p.y)
 		rings.append(ring)
 	var m := section.size()
-	for i in n - 1:
+	for i in (n if closed else n - 1):
 		var r0: Array = rings[i]
-		var r1: Array = rings[i + 1]
+		var r1: Array = rings[(i + 1) % n]
 		var c0 := _centroid(r0)
 		var c1 := _centroid(r1)
 		for j in m:
@@ -327,11 +341,40 @@ func sweep(section: PackedVector2Array, path: Array, col: Color, up := Vector3.U
 			var d: Vector3 = r1[j]
 			var mid := (a + b + c + d) * 0.25
 			quad(a, b, c, d, col, mid - (c0 + c1) * 0.5)
-	if caps:
+	if caps and not closed:
 		var s0: Array = rings[0]
 		var s1: Array = rings[n - 1]
 		poly(s0, col, path[0] - path[1])
 		poly(s1, col, path[n - 1] - path[n - 2])
+
+
+## sweep() round a closed loop of points (seals, rims, frames): no seam,
+## no caps.
+func loop(section: PackedVector2Array, path: Array, col: Color, up := Vector3.UP) -> void:
+	sweep(section, path, col, up, false, true)
+
+
+## A ring round the y axis through `center`: radius `big` to the middle of
+## a round tube `small` thick (rolled lips, beads, handwheels).
+func torus(center: Vector3, big: float, small: float, col: Color, seg := 12, tube := 8) -> void:
+	tube = sides(tube)
+	var prof: Array = []
+	# Starts on the inside, where the lathe's seam is out of sight.
+	for i in tube + 1:
+		var a := PI + TAU * i / tube
+		prof.append(Vector2(big + cos(a) * small, sin(a) * small))
+	push(Transform3D(Basis.IDENTITY, center))
+	lathe(prof, seg, col, false, false)
+	pop()
+
+
+## A closed rounded rectangle path in the plane across `axis` at `a`
+## (planes as in extrude()), for loop().
+static func rect_path(r: Rect2, rad: float, axis: String, a: float, seg := 2) -> Array:
+	var out: Array = []
+	for p in round_rect(r, rad, seg):
+		out.append(_lift(p, axis, a))
+	return out
 
 
 ## A flat decal a hair proud of a surface: a rectangle in the plane of
@@ -352,6 +395,38 @@ func decal(center: Vector3, size: Vector2, normal: Vector3, col: Color) -> void:
 		a = Vector3(hx, 0, 0)
 		b = Vector3(0, hy, 0)
 	quad(c - a - b, c + a - b, c + a + b, c - a + b, col, normal)
+
+## Where the current material's geometry ends now, for chrome().
+func mark() -> int:
+	return (_buf()[0] as PackedVector3Array).size()
+
+
+## Recolours what the current material got since mark() returned `from`
+## like polished chrome under an open sky: bright where it faces up, a dark
+## horizon band just above level, the street's duller tone underneath.
+## Baked into the vertex colours, so it costs nothing to draw.
+func chrome(from: int, base: Color) -> void:
+	var w: Array = _buf()
+	var norms: PackedVector3Array = w[1]
+	var cols: PackedColorArray = w[2]
+	for i in range(from, norms.size()):
+		var c := _chrome_tone(norms[i].y, base)
+		c.a = cols[i].a
+		cols[i] = c
+	w[2] = cols
+
+
+static func _chrome_tone(ny: float, base: Color) -> Color:
+	const KEYS := [-1.0, -0.35, 0.0, 0.3, 0.55, 0.8, 1.0]
+	const SHADE := [-0.72, -0.62, -0.32, -0.7, 0.12, -0.12, 0.18]
+	var k := 0
+	while k < KEYS.size() - 2 and ny > KEYS[k + 1]:
+		k += 1
+	var t := smoothstep(KEYS[k], KEYS[k + 1], ny)
+	var a: float = SHADE[k]
+	var b: float = SHADE[k + 1]
+	var sh := lerpf(a, b, t)
+	return base.lightened(sh) if sh > 0.0 else base.darkened(-sh)
 
 #endregion
 
@@ -376,7 +451,10 @@ func commit() -> ArrayMesh:
 				colors[i] = colors[i].srgb_to_linear()
 		arrays[Mesh.ARRAY_COLOR] = colors
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, material(kind))
+		var lit_kind := kind
+		if vertex_lit and not kind.begins_with("glow"):
+			lit_kind += VERTEX_LIT
+		mesh.surface_set_material(mesh.get_surface_count() - 1, material(lit_kind))
 	_parts.clear()
 	xf = Transform3D.IDENTITY
 	_stack.clear()
@@ -398,12 +476,18 @@ static func material(kind: String) -> Material:
 	if _materials.has(kind):
 		return _materials[kind]
 	var m: Material
-	if kind == "solid":
+	if kind.ends_with(VERTEX_LIT):
+		var v := material(kind.trim_suffix(VERTEX_LIT)).duplicate() as BaseMaterial3D
+		v.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
+		m = v
+	elif kind == "solid":
 		var s := StandardMaterial3D.new()
 		s.vertex_color_use_as_albedo = true
 		s.vertex_color_is_srgb = not _linear_colors
 		s.roughness = 0.82
 		s.metallic_specular = 0.3
+		s.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
+		s.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		m = s
 	elif kind == "shiny":
 		var sh := StandardMaterial3D.new()
@@ -491,6 +575,22 @@ static func circle(c: Vector2, r: Vector2, seg := 12, phase := 0.0) -> PackedVec
 		var a := TAU * i / seg + phase
 		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
 	return pts
+
+
+## A smooth curve through `pts` (Catmull-Rom), `steps` points per span:
+## hooks, wires, cables.
+static func smooth_path(pts: Array, steps := 3) -> Array:
+	var out: Array = []
+	var n := pts.size()
+	for i in n - 1:
+		var p0: Vector3 = pts[maxi(i - 1, 0)]
+		var p1: Vector3 = pts[i]
+		var p2: Vector3 = pts[i + 1]
+		var p3: Vector3 = pts[mini(i + 2, n - 1)]
+		for k in steps:
+			out.append(p1.cubic_interpolate(p2, p0, p3, float(k) / steps))
+	out.append(pts[n - 1])
+	return out
 
 
 ## How many sides a round thing asked to have `n` gets.

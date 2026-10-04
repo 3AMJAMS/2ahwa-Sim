@@ -49,7 +49,7 @@ const BRASS := Color("c9a24a")
 const POT_BRASS := Color("d6b363")
 const EBONY := Color("1f1b1a")
 const IRON := Color("2c2a30")
-const SAUCER := Color("ebe6dc")
+const SAUCER := Color("d6cfc2")
 const GOLD := Color("c9a24a")
 const BURNT := Color("1e0f08")
 const FOAM_BURNT := Color("4a3020")
@@ -773,26 +773,59 @@ func _ice_surface() -> Vector3:
 #region Building the meshes
 
 func _build_cylinder(v: Vox) -> void:
-	# Red cylinder with a white band, dome, collar, valve and the burner.
+	# Red cylinder on its iron foot ring: rounded shoulders, a welded seam,
+	# the white band, the brass collar and valve with its red handwheel,
+	# then the burner.
 	v.push_at(AT)
-	v.lathe([Vector2(0.105, 0.0), Vector2(0.12, 0.02), Vector2(0.12, 0.21), Vector2(0.1, 0.26), Vector2(0.045, 0.285)],
-		14, CYLINDER)
-	v.cyl(Vector3(0, 0.1, 0), 0.121, 0.121, 0.035, Color("efe6d2"), 14)
-	v.cyl(Vector3(0, 0.0, 0), 0.108, 0.108, 0.015, IRON, 14)
-	v.cyl(Vector3(0, 0.28, 0), 0.05, 0.05, 0.025, BRASS, 10)
-	v.cyl(Vector3(0, 0.305, 0), 0.04, 0.03, 0.02, IRON, 10)
-	v.rod(Vector3(0.0, 0.29, 0.04), Vector3(0.0, 0.29, 0.09), 0.012, BRASS, 6)
-	v.cyl(Vector3(0.0, 0.28, 0.1), 0.018, 0.018, 0.03, Color("c8322b"), 8)
-	# Burner head and the three pot-support prongs.
-	v.cyl(Vector3(0, 0.322, 0), 0.042, 0.048, 0.02, IRON, 12)
-	v.cyl(Vector3(0, 0.34, 0), 0.036, 0.036, 0.004, Color("4a4850"), 12)
+	v.lathe([Vector2(0.1, 0.0), Vector2(0.108, 0.002), Vector2(0.11, 0.008), Vector2(0.11, 0.016), Vector2(0.104, 0.02)], 16, IRON)
+	v.lathe([Vector2(0.1, 0.018), Vector2(0.112, 0.022), Vector2(0.118, 0.03), Vector2(0.12, 0.042), Vector2(0.12, 0.2),
+		Vector2(0.118, 0.218), Vector2(0.111, 0.236), Vector2(0.099, 0.252), Vector2(0.082, 0.266), Vector2(0.062, 0.277),
+		Vector2(0.045, 0.284)], 16, CYLINDER)
+	v.torus(Vector3(0, 0.2, 0), 0.1195, 0.0025, CYLINDER.darkened(0.1), 16, 6)
+	v.lathe([Vector2(0.1208, 0.1), Vector2(0.1214, 0.104), Vector2(0.1214, 0.131), Vector2(0.1208, 0.135)], 16, Color("efe6d2"), false,
+		false)
+	v.use("shiny")
+	v.lathe([Vector2(0.05, 0.278), Vector2(0.052, 0.282), Vector2(0.052, 0.298), Vector2(0.047, 0.303), Vector2(0.04, 0.304)], 12, BRASS)
+	v.rod(Vector3(0.0, 0.29, 0.045), Vector3(0.0, 0.29, 0.085), 0.011, BRASS, 8)
+	v.use("solid")
+	v.lathe([Vector2(0.04, 0.303), Vector2(0.041, 0.31), Vector2(0.034, 0.322)], 12, IRON, false)
+	# The handwheel on the valve's stem, facing out.
+	v.push_at(Vector3(0.0, 0.29, 0.088), Vector3(90, 0, 0))
+	v.cyl(Vector3.ZERO, 0.006, 0.006, 0.02, BRASS, 8)
+	v.torus(Vector3(0, 0.016, 0), 0.016, 0.004, Color("c8322b"), 12, 6)
+	for k in 3:
+		var a := TAU * k / 3.0
+		v.rod(Vector3(0, 0.016, 0), Vector3(cos(a) * 0.016, 0.016, sin(a) * 0.016), 0.0028, Color("c8322b"), 5)
+	v.cyl(Vector3(0, 0.012, 0), 0.006, 0.005, 0.008, Color("c8322b"), 8)
+	v.pop()
+	# Burner head with its ring of flame ports, the cap, and three bent
+	# pot-support arms.
+	v.lathe([Vector2(0.034, 0.32), Vector2(0.042, 0.322), Vector2(0.048, 0.33), Vector2(0.048, 0.338), Vector2(0.04, 0.342)], 14, IRON)
+	for k in 16:
+		var a := TAU * k / 16.0
+		v.box(Vector3(cos(a) * 0.0482 - 0.002, 0.332, sin(a) * 0.0482 - 0.002), Vector3(cos(a) * 0.0482 + 0.002, 0.336,
+			sin(a) * 0.0482 + 0.002), Color("141216"))
+	v.lathe([Vector2(0.038, 0.341), Vector2(0.038, 0.344), Vector2(0.03, 0.346), Vector2(0.0, 0.347)], 14, Color("4a4850"))
 	for k in 3:
 		var a := TAU * k / 3.0 + 0.5
-		v.rod(Vector3(cos(a) * 0.045, 0.325, sin(a) * 0.045), Vector3(cos(a) * 0.085, 0.35, sin(a) * 0.085), 0.006, IRON, 4)
-		v.cube(Vector3(cos(a) * 0.075, 0.35, sin(a) * 0.075), Vector3(0.03, 0.006, 0.01), IRON)
-	# A sticker with the gas company's flame and a scratch or two.
-	v.box(Vector3(0.11, 0.14, -0.04), Vector3(0.121, 0.2, 0.04), Color("f4f1ea"))
-	v.box(Vector3(0.12, 0.155, -0.012), Vector3(0.123, 0.185, 0.012), Color("2a6ab0"))
+		var d := Vector3(cos(a), 0, sin(a))
+		var arm := Vox.smooth_path([d * 0.044 + Vector3(0, 0.322, 0), d * 0.07 + Vector3(0, 0.326, 0), d * 0.088 + Vector3(0, 0.34, 0),
+			d * 0.09 + Vector3(0, 0.352, 0), d * 0.062 + Vector3(0, 0.352, 0)], 2)
+		v.sweep(Vox.round_rect(Rect2(-0.0035, -0.003, 0.007, 0.006), 0.0015, 1), arm, IRON, Vector3.UP)
+	# The gas company's sticker, curved round the body.
+	var arc := 0.36
+	for k in 6:
+		var a0 := -arc + 2.0 * arc * k / 6.0
+		var a1 := -arc + 2.0 * arc * (k + 1) / 6.0
+		var r := 0.1212
+		var p0 := Vector3(cos(a0) * r, 0, sin(a0) * r)
+		var p1 := Vector3(cos(a1) * r, 0, sin(a1) * r)
+		var mid := Vector3(cos((a0 + a1) * 0.5), 0, sin((a0 + a1) * 0.5))
+		v.quad(p0 + Vector3.UP * 0.14, p1 + Vector3.UP * 0.14, p1 + Vector3.UP * 0.195, p0 + Vector3.UP * 0.195, Color("f4f1ea"), mid)
+		if k == 2 or k == 3:
+			var q0 := p0 * 1.004
+			var q1 := p1 * 1.004
+			v.quad(q0 + Vector3.UP * 0.155, q1 + Vector3.UP * 0.155, q1 + Vector3.UP * 0.18, q0 + Vector3.UP * 0.18, Color("2a6ab0"), mid)
 	v.pop()
 
 
@@ -853,14 +886,14 @@ func _build_pot(v: Vox) -> void:
 ## spout, a long handle with a wooden grip riveted at the neck.
 func _build_steel_kanaka(v: Vox) -> void:
 	v.use("shiny")
-	v.lathe(K_PROFILE, 14, METAL, false)
-	v.cyl(Vector3(0, K_RIM - 0.003, 0), _k_profile_r(K_RIM) + 0.002, _k_profile_r(K_RIM) + 0.002, 0.005, METAL.lightened(0.1), 14)
+	v.lathe(K_PROFILE, 18, METAL, false)
+	v.torus(Vector3(0, K_RIM - 0.001, 0), _k_profile_r(K_RIM) - 0.0005, 0.0028, METAL.lightened(0.1), 18, 6)
 	v.use("solid")
 	var inner: Array = []
 	for i in range(K_PROFILE.size() - 1, -1, -1):
 		var p: Vector2 = K_PROFILE[i]
 		inner.append(Vector2(p.x - 0.004, maxf(p.y, 0.004)))
-	v.lathe(inner, 14, Color("3a302a"), false, true)
+	v.lathe(inner, 18, Color("3a302a"), false, true)
 	# Spout, pinched out of the lip toward +z.
 	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z)], METAL, Vector3.UP)
 	v.poly([Vector3(-0.022, K_RIM, 0.068), Vector3(0.0, K_RIM + 0.004, SPOUT.z), Vector3(0.0, K_RIM - 0.02, 0.07)],
@@ -881,16 +914,16 @@ func _build_steel_kanaka(v: Vox) -> void:
 ## wooden handle with a ring at its end.
 func _build_brass_kanaka(v: Vox) -> void:
 	v.use("shiny")
-	v.lathe(C_PROFILE, 16, POT_BRASS, false)
+	v.lathe(C_PROFILE, 20, POT_BRASS, false)
 	# Rolled lip, and the groove above the base ring.
-	v.cyl(Vector3(0, K_RIM - 0.004, 0), 0.0655, 0.0655, 0.006, POT_BRASS.lightened(0.12), 16)
-	v.cyl(Vector3(0, 0.0145, 0), 0.0685, 0.0685, 0.0015, POT_BRASS.darkened(0.3), 16)
+	v.torus(Vector3(0, K_RIM - 0.001, 0), 0.0635, 0.003, POT_BRASS.lightened(0.12), 20, 6)
+	v.cyl(Vector3(0, 0.0145, 0), 0.0685, 0.0685, 0.0015, POT_BRASS.darkened(0.3), 20)
 	v.use("solid")
 	var inner: Array = []
 	for i in range(C_PROFILE.size() - 1, -1, -1):
 		var p: Vector2 = C_PROFILE[i]
 		inner.append(Vector2(p.x - 0.003, maxf(p.y, 0.004)))
-	v.lathe(inner, 16, POT_BRASS.darkened(0.45), false, true)
+	v.lathe(inner, 20, POT_BRASS.darkened(0.45), false, true)
 	# A small spout pinched out of the lip toward +z.
 	v.use("shiny")
 	var tip := Vector3(0.0, K_RIM + 0.003, 0.084)
@@ -939,10 +972,7 @@ func _k_profile_r(y: float) -> float:
 func _build_glass(v: Vox) -> void:
 	_glass_node.position = GLASS
 	add_child(_glass_node)
-	# Saucer.
-	v.lathe([Vector2(0.0, 0.0), Vector2(0.09, 0.0), Vector2(0.12, 0.009), Vector2(0.122, SAUCER_H)], 18, SAUCER)
-	v.cyl(Vector3(0, SAUCER_H - 0.001, 0), 0.064, 0.064, 0.002, SAUCER.darkened(0.07), 18)
-	v.cyl(Vector3(0, SAUCER_H - 0.002, 0), 0.108, 0.108, 0.002, GOLD, 18)
+	_saucer(v)
 	v.into(_glass_node, "Saucer")
 	# The contents (under the glass so the glass draws over them).
 	var r0 := G_R.x - 0.004
@@ -985,34 +1015,63 @@ func _build_glass(v: Vox) -> void:
 	v.into(_mint_node, "Sprig")
 	_glass_node.add_child(_mint_node)
 	_mint_node.visible = false
-	# The glass itself: thick foot, walls, rim; pressed facets on the lower half.
+	# The glass itself: a heavy foot with a rounded heel and a domed punt,
+	# the walls, a fire-polished bead at the rim, and the pressed panels
+	# round the lower half that every Egyptian tea glass has.
 	v.use("glass")
 	v.push_at(Vector3(0, SAUCER_H, 0))
-	v.lathe([Vector2(G_R.x, 0.0), Vector2(G_R.y, G_H)], 14, Color(0.86, 0.94, 1.0, 0.22), false, true)
-	v.lathe([Vector2(G_R.y - 0.003, G_H), Vector2(G_R.x - 0.004, G_FOOT)], 14, Color(0.86, 0.94, 1.0, 0.12), false, false)
-	v.cyl(Vector3(0, 0.0, 0), G_R.x - 0.002, G_R.x - 0.004, G_FOOT, Color(0.9, 0.96, 1.0, 0.4), 14)
-	v.lathe([Vector2(G_R.y + 0.001, G_H - 0.004), Vector2(G_R.y + 0.001, G_H)], 14, Color(1, 1, 1, 0.6), false, false)
-	for k in 7:
-		var a := TAU * k / 7.0
-		v.box(Vector3(cos(a) * (G_R.x + 0.001) - 0.002, G_FOOT, sin(a) * (G_R.x + 0.001) - 0.002),
-			Vector3(cos(a) * (G_R.x + 0.001) + 0.002, G_H * 0.45, sin(a) * (G_R.x + 0.001) + 0.002), Color(1, 1, 1, 0.3))
+	v.lathe([Vector2(G_R.x - 0.004, 0.0), Vector2(G_R.x - 0.001, 0.0012), Vector2(G_R.x, 0.004), Vector2(G_R.y, G_H)], 18,
+		Color(0.86, 0.94, 1.0, 0.22), false, true)
+	v.lathe([Vector2(G_R.y - 0.003, G_H), Vector2(G_R.x - 0.004, G_FOOT)], 18, Color(0.86, 0.94, 1.0, 0.12), false, false)
+	v.lathe([Vector2(G_R.x - 0.004, G_FOOT), Vector2(G_R.x * 0.5, G_FOOT + 0.003), Vector2(0.0, G_FOOT + 0.005)], 18,
+		Color(0.9, 0.96, 1.0, 0.4), false, false)
+	v.cyl(Vector3(0, 0.0, 0), G_R.x - 0.003, G_R.x - 0.004, G_FOOT, Color(0.9, 0.96, 1.0, 0.35), 18)
+	v.torus(Vector3(0, G_H, 0), G_R.y - 0.0012, 0.0018, Color(1, 1, 1, 0.55), 18, 6)
+	var panels := 10
+	var top := G_H * 0.46
+	var r_top := lerpf(G_R.x, G_R.y, top / G_H) + 0.0016
+	var r_bot := G_R.x + 0.0016
+	for k in panels:
+		var a0 := TAU * k / panels
+		var a1 := TAU * (k + 1) / panels
+		var d0 := Vector3(cos(a0), 0, sin(a0))
+		var d1 := Vector3(cos(a1), 0, sin(a1))
+		var mid := Vector3(cos((a0 + a1) * 0.5), 0, sin((a0 + a1) * 0.5))
+		v.quad(d0 * r_bot + Vector3.UP * 0.006, d1 * r_bot + Vector3.UP * 0.006, d1 * r_top + Vector3.UP * top,
+			d0 * r_top + Vector3.UP * top, Color(0.92, 0.97, 1.0, 0.16), mid)
+		# The panel's top edge, a little arch of brighter glass.
+		v.quad(d0 * r_top + Vector3.UP * top, d1 * r_top + Vector3.UP * top, mid * (r_top - 0.001) + Vector3.UP * (top + 0.008),
+			mid * (r_top - 0.001) + Vector3.UP * (top + 0.008), Color(1, 1, 1, 0.3), mid + Vector3.UP * 0.3)
 	v.pop()
 	v.use("solid")
 	var gm := v.into(_glass_node, "Glass")
 	(gm.mesh.surface_get_material(0) as Material).render_priority = 1
 
 
+## The saucer: a foot ring, a rim turned up, a well the glass sits in, and
+## its gold line.
+func _saucer(v: Vox) -> void:
+	v.lathe([Vector2(0.052, 0.0), Vector2(0.062, 0.0), Vector2(0.066, 0.003), Vector2(0.1, 0.006), Vector2(0.119, 0.011),
+		Vector2(0.124, 0.0145), Vector2(0.1215, 0.0158), Vector2(0.112, 0.0138), Vector2(0.072, SAUCER_H), Vector2(0.0, SAUCER_H)],
+		24, SAUCER)
+	v.lathe([Vector2(0.109, 0.0139), Vector2(0.103, 0.0133)], 24, GOLD, false, false)
+	v.lathe([Vector2(0.066, SAUCER_H + 0.0003), Vector2(0.062, SAUCER_H + 0.0003)], 24, SAUCER.darkened(0.08), false, false)
+
+
 func _build_cup(v: Vox) -> void:
 	_cup_node.position = GLASS
 	add_child(_cup_node)
-	v.lathe([Vector2(0.0, 0.0), Vector2(0.09, 0.0), Vector2(0.12, 0.009), Vector2(0.122, SAUCER_H)], 18, SAUCER)
+	_saucer(v)
 	v.push_at(Vector3(0, SAUCER_H, 0))
-	v.lathe([Vector2(CUP_R.x, 0.0), Vector2(CUP_R.y, CUP_H)], 16, Color("f4f1ea"), false, true)
-	v.lathe([Vector2(CUP_R.y - 0.004, CUP_H), Vector2(CUP_R.x - 0.004, 0.006)], 16, Color("3a2418"), false, true)
-	v.cyl(Vector3(0, CUP_H - 0.02, 0), CUP_R.y * 0.97 + 0.001, CUP_R.y * 0.97 + 0.001, 0.006, GOLD, 16)
-	v.sweep(Vox.round_rect(Rect2(-0.006, -0.003, 0.012, 0.006), 0.002, 1), [Vector3(0, CUP_H * 0.75, -CUP_R.y + 0.004),
-		Vector3(0, CUP_H * 0.75, -CUP_R.y - 0.025), Vector3(0, CUP_H * 0.3, -CUP_R.y - 0.022), Vector3(0, CUP_H * 0.25, -CUP_R.x)],
-		Color("f4f1ea"), Vector3.RIGHT)
+	var white := Color("f4f1ea")
+	v.lathe([Vector2(CUP_R.x - 0.012, 0.0), Vector2(CUP_R.x - 0.008, 0.0), Vector2(CUP_R.x - 0.007, 0.004), Vector2(CUP_R.x, 0.008),
+		Vector2(lerpf(CUP_R.x, CUP_R.y, 0.5) + 0.002, CUP_H * 0.5), Vector2(CUP_R.y, CUP_H - 0.003)], 20, white, false, true)
+	v.torus(Vector3(0, CUP_H - 0.002, 0), CUP_R.y - 0.0015, 0.0022, white, 20, 6)
+	v.lathe([Vector2(CUP_R.y - 0.004, CUP_H), Vector2(CUP_R.x - 0.004, 0.006)], 20, Color("3a2418"), false, true)
+	v.lathe([Vector2(CUP_R.y * 0.97 + 0.0012, CUP_H - 0.02), Vector2(CUP_R.y * 0.985 + 0.0012, CUP_H - 0.014)], 20, GOLD, false, false)
+	var handle := Vox.smooth_path([Vector3(0, CUP_H * 0.78, -CUP_R.y + 0.004), Vector3(0, CUP_H * 0.8, -CUP_R.y - 0.018),
+		Vector3(0, CUP_H * 0.6, -CUP_R.y - 0.03), Vector3(0, CUP_H * 0.35, -CUP_R.y - 0.022), Vector3(0, CUP_H * 0.25, -CUP_R.x - 0.004)], 3)
+	v.sweep(Vox.round_rect(Rect2(-0.0055, -0.0035, 0.011, 0.007), 0.003, 2), handle, white, Vector3.RIGHT)
 	v.pop()
 	v.into(_cup_node, "Cup")
 	v.cyl(Vector3.ZERO, 1.0, 1.0, 0.002, Color.WHITE, 16)
@@ -1025,15 +1084,17 @@ func _build_cup(v: Vox) -> void:
 
 func _build_spoons(v: Vox) -> void:
 	# The teaspoon that stands in the glass and stirs.
-	v.rod(Vector3.ZERO, Vector3(0, 0.2, 0), 0.0035, METAL, 4)
-	v.ball(Vector3(0, 0.0, 0), Vector3(0.009, 0.004, 0.014), METAL, 6, 2)
-	v.ball(Vector3(0, 0.2, 0), Vector3(0.006, 0.01, 0.004), Color("e6e9ee"), 6, 2)
+	v.rod(Vector3.ZERO, Vector3(0, 0.2, 0), 0.0028, METAL, 6, 0.0022)
+	v.ball(Vector3(0, 0.0, 0), Vector3(0.009, 0.004, 0.014), METAL, 10, 3)
+	v.ball(Vector3(0, 0.2, 0), Vector3(0.006, 0.012, 0.003), Color("e6e9ee"), 8, 3)
 	v.into(_spoon, "Spoon")
 	_glass_node.add_child(_spoon)
 	# The scooping spoon that carries sugar and leaves over.
-	v.rod(Vector3(0, 0, 0), Vector3(0.13, 0.05, 0), 0.004, METAL, 4)
+	v.rod(Vector3(0, 0, 0), Vector3(0.13, 0.05, 0), 0.0032, METAL, 6)
+	v.ball(Vector3(0.13, 0.05, 0), Vector3(0.007, 0.004, 0.009), METAL, 8, 3)
 	v.push_at(Vector3(-0.012, 0.0, 0))
-	v.lathe([Vector2(0.0, -0.006), Vector2(0.016, 0.0), Vector2(0.018, 0.003)], 10, METAL, false)
+	v.lathe([Vector2(0.0, -0.006), Vector2(0.01, -0.0045), Vector2(0.016, -0.001), Vector2(0.018, 0.003)], 12, METAL, false)
+	v.lathe([Vector2(0.017, 0.003), Vector2(0.015, -0.0005), Vector2(0.009, -0.0035), Vector2(0.0, -0.0048)], 12, METAL_DARK, false, false)
 	v.pop()
 	v.into(_scoop, "Scoop")
 	_scoop.visible = false

@@ -77,6 +77,9 @@ static func tile(u: float, v: float, y := 0.0) -> Vector3:
 func _ready() -> void:
 	_rng.seed = 1127
 	var v := Vox.new()
+	# The ground fills the screen and is flat faces under the sun: shading it
+	# per vertex looks the same and saves a per-pixel light on every pixel.
+	v.vertex_lit = true
 	_road(v)
 	var road := v.into(self, "Road")
 	_kerbs_and_pavements(v)
@@ -95,6 +98,7 @@ func _ready() -> void:
 		v.into(self, "Building%d" % i).layers = GROUND_LAYER
 		x += w + (_rng.randf_range(0.8, 1.4) if _rng.randf() < 0.25 else 0.0)
 		i += 1
+	v.vertex_lit = false
 	for lamp in LAMPS:
 		_streetlight(v, lamp[0], lamp[1])
 	_props(v)
