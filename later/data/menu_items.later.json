@@ -1,0 +1,35 @@
+{
+  "_note": "Parked from data/menu_items.json. Returns in Phase D (first fruit drinks: iced, not blended, fruit from Sayed's ice box) and Phase E (juice tiers, blender). As parked it is the blender version: station 'blend', steps [mango, blend] + 3 ice. See later/README.md.",
+  "menu_items": [
+    {
+      "id": "mango_juice",
+      "name_key": "PREP_MANGO",
+      "name_ar": "عصير مانجا",
+      "station": "blend",
+      "ingredients": [
+        "mango"
+      ],
+      "finish": {
+        "ice": 3
+      },
+      "shout_keys": [
+        "SHOUT_MANGO_1",
+        "SHOUT_MANGO_2",
+        "SHOUT_MANGO_3"
+      ],
+      "unlock_tier": 2,
+      "base_price_egp": 15,
+      "prep_time_sec": 11,
+      "difficulty": 2,
+      "look": {
+        "liquid": "#f2a324",
+        "bits": "#f7c64f",
+        "ice": false
+      },
+      "steps": [
+        "mango",
+        "blend"
+      ]
+    }
+  ]
+}

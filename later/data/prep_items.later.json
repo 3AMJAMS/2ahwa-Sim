@@ -1,0 +1,9 @@
+{
+  "_note": "Parked from data/prep_items.json. The live file no longer has the 'ingredients' and 'tools' lists at all: they fed the 2D-era card picker (pick ingredients, then a tool), and nothing has read them since the quick bar replaced it (commit 0c586ea), so they were dropped as dead data (the whole lists are in git at 0906979). The quick bar's slots, order and names now live in QuickBar.ORDER / QuickBar.NAMES and PrepStation.SLOT_OF. These two entries are kept as the record of what mango and the blender were: mango returns in Phase D (fruit drinks), the blender tool in Phase E. See later/README.md.",
+  "ingredients": [
+    { "id": "mango", "name_key": "ING_MANGO" }
+  ],
+  "tools": [
+    { "id": "blender", "name_key": "TOOL_BLENDER", "station": "blend" }
+  ]
+}

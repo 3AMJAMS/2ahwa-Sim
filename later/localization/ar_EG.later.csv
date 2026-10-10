@@ -1,0 +1,19 @@
+keys,ar_EG
+PREP_MANGO,عصير مانجا
+PREP_BLEND_HOLD,"الخلاط شغال... دوس باستمرار عشان تسرّعه"
+PREP_BLEND_OVERHEAT,"الموتور سخن وفصل... استنى لما يبرد"
+PREP_BLEND_DONE,"العصير جاهز"
+PREP_BLEND_TURBO,"تيربو!"
+PREP_BLEND_WARM,"الموتور بيسخن... سيبه شوية"
+PREP_BLEND_TOO_HOT,"سيبه! الموتور هيولع"
+UI_HOLD_TO_BLEND,"[دوس باستمرار للتيربو]"
+ING_MANGO,مانجا
+TOOL_BLENDER,الخلاط
+TUT_COLD_GAUGE,"الخلاط شغال. دوس في أي حتة باستمرار عشان التيربو يخلّص أسرع."
+TUT_COLD_WARN,"وخلي عينك على عداد الموتور: لو فضل في الأحمر هيفصل ويستنى يبرد."
+SHOUT_MANGO_1,"عصير مانجا يا معلم!"
+SHOUT_MANGO_2,"واحد مانجا لو سمحت"
+SHOUT_MANGO_3,"مانجا ساقعة يا ريس"
+PREP_HINT_MANGO,"حط المانجا في الخلاط"
+PREP_HINT_BLEND,"اضغط على الخلاط عشان يشتغل"
+TUT_BLEND,"دلوقتي اضغط على الخلاط عشان يشتغل."

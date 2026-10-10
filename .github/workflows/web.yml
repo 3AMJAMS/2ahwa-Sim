@@ -1,0 +1,92 @@
+# Builds the Web version with Godot and publishes it to GitHub Pages, so the
+# game can be played from a link (including on iPhone: open it in Safari,
+# then Share → Add to Home Screen to install it like an app).
+# One-time setup: Settings → Pages → Build and deployment → Source: GitHub Actions.
+name: Web build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot and the export templates
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -sSLo godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSLo templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q godot.zip && mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -q templates.tpz
+          mv templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
+          rm -rf godot.zip templates.tpz templates
+
+      - name: Write the Web export preset
+        # export_presets.cfg is kept out of git (it holds local signing
+        # paths), so CI writes just the Web preset: single-threaded (no
+        # special server headers needed) and installable as a web app.
+        run: |
+          cat > export_presets.cfg <<'EOF'
+          [preset.0]
+
+          name="Web"
+          platform="Web"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter="_shots/*"
+          export_path="build/web/index.html"
+
+          [preset.0.options]
+
+          variant/thread_support=false
+          html/canvas_resize_policy=2
+          html/focus_canvas_on_start=true
+          html/head_include="<meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\"><meta name=\"apple-mobile-web-app-title\" content=\"2ahwa Sim\">"
+          progressive_web_app/enabled=true
+          progressive_web_app/display=1
+          progressive_web_app/orientation=2
+          progressive_web_app/ensure_cross_origin_isolation_headers=false
+          progressive_web_app/background_color=Color(0.08, 0.07, 0.15, 1)
+          EOF
+          sed -i 's/^          //' export_presets.cfg
+
+      - name: Export
+        run: |
+          mkdir -p build/web
+          godot --headless --import || true
+          godot --headless --export-release "Web" build/web/index.html
+          ls -la build/web
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

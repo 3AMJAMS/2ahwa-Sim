@@ -1,9 +1,11 @@
 class_name HeatGauge
-extends Control
+extends Node
 ## Stove heat mechanic: heat climbs 0 → 100 over prep_time_sec while the
-## كنكة boils on the ring (KanakaStove draws it; the slim bar is the readout).
-## Tap to take it off the fire inside the green zone for a perfect brew — it
-## pours into the glass before the result is reported. Reaching 100 boils over.
+## كنكة boils on the ring (Stove3D shows it; the slim bar beside the kanaka
+## is the readout). Tap the kanaka to take it off the fire inside the green
+## zone for a perfect brew — it pours into the glass before the result is
+## reported. Reaching 100 boils over. PrepStation builds the readouts and
+## routes the taps here.
 
 signal gauge_completed(accuracy: float)
 signal gauge_failed()
@@ -27,19 +29,36 @@ const COLOR_TRACK := Color("1b1e3a")
 
 var state := State.IDLE
 var heat := 0.0
+## The kanaka holds plain water (tea made in the glass): the prompts talk
+## about the water boiling rather than the foam rising.
+var water := false
+## Milk boils in the kanaka (شاي بلبن, قرفة باللبن): it's the milk rising.
+var milk := false
+## The player pours it themselves (شاي على مية بيضا): a tap in time lifts the
+## kanaka over the glass and reports; PrepStation runs the pour.
+var manual_pour := false
 
 var _fill := StyleBoxFlat.new()
 ## Bumped on every start/reset so a pour that outlives its order is ignored.
 var _run_id := 0
 
-@onready var status_label: Label = %StatusLabel
-@onready var bar: ProgressBar = %ProgressBar
-@onready var green_zone: ColorRect = %GreenZone
-@onready var tap_label: Label = %TapToStopLabel
-@onready var stove: KanakaStove = %StoveView
+var status_label: Label
+var bar: ProgressBar
+var green_zone: ColorRect
+var tap_label: Label
+var stove: Stove3D
 
 
 func _ready() -> void:
+	set_process(false)
+
+
+func setup(the_stove: Stove3D, status: Label, heat_bar: ProgressBar, zone: ColorRect, tap: Label) -> void:
+	stove = the_stove
+	status_label = status
+	bar = heat_bar
+	green_zone = zone
+	tap_label = tap
 	var track := StyleBoxFlat.new()
 	track.bg_color = COLOR_TRACK
 	track.set_corner_radius_all(22)
@@ -63,7 +82,7 @@ func start(time_sec: float = prep_time_sec) -> void:
 	state = State.HEATING
 	_run_id += 1
 	set_process(true)
-	stove.reset()
+	stove.reset_pot()
 	stove.ignite()
 	_refresh()
 
@@ -85,10 +104,8 @@ func _process(delta: float) -> void:
 	_refresh()
 
 
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		accept_event()
-		stop()
+func is_heating() -> bool:
+	return state == State.HEATING
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -105,17 +122,21 @@ func stop() -> void:
 	set_process(false)
 	var accuracy := score(heat)
 	_refresh()
-	var pour := KanakaStove.Pour.PERFECT
+	var pour := Stove3D.Pour.PERFECT
 	if is_in_green(heat):
 		status_label.text = tr("PREP_PERFECT")
 	elif heat < green_min:
 		status_label.text = tr("PREP_LUKEWARM")
-		pour = KanakaStove.Pour.LUKEWARM
+		pour = Stove3D.Pour.LUKEWARM
 	else:
 		status_label.text = tr("PREP_TOO_HOT")
-		pour = KanakaStove.Pour.TOO_HOT
+		pour = Stove3D.Pour.TOO_HOT
 	var run := _run_id
-	await stove.pour(pour)
+	if manual_pour:
+		stove._pour_kind = pour
+		await stove.lift_for_pour()
+	else:
+		await stove.pour(pour)
 	if run == _run_id:
 		gauge_completed.emit(accuracy)
 
@@ -154,9 +175,9 @@ func _refresh() -> void:
 	tap_label.modulate.a = 1.0 if heating and is_in_green(heat) else 0.0
 	if heating:
 		if heat < green_min:
-			status_label.text = tr("PREP_WAITING")
+			status_label.text = tr("PREP_WATER_WAITING" if water else "PREP_WAITING")
 		elif heat <= green_max:
-			status_label.text = tr("PREP_WOSH_RISING")
+			status_label.text = tr("PREP_WATER_BOILING" if water else ("PREP_MILK_RISING" if milk else "PREP_WOSH_RISING"))
 		else:
 			status_label.text = tr("PREP_TOO_HOT")
 	elif state == State.IDLE:

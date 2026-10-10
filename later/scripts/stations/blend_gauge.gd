@@ -1,10 +1,11 @@
 class_name BlendGauge
-extends Control
+extends Node
 ## Cold blender mechanic. Blend progress fills on its own; holding runs the
 ## motor on turbo to finish faster but heats it. Staying in the motor's red
 ## zone longer than overheat_grace_sec trips its thermal cut-out: the motor
 ## stops until it cools to motor_resume_max, costing time (and tips) but never
-## the drink. BlenderView draws it; the two slim bars are the readout.
+## the drink. Blender3D shows it; the two slim bars are the readout.
+## PrepStation builds the readouts and routes the holds here.
 
 signal gauge_completed(accuracy: float)
 ## The motor's thermal cut-out just tripped.
@@ -43,14 +44,24 @@ var _run_id := 0
 var _blend_fill := StyleBoxFlat.new()
 var _motor_fill := StyleBoxFlat.new()
 
-@onready var status_label: Label = %StatusLabel
-@onready var blend_bar: ProgressBar = %BlendBar
-@onready var motor_bar: ProgressBar = %MotorBar
-@onready var hold_label: Label = %HoldLabel
-@onready var blender: BlenderView = %BlenderView
+var status_label: Label
+var blend_bar: ProgressBar
+var motor_bar: ProgressBar
+var hold_label: Label
+## Null until a blender drink is ordered (PrepStation builds it then).
+var blender: Blender3D
 
 
 func _ready() -> void:
+	set_process(false)
+
+
+func setup(the_blender: Blender3D, status: Label, progress_bar: ProgressBar, motor: ProgressBar, hold: Label) -> void:
+	blender = the_blender
+	status_label = status
+	blend_bar = progress_bar
+	motor_bar = motor
+	hold_label = hold
 	for pair in [[blend_bar, _blend_fill], [motor_bar, _motor_fill]]:
 		var track := StyleBoxFlat.new()
 		track.bg_color = COLOR_TRACK
@@ -89,7 +100,8 @@ func reset() -> void:
 	holding = false
 	_run_id += 1
 	set_process(false)
-	blender.reset()
+	if blender:
+		blender.reset()
 	_refresh()
 
 
@@ -123,19 +135,17 @@ func score(time_taken: float) -> float:
 	return clampf(remap(time_taken, par, prep_time_sec, 1.0, 0.5), 0.5, 1.0)
 
 
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		accept_event()
-		_set_holding(event.pressed)
+func is_blending() -> bool:
+	return state == State.BLENDING or state == State.TRIPPED
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if state == State.BLENDING and event.is_action("ui_accept"):
 		get_viewport().set_input_as_handled()
-		_set_holding(event.is_pressed())
+		set_holding(event.is_pressed())
 
 
-func _set_holding(value: bool) -> void:
+func set_holding(value: bool) -> void:
 	holding = value and state == State.BLENDING
 	_refresh()
 
@@ -170,6 +180,8 @@ func _finish() -> void:
 func _refresh() -> void:
 	blend_bar.value = progress
 	motor_bar.value = motor_heat
+	if blender == null:
+		return
 	if motor_heat >= motor_red_min:
 		_motor_fill.bg_color = COLOR_MOTOR_RED
 	elif motor_heat >= motor_warn_min:
