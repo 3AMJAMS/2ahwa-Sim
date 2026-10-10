@@ -30,8 +30,8 @@ const TUTORIAL_SUGAR := "mazboot"
 const CAR_KINDS := [StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.TAXI,
 	StreetVehicle.Kind.PICKUP, StreetVehicle.Kind.SEDAN, StreetVehicle.Kind.MICROBUS]
 
-## Seconds between arrivals, each customer's patience (Phase 3 swaps in
-## per-archetype patience), and the share who come by car.
+## Seconds between arrivals, each customer's patience (Phase D swaps in
+## per-persona patience), and the share who come by car.
 @export var arrival_gap := Vector2(9.0, 18.0)
 @export var patience_range := Vector2(80.0, 110.0)
 @export_range(0.0, 1.0) var by_car_share := 0.65

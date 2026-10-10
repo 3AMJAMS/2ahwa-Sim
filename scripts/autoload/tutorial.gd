@@ -3,10 +3,12 @@ extends Node
 ## remembered in SaveData.tutorials_seen (see technical-blueprint §8).
 ##   ui_intro     — first launch, on the street: day/clock/wallet, going home,
 ##                  tapping FIFI's trunk.
-##   first_prep   — first order: reading it, picking ingredients, the tool.
+##   first_quickbar — first order: reading it, the quick bar of ingredients.
 ##   hot_station  — first time on the stove: when to take it off the fire.
-##   cold_station — first time on the blender: turbo and the motor cut-out.
 ##   first_tips   — first drink served: where the tips go.
+## (Plus one per new kind of recipe step — first_sugar, first_leaves, ... —
+## played by PrepStation, and first_serve on the street.) Each station a
+## later phase brings adds its own the same way.
 ## Scenes build the steps (they know where things are) and await play().
 ## A step is {"text": String, "target": Callable -> Rect2 (optional),
 ## "until": Signal (optional)}. Without "until" the player taps to go on;

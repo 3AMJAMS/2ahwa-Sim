@@ -1,6 +1,8 @@
 extends Node
-## Read-only game content loaded from data/*.json (menu, equipment, venues).
-## Designers edit the JSON; scripts look things up here by id.
+## Read-only game content loaded from data/*.json (menu, equipment, venues,
+## sugar grades). Designers edit the JSON; scripts look things up here by id.
+## Only what the current phase uses is in data/; content for later phases is
+## parked in later/data/ (see later/README.md).
 
 const MENU_PATH := "res://data/menu_items.json"
 const EQUIPMENT_PATH := "res://data/equipment.json"
@@ -11,9 +13,6 @@ const LOCALE := "ar_EG"
 var menu_items: Dictionary = {}   # id -> item dict
 var equipment: Dictionary = {}    # id -> equipment dict
 var venues: Array = []            # index == venue tier id
-## What the player picks from at the prep station, in display order.
-var ingredients: Array = []       # [{id, name_key}]
-var tools: Array = []             # [{id, name_key, station}]
 ## Sugar grades from least to most sweet: [{id, name_key}]. Each drink lists
 ## the grades it can be ordered with and how many spoons each takes.
 var sugar_grades: Array = []
@@ -21,15 +20,13 @@ var sugar_grades: Array = []
 
 func _ready() -> void:
 	# Arabic is the base language; force it so devices set to English still
-	# show the game in Ammiya. The English toggle arrives in Phase 6.
+	# show the game in Ammiya. The English toggle arrives in Phase F.
 	TranslationServer.set_locale(LOCALE)
 	for item in _load_list(MENU_PATH, "menu_items"):
 		menu_items[item.id] = item
 	for eq in _load_list(EQUIPMENT_PATH, "equipment"):
 		equipment[eq.id] = eq
 	venues = _load_list(VENUES_PATH, "venues")
-	ingredients = _load_list(PREP_ITEMS_PATH, "ingredients")
-	tools = _load_list(PREP_ITEMS_PATH, "tools")
 	sugar_grades = _load_list(PREP_ITEMS_PATH, "sugar_grades")
 
 
@@ -49,17 +46,6 @@ func pick_order(rng: RandomNumberGenerator, avoid_id := "") -> String:
 	if pool.size() > 1:
 		pool.erase(avoid_id)
 	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
-
-
-## The ingredient cards worth showing: those some orderable drink uses.
-func menu_ingredients() -> Array:
-	var used := {}
-	for id in menu_items:
-		var item: Dictionary = menu_items[id]
-		if int(item.get("unlock_tier", 0)) <= Economy.current_venue_tier and Economy.owns_slot(item.get("station", "")):
-			for ing in item.get("ingredients", []):
-				used[ing] = true
-	return ingredients.filter(func(e: Dictionary) -> bool: return used.has(e.id))
 
 
 ## A random sugar grade the drink can be ordered with ("" if it has none).
@@ -103,27 +89,6 @@ func sugar_hint(item_id: String, grade: String) -> String:
 			text = tr("SUGAR_HALF_SPOON") if whole == 0 else tr("SUGAR_AND_HALF").format({"spoons": text})
 		amount = text
 	return "%s = %s" % [sugar_name(grade), amount]
-
-
-## The tool a station's drinks are made with ("heat" → the stove).
-func tool_for_station(station: String) -> String:
-	for t in tools:
-		if t.get("station", "") == station:
-			return t.id
-	return ""
-
-
-## Tools the player owns the station slot for, in display order.
-func owned_tools() -> Array:
-	return tools.filter(func(t: Dictionary) -> bool: return Economy.owns_slot(t.get("station", "")))
-
-
-## Display name of an ingredient or tool id.
-func prep_item_name(id: String) -> String:
-	for entry in ingredients + tools:
-		if entry.id == id:
-			return tr(entry.name_key)
-	return id
 
 
 func get_equipment(id: String) -> Dictionary:

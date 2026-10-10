@@ -1,9 +1,10 @@
 class_name PrepIcons
 extends RefCounted
-## Procedural icons for the prep station's pick cards: the ingredients (tea,
-## coffee, dried hibiscus, mango, ice) and the tools (the كنكة on the gas
-## ring, the blender). Each is drawn into a rect on any CanvasItem, in a 100×100
-## design space centred on the rect. Stand-ins until the real art lands.
+## Procedural icons for the ingredients: the quick bar's slots and the order
+## tickets (tea, a tea bag, coffee, dried hibiscus, mint, milk, anise,
+## cinnamon, ice, sugar). Each is drawn into a rect on any CanvasItem, in a
+## 100×100 design space centred on the rect. Stand-ins until the real art
+## lands. Also the shared polygon helpers (_rrect, _ellipse) the UI draws with.
 
 
 ## Icons already painted into textures, by "id@pixels".
@@ -56,22 +57,12 @@ static func draw_icon(ci: CanvasItem, id: String, rect: Rect2) -> void:
 			_anise(ci, o, s)
 		"cinnamon":
 			_cinnamon(ci, o, s)
-		"mango":
-			_mango(ci, o, s)
 		"ice":
 			_ice(ci, o, s)
-		"stove":
-			_stove(ci, o, s)
-		"blender":
-			_blender(ci, o, s)
 		"sugar":
 			_sugar(ci, o, s)
 		"teabag":
 			_teabag(ci, o, s)
-		"spoon":
-			_spoon(ci, o, s)
-		"done":
-			_done(ci, o, s)
 
 
 # --- Ingredients -------------------------------------------------------------
@@ -273,35 +264,6 @@ static func _cinnamon(ci: CanvasItem, o: Vector2, s: float) -> void:
 		ci.draw_line(c + Vector2(-8, -12) * s, c + Vector2(8, 12) * s, Color("e8dcc6"), 2.4 * s, true)
 
 
-## Two ripe mangoes with a leaf.
-static func _mango(ci: CanvasItem, o: Vector2, s: float) -> void:
-	_shadow(ci, o + Vector2(0, 36) * s, Vector2(42, 8) * s)
-	_one_mango(ci, o + Vector2(14, 6) * s, s * 0.9, -0.5)
-	_one_mango(ci, o + Vector2(-12, 12) * s, s, 0.35)
-	_leaf(ci, o + Vector2(10, -30) * s, 15 * s, -0.9, Color("3f8a3a"))
-
-
-static func _one_mango(ci: CanvasItem, c: Vector2, s: float, rot: float) -> void:
-	var body := PackedVector2Array()
-	for i in 28:
-		var a := TAU * i / 28.0
-		# Kidney shape: one side fuller than the other.
-		var r := Vector2(24 + 3 * cos(a), 17 + 3 * sin(a) * cos(a))
-		body.append(c + Vector2(cos(a) * r.x, sin(a) * r.y).rotated(rot) * s)
-	ci.draw_colored_polygon(body, Color("f2a324"))
-	for piece in Geometry2D.intersect_polygons(body, _ellipse(c + Vector2(10, -6).rotated(rot) * s, Vector2(18, 13) * s, rot, 16)):
-		ci.draw_colored_polygon(piece, Color("e8632a", 0.75))
-	for piece in Geometry2D.intersect_polygons(body, _ellipse(c + Vector2(-16, 4).rotated(rot) * s, Vector2(12, 10) * s, rot, 16)):
-		ci.draw_colored_polygon(piece, Color("b8c43a", 0.6))
-	for piece in Geometry2D.intersect_polygons(body, _ellipse(c + Vector2(4, 9).rotated(rot) * s, Vector2(22, 8) * s, rot, 16)):
-		ci.draw_colored_polygon(piece, Color(0, 0, 0, 0.12))
-	ci.draw_colored_polygon(_ellipse(c + Vector2(-6, -8).rotated(rot) * s, Vector2(7, 3.5) * s, rot - 0.3, 10), Color(1, 1, 1, 0.35))
-	var stem := c + Vector2(-23, -2).rotated(rot) * s
-	ci.draw_line(stem, stem + Vector2(-5, -4).rotated(rot) * s, Color("5a3a1a"), 2.5 * s, true)
-	for k in 5:
-		ci.draw_circle(c + Vector2(-8 + k * 5, 2 - k % 2 * 4).rotated(rot) * s, 0.7 * s, Color(1, 1, 0.8, 0.5))
-
-
 ## Three ice cubes with frosted edges and trapped bubbles.
 static func _ice(ci: CanvasItem, o: Vector2, s: float) -> void:
 	_shadow(ci, o + Vector2(0, 38) * s, Vector2(40, 7) * s)
@@ -376,113 +338,6 @@ static func _teabag(ci: CanvasItem, o: Vector2, s: float) -> void:
 	var tag := Rect2(o + Vector2(18, -22) * s, Vector2(22, 26) * s)
 	ci.draw_colored_polygon(_rrect(tag, 3 * s), Color("c23b2a"))
 	ci.draw_colored_polygon(_rrect(tag.grow(-4 * s), 2 * s), Color("f2d24a"))
-
-
-## A teaspoon stirring a tea glass, with the swirl.
-static func _spoon(ci: CanvasItem, o: Vector2, s: float) -> void:
-	_shadow(ci, o + Vector2(0, 40) * s, Vector2(30, 6) * s)
-	var glass := PackedVector2Array([o + Vector2(-22, 38) * s, o + Vector2(22, 38) * s, o + Vector2(28, -24) * s, o + Vector2(-28, -24) * s])
-	ci.draw_colored_polygon(glass, Color(0.8, 0.9, 1.0, 0.25))
-	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-21, 34) * s, o + Vector2(21, 34) * s, o + Vector2(26, -14) * s,
-		o + Vector2(-26, -14) * s]), Color("9c3d16"))
-	ci.draw_polyline(_arc(o + Vector2(0, -14) * s, Vector2(20, 5) * s, 0.2, TAU - 0.6, 14), Color("dcb88a"), 2.0 * s)
-	ci.draw_polyline(_arc(o + Vector2(0, 6) * s, Vector2(14, 4) * s, 0.8, TAU - 0.2, 12), Color(1, 1, 1, 0.35), 1.5 * s)
-	ci.draw_line(o + Vector2(-2, 22) * s, o + Vector2(24, -46) * s, Color("b3b9c2"), 4.0 * s)
-	ci.draw_line(o + Vector2(-1, 20) * s, o + Vector2(24, -45) * s, Color("e6e9ee"), 1.5 * s)
-	ci.draw_polyline(_arc(o + Vector2(40, -30) * s, Vector2(12, 12) * s, -2.4, 0.9, 10), Color("7a5a2e"), 3.0 * s)
-
-
-## "Done": a big green tick in a ring.
-static func _done(ci: CanvasItem, o: Vector2, s: float) -> void:
-	ci.draw_colored_polygon(_ellipse(o, Vector2(38, 38) * s, 0.0, 28), Color("1f5a24"))
-	ci.draw_colored_polygon(_ellipse(o, Vector2(33, 33) * s, 0.0, 28), Color("4caf50"))
-	ci.draw_polyline(PackedVector2Array([o + Vector2(-16, 0) * s, o + Vector2(-5, 12) * s, o + Vector2(18, -12) * s]),
-		Color.WHITE, 7.0 * s, true)
-
-
-# --- Tools ---------------------------------------------------------------------
-
-## The brass كنكة on the cast-iron gas ring, blue flames licking round it.
-static func _stove(ci: CanvasItem, o: Vector2, s: float) -> void:
-	_shadow(ci, o + Vector2(0, 42) * s, Vector2(40, 7) * s)
-	# Burner body, cast-iron trivet and its legs.
-	ci.draw_colored_polygon(_ellipse(o + Vector2(0, 34) * s, Vector2(34, 8) * s, 0.0, 22), Color("2c2a30"))
-	ci.draw_rect(Rect2(o + Vector2(-34, 26) * s, Vector2(68, 8) * s), Color("3a383f"))
-	ci.draw_colored_polygon(_ellipse(o + Vector2(0, 26) * s, Vector2(34, 8) * s, 0.0, 22), Color("4a4850"))
-	for x in [-28.0, -10.0, 10.0, 28.0]:
-		ci.draw_line(o + Vector2(x, 26) * s, o + Vector2(x * 0.8, 16) * s, Color("1d1c21"), 3.0 * s)
-	# Flame tongues round the ring.
-	for k in 9:
-		var a := PI * (0.05 + k * 0.1125)
-		var base := o + Vector2(cos(a) * 22, 22 + sin(a) * 3) * s
-		ci.draw_colored_polygon(PackedVector2Array([base + Vector2(-3, 0) * s, base + Vector2(3, 0) * s,
-			base + Vector2(0, -9 - (k % 3) * 2) * s]), Color("3b8fff", 0.85))
-		ci.draw_colored_polygon(PackedVector2Array([base + Vector2(-1.5, 0) * s, base + Vector2(1.5, 0) * s,
-			base + Vector2(0, -5) * s]), Color("bfe0ff"))
-	# The كنكة: flared belly, pinched neck, pouring lip, long wooden handle.
-	var pot := PackedVector2Array([o + Vector2(-19, 16) * s, o + Vector2(19, 16) * s, o + Vector2(15, -6) * s,
-		o + Vector2(11, -16) * s, o + Vector2(13, -22) * s, o + Vector2(-15, -22) * s, o + Vector2(-11, -16) * s,
-		o + Vector2(-15, -6) * s])
-	ci.draw_colored_polygon(pot, Color("c9923a"))
-	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(6, 16) * s, o + Vector2(19, 16) * s, o + Vector2(15, -6) * s,
-		o + Vector2(11, -16) * s, o + Vector2(13, -22) * s, o + Vector2(6, -22) * s]), Color("9c6a24"))
-	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-10, -18) * s, Vector2(4, 30) * s), 2 * s), Color(1, 1, 1, 0.3))
-	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-15, -22) * s, o + Vector2(-22, -26) * s,
-		o + Vector2(-13, -25) * s]), Color("c9923a"))
-	ci.draw_line(o + Vector2(-15, -22) * s, o + Vector2(13, -22) * s, Color("e6b860"), 2.0 * s)
-	for y in [0.0, 8.0]:
-		ci.draw_line(o + Vector2(-16, y) * s, o + Vector2(16, y) * s, Color("8a5a1e", 0.5), 1.2 * s)
-	ci.draw_line(o + Vector2(15, -8) * s, o + Vector2(44, -24) * s, Color("5a3620"), 5.0 * s, true)
-	ci.draw_line(o + Vector2(20, -11) * s, o + Vector2(42, -23) * s, Color("7a4c2c"), 2.0 * s, true)
-	ci.draw_circle(o + Vector2(15, -8) * s, 2.5 * s, Color("8a5a1e"))
-	# Steam curling up.
-	for k in 2:
-		var pts := PackedVector2Array()
-		for i in 8:
-			var t := i / 7.0
-			pts.append(o + Vector2(-4 + k * 8 + sin(t * 5.0 + k) * 3, -28 - t * 16) * s)
-		ci.draw_polyline(pts, Color(1, 1, 1, 0.35), 1.8 * s, true)
-
-
-## The blender: base with buttons and dial, ribbed jug of karkade, black lid.
-static func _blender(ci: CanvasItem, o: Vector2, s: float) -> void:
-	_shadow(ci, o + Vector2(0, 44) * s, Vector2(32, 6) * s)
-	var base := PackedVector2Array([o + Vector2(-24, 42) * s, o + Vector2(24, 42) * s, o + Vector2(19, 16) * s,
-		o + Vector2(-19, 16) * s])
-	ci.draw_colored_polygon(base, Color("e8e0cc"))
-	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(12, 42) * s, o + Vector2(24, 42) * s, o + Vector2(19, 16) * s,
-		o + Vector2(10, 16) * s]), Color("c8bfa8"))
-	ci.draw_rect(Rect2(o + Vector2(-22, 40) * s, Vector2(44, 3) * s), Color("2c2a30"))
-	for k in 3:
-		ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-15 + k * 8, 30) * s, Vector2(6, 5) * s), 1.5 * s),
-			[Color("4caf50"), Color("e6c33a"), Color("e0452b")][k])
-	ci.draw_circle(o + Vector2(12, 28) * s, 4.5 * s, Color("3a383f"))
-	ci.draw_line(o + Vector2(12, 28) * s, o + Vector2(14, 25) * s, Color("e8e0cc"), 1.2 * s)
-	# Jug: collar, glass with contents, ribs, blades, handle.
-	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-17, 11) * s, Vector2(34, 6) * s), 2 * s), Color("3a383f"))
-	var jug := PackedVector2Array([o + Vector2(-15, 11) * s, o + Vector2(15, 11) * s, o + Vector2(20, -34) * s,
-		o + Vector2(-20, -34) * s])
-	ci.draw_colored_polygon(jug, Color(0.8, 0.92, 1.0, 0.25))
-	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-15, 11) * s, o + Vector2(15, 11) * s, o + Vector2(17.6, -12) * s,
-		o + Vector2(-17.6, -12) * s]), Color("a3183a", 0.85))
-	ci.draw_colored_polygon(_ellipse(o + Vector2(0, -12) * s, Vector2(17.6, 2.5) * s, 0.0, 14), Color("c43a58"))
-	for k in 4:
-		var x := -12.0 + k * 8.0
-		ci.draw_line(o + Vector2(x, 9) * s, o + Vector2(x * 1.3, -31) * s, Color(1, 1, 1, 0.18), 1.2 * s)
-	ci.draw_line(o + Vector2(-8, 6) * s, o + Vector2(8, 3) * s, Color("d4d9e1"), 2.0 * s)
-	ci.draw_line(o + Vector2(-6, 2) * s, o + Vector2(6, 8) * s, Color("d4d9e1"), 2.0 * s)
-	var jug_outline := jug.duplicate()
-	jug_outline.append(jug[0])
-	ci.draw_polyline(jug_outline, Color(0.85, 0.93, 1.0, 0.6), 1.5 * s, true)
-	ci.draw_polyline(PackedVector2Array([o + Vector2(18, -26) * s, o + Vector2(28, -24) * s, o + Vector2(27, 0) * s,
-		o + Vector2(16, 2) * s]), Color(0.85, 0.93, 1.0, 0.7), 3.5 * s, true)
-	for k in 5:
-		var y := 4.0 - k * 7.0
-		ci.draw_line(o + Vector2(-17 - k * 0.5, y) * s, o + Vector2(-13 - k * 0.5, y) * s, Color(1, 1, 1, 0.5), 1.0 * s)
-	# Lid and its filler cap.
-	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-22, -40) * s, Vector2(44, 8) * s), 3 * s), Color("2f2d34"))
-	ci.draw_colored_polygon(_rrect(Rect2(o + Vector2(-7, -46) * s, Vector2(14, 7) * s), 2 * s), Color("45434b"))
-	ci.draw_line(o + Vector2(-20, -39) * s, o + Vector2(20, -39) * s, Color(1, 1, 1, 0.2), 1.2 * s)
 
 
 # --- Helpers -------------------------------------------------------------------

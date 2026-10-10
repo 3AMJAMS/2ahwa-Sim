@@ -1,16 +1,15 @@
 extends Control
 ## The prep station: Sayed at FIFI's tail, making the order. The 3D kit
-## (PrepRig, Stove3D; a Blender3D only at the juice tiers) sits in the
-## street; this is the layer over it: the order at the top, the gauges'
-## readouts, and the quick bar of ingredients along the bottom. The drink is
-## made by doing its recipe (the "steps" list in menu_items.json) in order:
+## (PrepRig, Stove3D) sits in the street; this is the layer over it: the
+## order at the top, the heat gauge's readout, and the quick bar of
+## ingredients along the bottom. The drink is made by doing its recipe (the
+## "steps" list in menu_items.json) in order:
 ##   - tap an ingredient in the quick bar (or its jar) to add it now:
 ##     sugar once per spoon, tea, a tea bag, coffee, karkade, mint, milk,
-##     anise, cinnamon, ice (mango at the juice tiers);
+##     anise, cinnamon, ice;
 ##   - tap the كنكة to light the fire, and again to take it off when it boils;
 ##   - hold on the kanaka to pour gently (شاي على مية بيضا);
-##   - swipe down on the glass to dunk the bag, circle on it to stir;
-##   - (juice tiers) tap the blender to start it, hold anywhere for turbo.
+##   - swipe down on the glass to dunk the bag, circle on it to stir.
 ## A step in brackets in the JSON ([a, b]) can be done in either order.
 ## Doing something before its time is a mistake (the tip shrinks); after a
 ## pause Sayed hints at what's next. How it came out goes back to main via
@@ -30,15 +29,15 @@ signal _brewed(ok: bool)
 
 const SLOT_OF := {"sugar": "sugar", "sugar_pot": "sugar", "tea_leaves": "tea", "tea_pot": "tea", "teabag": "teabag",
 	"coffee": "coffee", "karkade": "karkade", "mint": "mint", "milk_pot": "milk", "anise": "anise", "cinnamon": "cinnamon",
-	"mango": "mango", "ice": "ice"}
+	"ice": "ice"}
 ## Steps that put something into the kanaka, and what goes in.
 const POT_ADDS := {"tea_pot": "tea", "coffee": "coffee", "karkade": "karkade", "milk_pot": "milk", "anise": "anise",
 	"cinnamon": "cinnamon"}
 const HINT_KEYS := {"sugar": "PREP_HINT_SUGAR", "sugar_pot": "PREP_HINT_SUGAR_POT", "tea_leaves": "PREP_HINT_TEA",
-	"tea_pot": "PREP_HINT_TEA_POT", "coffee": "PREP_HINT_COFFEE", "karkade": "PREP_HINT_KARKADE", "mango": "PREP_HINT_MANGO",
+	"tea_pot": "PREP_HINT_TEA_POT", "coffee": "PREP_HINT_COFFEE", "karkade": "PREP_HINT_KARKADE",
 	"mint": "PREP_HINT_MINT", "milk_pot": "PREP_HINT_MILK", "anise": "PREP_HINT_ANISE", "cinnamon": "PREP_HINT_CINNAMON",
 	"teabag": "PREP_HINT_TEABAG", "stir": "PREP_HINT_STIR", "boil": "PREP_HINT_LIGHT", "brew": "PREP_HINT_LIGHT",
-	"pour_gentle": "PREP_HINT_POUR", "blend": "PREP_HINT_BLEND", "ice": "PREP_HINT_ICE"}
+	"pour_gentle": "PREP_HINT_POUR", "ice": "PREP_HINT_ICE"}
 const STIR_TURNS := 4
 const DUNKS := 3
 ## A press shorter than this, moving less than TAP_SLOP, is a tap.
@@ -47,11 +46,7 @@ const TAP_SLOP := 28.0
 
 var rig: PrepRig
 var stove: Stove3D
-## Only built when a blender drink is ordered (the juice tiers): FIFI makes
-## hot drinks, and an idle blender would still cost frames.
-var blender: Blender3D
 var heat_gauge := HeatGauge.new()
-var blend_gauge := BlendGauge.new()
 var quick_bar := QuickBar.new()
 var arranging := false
 
@@ -76,7 +71,6 @@ var _dunks_left := 0
 var _ice_left := 0
 var _bag_in := false
 var _heating := false
-var _blending := false
 var _pouring := false
 var _done := true
 ## Holds back Sayed's step tips while the first-order intro plays.
@@ -103,9 +97,6 @@ var _pad := Control.new()
 var _heat_bar := ProgressBar.new()
 var _green_zone := ColorRect.new()
 var _tap_label := Label.new()
-var _blend_bar := ProgressBar.new()
-var _motor_bar := ProgressBar.new()
-var _hold_label := Label.new()
 var _marks := Control.new()
 var _arrange := Button.new()
 var _arrange_done := Button.new()
@@ -116,12 +107,9 @@ func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	_build_ui()
 	add_child(heat_gauge)
-	add_child(blend_gauge)
-	for gauge in [heat_gauge, blend_gauge]:
-		gauge.gauge_completed.connect(_on_gauge_completed)
+	heat_gauge.gauge_completed.connect(_on_gauge_completed)
 	heat_gauge.gauge_failed.connect(_on_gauge_failed)
 	heat_gauge.boiled_over.connect(_jolt.bind(1.6, 160))
-	blend_gauge.motor_tripped.connect(_jolt.bind(0.9, 80))
 	quick_bar.slot_pressed.connect(func(id: String) -> void: _act("ing:" + id))
 
 
@@ -132,16 +120,6 @@ func attach(the_rig: PrepRig) -> void:
 	stove.rig = rig
 	rig.add_child(stove)
 	heat_gauge.setup(stove, _status, _heat_bar, _green_zone, _tap_label)
-	blend_gauge.setup(null, _status, _blend_bar, _motor_bar, _hold_label)
-
-
-func _ensure_blender() -> void:
-	if blender:
-		return
-	blender = Blender3D.new()
-	blender.rig = rig
-	rig.add_child(blender)
-	blend_gauge.blender = blender
 
 
 #region Layout
@@ -192,16 +170,6 @@ func _build_ui() -> void:
 	_style_label(_tap_label, 34, Color(0.298, 0.686, 0.314), 10)
 	_tap_label.size = Vector2(300, 50)
 	add_child(_tap_label)
-	for bar in [_blend_bar, _motor_bar]:
-		bar.fill_mode = ProgressBar.FILL_BOTTOM_TO_TOP
-		bar.show_percentage = false
-		bar.size = Vector2(40, 300)
-		bar.mouse_filter = MOUSE_FILTER_IGNORE
-		add_child(bar)
-	_hold_label.text = tr("UI_HOLD_TO_BLEND")
-	_style_label(_hold_label, 32, Color(1, 0.702, 0.278), 10)
-	_hold_label.size = Vector2(420, 50)
-	add_child(_hold_label)
 	quick_bar.set_anchors_and_offsets_preset(PRESET_BOTTOM_WIDE)
 	quick_bar.offset_top = -290
 	quick_bar.offset_bottom = -24
@@ -256,11 +224,6 @@ func _place_readouts() -> void:
 	var k := stove.kanaka_rect()
 	_heat_bar.position = Vector2(right, clampf(k.position.y - 60.0, 300.0, size.y - 700.0))
 	_tap_label.position = Vector2(k.get_center().x - 150.0, k.position.y - 110.0)
-	if blender:
-		var b := blender.blender_rect()
-		_blend_bar.position = Vector2(right - 56.0, clampf(b.position.y - 40.0, 300.0, size.y - 700.0))
-		_motor_bar.position = Vector2(right, _blend_bar.position.y)
-	_hold_label.position = Vector2(size.x * 0.5 - 210.0, quick_bar.position.y - 70.0)
 	_arrange_done.position = Vector2(size.x * 0.5 - 120.0, quick_bar.position.y - 120.0)
 
 #endregion
@@ -288,29 +251,14 @@ func load_order(item_id: String, sugar := "") -> bool:
 	_pour_factor = 1.0
 	_done = true
 	_heating = false
-	_blending = false
 	_pouring = false
 	_hold = false
 	var look: Dictionary = _item.get("look", {})
-	var cold: bool = _item.get("station", "") == "blend"
-	if cold:
-		_ensure_blender()
 	heat_gauge.reset()
-	blend_gauge.reset()
 	heat_gauge.set_look(look)
-	if cold:
-		blend_gauge.set_look(look)
 	heat_gauge.water = look.get("pot", "") == "water"
 	heat_gauge.milk = _has_step("milk_pot")
 	heat_gauge.manual_pour = _has_step("pour_gentle")
-	stove.show_glass(not cold)
-	if blender:
-		blender.show_glass(cold)
-	_heat_bar.visible = not cold
-	_green_zone.visible = not cold
-	_blend_bar.visible = cold
-	_motor_bar.visible = cold
-	_hold_label.modulate.a = 0.0
 	_tap_label.modulate.a = 0.0
 	quick_bar.set_slots(_slots())
 	quick_bar.offset_top = quick_bar.offset_bottom - quick_bar.wanted_height()
@@ -421,9 +369,9 @@ func _finish_step(id: String) -> void:
 #region Actions
 
 ## Everything the player does comes through here: "ing:<id>" (a slot or a
-## jar), "kanaka", "glass", "blender", "stir" (a full turn), "dunk".
+## jar), "kanaka", "glass", "stir" (a full turn), "dunk".
 func _act(action: String) -> void:
-	if _done or arranging or _heating and action != "kanaka" or _blending or _pouring:
+	if _done or arranging or _heating and action != "kanaka" or _pouring:
 		if _heating and action.begins_with("ing:"):
 			_wrong(action)
 		return
@@ -463,7 +411,7 @@ func _accepts(id: String, action: String) -> bool:
 	match id:
 		"tea_leaves", "tea_pot":
 			return action == "ing:tea"
-		"coffee", "karkade", "mango", "mint", "anise", "cinnamon":
+		"coffee", "karkade", "mint", "anise", "cinnamon":
 			return action == "ing:" + id
 		"milk_pot":
 			return action == "ing:milk"
@@ -475,8 +423,6 @@ func _accepts(id: String, action: String) -> bool:
 			return action == "kanaka"
 		"pour_gentle":
 			return action == "kanaka"
-		"blend":
-			return action == "blender"
 		"ice":
 			return action == "ing:ice"
 	return false
@@ -499,11 +445,6 @@ func _do(id: String, action: String) -> void:
 		"mint":
 			quick_bar.flash("mint", true)
 			stove.add_mint()
-			tutorial_action.emit()
-			_finish_step(id)
-		"mango":
-			quick_bar.flash("mango", true)
-			blender.add_fruit()
 			tutorial_action.emit()
 			_finish_step(id)
 		"teabag":
@@ -544,23 +485,9 @@ func _do(id: String, action: String) -> void:
 				_finish_step(id)
 		"pour_gentle":
 			pass
-		"blend":
-			_blending = true
-			tutorial_action.emit()
-			blend_gauge.start(float(_item.get("prep_time_sec", 10)))
-			_explain_cold()
-			var ok: bool = await _brewed
-			if run != _run:
-				return
-			_blending = false
-			if ok:
-				_finish_step(id)
 		"ice":
 			quick_bar.flash("ice", true)
-			if _item.get("station", "") == "blend":
-				blender.add_ice_cube()
-			else:
-				stove.add_ice_cube()
+			stove.add_ice_cube()
 			_ice_left -= 1
 			tutorial_action.emit()
 			if _ice_left <= 0:
@@ -649,13 +576,13 @@ func _tap(target: String) -> void:
 	match target:
 		"":
 			pass
-		"kanaka", "glass", "blender":
+		"kanaka", "glass":
 			_act(target)
 		_:
 			_act("ing:" + target)
 
 
-## What's under the finger: the kanaka, the glass, the blender or a jar.
+## What's under the finger: the kanaka, the glass or a jar.
 func _target_at(p: Vector2) -> String:
 	if stove == null:
 		return ""
@@ -665,8 +592,6 @@ func _target_at(p: Vector2) -> String:
 		return "kanaka"
 	if stove.glass_rect().grow(30).has_point(p):
 		return "glass"
-	if blender and blender.blender_rect().grow(10).has_point(p):
-		return "blender"
 	for id in PrepRig.JARS:
 		if quick_bar.has_slot(id) and rig.jar_rect(id).grow(8).has_point(p):
 			return id
@@ -678,11 +603,9 @@ func _angle_round_glass(p: Vector2) -> float:
 	return atan2(p.y - c.y, p.x - c.x)
 
 
-## Holding: the gentle pour, or the blender's turbo.
+## Holding: the gentle pour.
 func _set_hold(on: bool) -> void:
 	_hold = on and not _done
-	if _blending:
-		blend_gauge.set_holding(_hold)
 
 #endregion
 
@@ -697,7 +620,7 @@ func _process(delta: float) -> void:
 		return
 	if "pour_gentle" in _group and not _pouring:
 		_step_pour(delta)
-	if not _heating and not _blending:
+	if not _heating:
 		_hint_t += delta
 		var wait := 2.5 if Economy.day_number <= 3 else 6.0
 		if _hint_t >= wait and _hinting == "":
@@ -773,7 +696,7 @@ func _clear_hint() -> void:
 		return
 	_hinting = ""
 	quick_bar.pulse("")
-	if not _heating and not _blending and not _pouring:
+	if not _heating and not _pouring:
 		_status.text = ""
 
 
@@ -791,9 +714,6 @@ func _draw_marks() -> void:
 			"teabag":
 				if _bag_in:
 					r = stove.glass_rect()
-			"blend":
-				if blender:
-					r = blender.blender_rect()
 		if r.has_area():
 			var k := 0.5 + 0.5 * sin(_t * 6.0)
 			var c := r.get_center()
@@ -860,13 +780,6 @@ func _explain_current() -> void:
 		"pour_gentle":
 			tut = "first_gentle"
 			steps = [{"text": tr("TUT_POUR_GENTLE"), "target": stove.glass_rect}]
-		"mango":
-			tut = "first_blend"
-			steps = [{"text": tr("TUT_ADD_POT").format({"item": tr("ING_MANGO")}), "target": _slot_rect.bind("mango"),
-				"until": tutorial_action}]
-		"blend":
-			tut = "first_blend_start"
-			steps = [{"text": tr("TUT_BLEND"), "target": blender.blender_rect, "until": tutorial_action}]
 		"ice":
 			tut = "first_ice"
 			steps = [{"text": tr("TUT_ADD_ICE").format({"order": _order_display.text,
@@ -897,16 +810,6 @@ func _explain_hot() -> void:
 		{"text": tr("TUT_HOT_WARN"), "target": stove.focus_rect},
 	])
 	Tutorial.mark("hot_station")
-
-
-func _explain_cold() -> void:
-	if not Tutorial.pending("cold_station"):
-		return
-	await Tutorial.play([
-		{"text": tr("TUT_COLD_GAUGE"), "target": blender.blender_rect},
-		{"text": tr("TUT_COLD_WARN"), "target": _motor_bar.get_global_rect},
-	])
-	Tutorial.mark("cold_station")
 
 #endregion
 
@@ -974,7 +877,7 @@ func _flash_result(text: String) -> void:
 ## A good pour: a burst of gold sparks at the glass; a perfect one gets a
 ## bigger burst and a short buzz.
 func _celebrate(perfect: bool) -> void:
-	var at := stove.glass_centre() if _item.get("station", "") != "blend" else blender.screen_of(PrepRig.GLASS_AT + Vector3(0, 0.2, 0))
+	var at := stove.glass_centre()
 	var sparks := CPUParticles2D.new()
 	sparks.position = at
 	sparks.one_shot = true

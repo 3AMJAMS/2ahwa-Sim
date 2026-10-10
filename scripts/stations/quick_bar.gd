@@ -2,7 +2,7 @@ class_name QuickBar
 extends Control
 ## The ingredient dock along the bottom of the prep station: one slot per
 ## ingredient, always in the same order (sugar, tea, tea bags, coffee,
-## karkade, mint, milk, anise, cinnamon, mango, ice), so the thumb learns
+## karkade, mint, milk, anise, cinnamon, ice), so the thumb learns
 ## where each lives; more than seven slots wrap onto a second row. Tapping a
 ## slot adds that ingredient now; PrepStation decides whether it was the
 ## right moment. Slots can show a count (spoons of sugar), flash green or
@@ -14,10 +14,10 @@ extends Control
 
 signal slot_pressed(id: String)
 
-const ORDER := ["sugar", "tea", "teabag", "coffee", "karkade", "mint", "milk", "anise", "cinnamon", "mango", "ice"]
+const ORDER := ["sugar", "tea", "teabag", "coffee", "karkade", "mint", "milk", "anise", "cinnamon", "ice"]
 const NAMES := {"sugar": "ING_SUGAR_SHORT", "tea": "ING_TEA", "teabag": "ING_TEABAG", "coffee": "ING_COFFEE",
 	"karkade": "ING_KARKADE", "mint": "ING_MINT", "milk": "ING_MILK", "anise": "ING_ANISE", "cinnamon": "ING_CINNAMON",
-	"mango": "ING_MANGO", "ice": "ING_ICE"}
+	"ice": "ING_ICE"}
 ## Slots that still fit on one row.
 const ROW_MAX := 7
 ## Height of the dock for one row and for two.

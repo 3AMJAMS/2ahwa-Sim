@@ -3,8 +3,9 @@ extends Node3D
 ## Sayed's spot on the pavement beside FIFI, in blocks: his folding lawn
 ## chair (aluminium tube frame, green-and-white woven strips, black armrest
 ## pads), a stool with his transistor radio on it, and Sayed himself, sat
-## with a glass of tea. Customer seating (plastic chairs, a table) comes
-## later as an upgrade. The chair faces +z; the node sits on the pavement.
+## with a glass of tea. Customer seating (two plastic chairs round a stool
+## table) comes in Phase B as an upgrade. The chair faces +z; the node sits
+## on the pavement.
 
 const ALU := Color("c9ced6")
 const WEB_A := Color("2f8a4c")

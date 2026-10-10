@@ -2,9 +2,9 @@ class_name Fifi3D
 extends Node3D
 ## FIFI on the street, in blocks: Sayed's yellow Fiat 127, parked at the kerb
 ## with her hatch up so the day's kit shows in the trunk (gas ring and
-## كنكة, jars on a wooden rack, the blender, a water jerrycan), LED strips
-## round the opening and up the raised hatch, two work bulbs, and the fruit
-## ice box down on the pavement. She faces -x; her rear (the trunk) is at
+## كنكة, jars on a wooden rack, a water jerrycan), LED strips round the
+## opening and up the raised hatch, two work bulbs, and Sayed's ice box down
+## on the pavement. She faces -x; her rear (the trunk) is at
 ## +x and her left side (+z) faces the pavement and us.
 
 const LENGTH := 3.6
@@ -340,7 +340,8 @@ func _side_details(v: Vox) -> void:
 	v.cyl(Vector3.ZERO, 0.045, 0.045, 0.012, CHROME, 8)
 	v.pop()
 	v.box(Vector3(-1.35, 0.66, z), Vector3(-1.28, 0.69, z + 0.012), TAIL_AMBER)
-	# A strip of stickers: the Fiat script and a hand of Fatima on the rear glass.
+	# The Fiat script badge on the front wing. (Stickers and charms come back as
+	# Phase B purchases.)
 	v.box(Vector3(-1.05, 0.62, z), Vector3(-0.8, 0.66, z + 0.004), Color("f1ede4"))
 	for zz in [HALF_W, -HALF_W]:
 		var s := signf(zz)
@@ -348,7 +349,7 @@ func _side_details(v: Vox) -> void:
 
 
 ## Looking in over the sill: carpet, seat back, trim walls, headliner, the
-## wooden rack of jars, the gas ring with the كنكة, the blender, a jerrycan.
+## wooden rack of jars, the gas ring with the كنكة, a jerrycan.
 func _trunk(v: Vox) -> void:
 	var zi := HALF_W - 0.08
 	v.box(Vector3(BULKHEAD_X, FLOOR_Y, -zi), Vector3(1.74, FLOOR_Y + 0.03, zi), CARPET)
@@ -395,15 +396,6 @@ func _trunk(v: Vox) -> void:
 		10, Color("b3b9c2"), false)
 	v.cyl(g + Vector3(0, 0.0, 0) + Vector3(0, 0.6, 0), 0.066, 0.066, 0.01, Color("3a2016"), 10)
 	v.rod(g + Vector3(0, 0.6, -0.07), g + Vector3(-0.02, 0.64, -0.26), 0.012, Color("5a3620"))
-	# Blender at the back, squat base, jar and lid.
-	var b := Vector3(1.05, FLOOR_Y + 0.03, -0.45)
-	v.box(b + Vector3(-0.1, 0, -0.09), b + Vector3(0.1, 0.13, 0.09), Color("e8e0cc"))
-	v.box(b + Vector3(0.1, 0.03, -0.05), b + Vector3(0.105, 0.09, 0.05), Color("2b2a30"))
-	v.use("glass")
-	v.cyl(b + Vector3(0, 0.13, 0), 0.07, 0.09, 0.26, Color(0.8, 0.92, 1.0, 0.35), 8)
-	v.use("solid")
-	v.cyl(b + Vector3(0, 0.14, 0), 0.068, 0.075, 0.09, Color("a3183a"), 8)
-	v.cyl(b + Vector3(0, 0.39, 0), 0.095, 0.095, 0.035, Color("2f2d34"), 8)
 	# Water jerrycan and a crate of glasses.
 	var j := Vector3(1.5, FLOOR_Y + 0.03, -0.35)
 	v.rbox(j + Vector3(-0.1, 0, -0.15), j + Vector3(0.1, 0.32, 0.15), 0.03, Color("2f6fb3"), "x", 1)
@@ -415,10 +407,6 @@ func _trunk(v: Vox) -> void:
 		v.use("glow/bulb")
 		v.ball(Vector3(1.3, 1.17, zz), Vector3(0.035, 0.045, 0.035), Color("fff1d6"), 6, 3)
 		v.use("solid")
-	# A string of prayer beads and a hand of Fatima charm off the roof.
-	for k in 8:
-		v.cube(Vector3(1.05, 1.24 - k * 0.025, 0.05), Vector3(0.02, 0.02, 0.02), Color("2e5a3a") if k % 3 else Color("c9a24a"))
-	v.box(Vector3(1.04, 1.02, 0.02), Vector3(1.06, 1.06, 0.08), Color("2a6ab0"))
 
 
 ## The raised hatch, built closed in its own space (hinge at the origin)
@@ -514,7 +502,7 @@ func _tap_frame(v: Vox) -> void:
 	v.use("solid")
 
 
-## Sayed's ice box of fruit, down on the pavement beside the trunk.
+## Sayed's ice box, down on the pavement beside the trunk.
 func _ice_box(v: Vox) -> void:
 	var at := Vector3(2.0, Street3D.KERB_H, 1.75)
 	v.box(at + Vector3(-0.26, 0, -0.18), at + Vector3(0.26, 0.3, 0.18), Color("2f6fb3"))
@@ -522,8 +510,5 @@ func _ice_box(v: Vox) -> void:
 	v.box(at + Vector3(-0.12, 0.33, 0.2), at + Vector3(0.12, 0.35, 0.22), Color("c9ced6"))
 	for s in [-1.0, 1.0]:
 		v.box(at + Vector3(s * 0.26, 0.2, -0.05), at + Vector3(s * 0.28, 0.24, 0.05), Color("c9ced6"))
-	for f in [[Vector3(-0.1, 0.42, -0.05), 0.06, Color("f2a324")], [Vector3(0.05, 0.42, 0.06), 0.055, Color("e8c33a")],
-			[Vector3(0.14, 0.41, -0.08), 0.045, Color("f4e04d")], [Vector3(-0.02, 0.41, -0.1), 0.045, Color("f4e04d")]]:
-		v.ball(at + (f[0] as Vector3), Vector3.ONE * float(f[1]), f[2], 6, 3)
 
 #endregion

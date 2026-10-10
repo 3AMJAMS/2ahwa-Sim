@@ -1,7 +1,9 @@
 class_name SaveData
 extends Resource
 ## Versioned player save. Bump CURRENT_VERSION and add a step to
-## SaveSystem.migrate() whenever a field is added, renamed or re-typed.
+## SaveSystem.migrate_old_save() whenever a field is added, renamed or
+## re-typed. (Content ids a build doesn't have, e.g. ones parked for a later
+## phase, need no migration: Economy._fit_to_content() copes with them.)
 
 const CURRENT_VERSION := 1
 

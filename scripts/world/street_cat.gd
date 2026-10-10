@@ -6,7 +6,8 @@ extends Node3D
 ## an ear twitches or the tail tip flicks; every so often it lifts its head,
 ## looks round, blinks (sometimes yawns) and settles back down.
 ## Lies along +z (tail at -z, head at +z), feet at the origin.
-## Walking, jumping down and wandering the pavement come later (roadmap).
+## Walking, jumping down and wandering the pavement come later (roadmap
+## Phase D).
 
 const U := 0.035
 const GINGER := Color("d9822b")

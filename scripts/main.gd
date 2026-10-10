@@ -4,12 +4,12 @@ extends Node
 ##   → tap the trunk (or the ticket) → fade to the prep station → make it
 ##   → fade back holding the drink → tap the customer to serve → tips.
 ## Customers who wait too long leave angry and the ticket is torn off.
-## The day never ends on its own: "go home" fades out on the day's takings,
-## sends everyone home, advances the day, and starts the clock again.
+## The day ends at 4 am (DayClock.closing_time) or when the player taps
+## "go home": the dawn receipt shows the day's takings, everyone is sent
+## home, the day advances and the clock starts again.
 
 enum State { WORLD, TO_PREP, PREP, TO_WORLD, GOING_HOME }
 
-## How long the end-of-day summary stays up.
 ## Tip multiplier from how much patience was left when served: from `x` for a
 ## customer who was about to walk off to `y` for one served straight away.
 @export var speed_tip := Vector2(0.6, 1.0)

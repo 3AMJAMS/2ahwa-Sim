@@ -1,7 +1,7 @@
 extends Node
 ## In-game time of day. The clock starts each day in the late afternoon and
-## keeps running (round the clock if need be) until the player taps "go home";
-## scenes read the sky colour, ambient light and darkness from here.
+## runs until 4 am (closing_time) or until the player taps "go home"; scenes
+## read the sky colour, ambient light and darkness from here.
 
 signal minute_changed
 ## The shift is over (4 am): Sayed packs up and the day ends.

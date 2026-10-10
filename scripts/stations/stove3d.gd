@@ -279,12 +279,6 @@ func reset() -> void:
 	_update()
 
 
-## Hides the tea glass / cup (the blender pours into its own glass).
-func show_glass(on: bool) -> void:
-	_glass_node.visible = on and not _cup
-	_cup_node.visible = on and _cup
-
-
 ## Fresh water in the kanaka back on a cold ring, leaving whatever has
 ## already gone into the glass (sugar, leaves) where it is.
 func reset_pot() -> void:

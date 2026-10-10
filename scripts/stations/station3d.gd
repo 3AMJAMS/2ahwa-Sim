@@ -1,7 +1,8 @@
 class_name Station3D
 extends Node3D
-## Shared kit for the 3D prep-station appliances (the stove and the
-## blender): tweens that report when a sequence ends, ice cubes dropped into
+## Shared kit for the 3D prep-station appliances (the stove today; the
+## appliances later phases bring build on it too, see later/README.md):
+## tweens that report when a sequence ends, ice cubes dropped into
 ## the served glass, soft steam and smoke, grains poured off a spoon, and
 ## screen rects for taps and the tutorial. Mounted on the PrepRig, so local
 ## space is FIFI's (the tail at +x, her left at +z). Purely visual: the
